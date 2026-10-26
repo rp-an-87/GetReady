@@ -40,6 +40,13 @@ namespace GetReady
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
 
+		// " (slot 4, slot 5)", or nothing when the items have no place worth naming
+		private static string WhereOf(IEnumerable<Need> needs)
+		{
+			var places = needs.Where(need => need.Where != null).Select(need => need.Where).ToArray();
+			return places.Length == 0 ? "" : $" ({string.Join(", ", places)})";
+		}
+
 		// "2/3 in place", then what to bring grouped by name ("Bring 2x Propital (cells 0,0, 1,0)"), then what the stash lacks
 		internal static List<PlanLine> Summarize(int inPlace, int total, string unit, List<Need> needs, List<PlanLine> others)
 		{
@@ -49,7 +56,7 @@ namespace GetReady
 				var runs = group.Select(need => need.Run).ToList();
 				lines.Add(new PlanLine
 				{
-					Text = $"Bring {group.Count()}x {group.Key} ({string.Join(", ", group.Select(need => need.Where).ToArray())})",
+					Text = $"Bring {group.Count()}x {group.Key}{WhereOf(group)}",
 					Run = async () =>
 					{
 						foreach (var run in runs)
@@ -68,7 +75,7 @@ namespace GetReady
 
 			foreach (var group in needs.Where(need => need.Run == null).GroupBy(need => need.Name))
 			{
-				lines.Add(Problem($"Not in the stash: {group.Count()}x {group.Key} ({string.Join(", ", group.Select(need => need.Where).ToArray())})"));
+				lines.Add(Problem($"Not in the stash: {group.Count()}x {group.Key}{WhereOf(group)}"));
 			}
 
 			lines.AddRange(others);
@@ -267,7 +274,7 @@ namespace GetReady
 				}
 
 				var found = Game.Candidates(stash.Where(item => !taken.Contains(item)), cell.Template).FirstOrDefault();
-				var need = new Need { Name = cell.Name, Where = $"cell {cell.X},{cell.Y}" };
+				var need = new Need { Name = cell.Name };
 				if (found != null)
 				{
 					taken.Add(found);
