@@ -13,21 +13,25 @@ namespace GetReady
 		public const string PluginVersion = "0.1.0";
 
 		internal static ManualLogSource Log;
+		internal static ConfigEntry<bool> ShowButton;
 		internal static ConfigEntry<KeyboardShortcut> OpenHotkey;
 
 		private void Awake()
 		{
 			Log = Logger;
 			// Everything else is set in the window and kept in BepInEx\config\GetReady\settings.json
-			OpenHotkey = Config.Bind("1. General", "1. Open the Get ready window", new KeyboardShortcut(KeyCode.F9),
-				"Opens and closes the window. It works in the hideout and the main menu, where your stash is available.");
+			ShowButton = Config.Bind("1. General", "1. Show the Get ready button in the stash", true,
+				"Adds a button above the pin button of your stash (hideout and main menu) that opens the Get ready window. Takes effect the next time the stash opens.");
+			OpenHotkey = Config.Bind("1. General", "2. Open the window with a key", KeyboardShortcut.Empty,
+				"Opens and closes the window without the button. Empty by default.");
 			SettingsStore.Load();
+			new ReadyButtonPatch().Enable();
 			Log.LogInfo($"GetReady {PluginVersion} loaded");
 		}
 
 		private void Update()
 		{
-			if (OpenHotkey.Value.IsDown())
+			if (OpenHotkey.Value.MainKey != KeyCode.None && OpenHotkey.Value.IsDown())
 			{
 				ReadyWindow.Toggle();
 			}

@@ -2,7 +2,7 @@
 
 BepInEx client plugin for SPT 4.1.x: a "Get ready for raid" window in the hideout and main menu. It reads your stash and what you carry, shows a plan of what is missing, and moves it with one button.
 
-Open it with F9 (configurable). Settings and templates are kept in `BepInEx\config\GetReady\settings.json` and edited in the window.
+Open it with the blue button above the pin button of your stash (the same place as the old kit button; it can be turned off in F12), or with an optional hotkey. Settings and templates are kept in `BepInEx\config\GetReady\settings.json` and edited in the window.
 
 ## Steps (0.1.0)
 

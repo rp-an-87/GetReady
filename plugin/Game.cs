@@ -17,9 +17,17 @@ namespace GetReady
 
 		private static readonly FieldInfo ControllerField = typeof(ItemUiContext).GetField("_inventoryController", BindingFlags.Instance | BindingFlags.NonPublic);
 
+		// The controller the stash panel was last shown with (set by the button's patch)
+		internal static InventoryController StashController;
+
 		// The player's inventory controller, available where the stash is (hideout and menu)
 		internal static InventoryController Controller()
 		{
+			if (StashController != null)
+			{
+				return StashController;
+			}
+
 			var uiContext = ItemUiContext.Instance;
 			return uiContext == null ? null : ControllerField.GetValue(uiContext) as InventoryController;
 		}
