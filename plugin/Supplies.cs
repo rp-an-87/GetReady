@@ -107,7 +107,8 @@ namespace GetReady
 			var inventory = controller.Inventory;
 			var settings = SettingsStore.Current.Supplies;
 			var carried = Game.Carried(inventory).ToList();
-			var stash = Game.Stash(inventory);
+			var claimed = Steps.Claimed.ToList();
+			var stash = Game.Stash(inventory).Where(item => !claimed.Contains(item)).ToList();
 			var lines = new List<PlanLine>();
 
 			foreach (var def in Defs.Where(def => !def.IsQuota))
@@ -119,7 +120,8 @@ namespace GetReady
 				}
 
 				var targets = Containers(inventory, setting.Destinations);
-				lines.Add(Steps.Info($"{def.Name}: {carried.Sum(item => WeightOf(def, item)):0}/{setting.Target} {def.Unit} carried"));
+				float alreadyBringing = claimed.Sum(item => WeightOf(def, item));
+				lines.Add(Steps.Info($"{def.Name}: {carried.Sum(item => WeightOf(def, item)) + alreadyBringing:0}/{setting.Target} {def.Unit} carried"));
 
 				if (settings.SwapWorse)
 				{
@@ -135,7 +137,7 @@ namespace GetReady
 					}
 				}
 
-				float need = setting.Target - carried.Sum(item => WeightOf(def, item));
+				float need = setting.Target - carried.Sum(item => WeightOf(def, item)) - alreadyBringing;
 				var brought = new List<Item>();
 				foreach (var item in Candidates(stash, def))
 				{
@@ -172,7 +174,7 @@ namespace GetReady
 
 			foreach (var def in Defs.Where(def => def.IsQuota))
 			{
-				PlanQuota(controller, def, carried, stash, lines);
+				PlanQuota(controller, def, carried.Concat(claimed).ToList(), stash, lines);
 			}
 
 			return lines;

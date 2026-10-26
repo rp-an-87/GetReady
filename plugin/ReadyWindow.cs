@@ -96,6 +96,7 @@ namespace GetReady
 				return;
 			}
 
+			Steps.Claimed.Clear();
 			foreach (var step in Steps.All.Where(step => step.Enabled))
 			{
 				try

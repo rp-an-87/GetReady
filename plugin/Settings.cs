@@ -62,8 +62,15 @@ namespace GetReady
 		public Dictionary<string, GroupSetting> Groups = new Dictionary<string, GroupSetting>();
 	}
 
+	internal class WarningSettings
+	{
+		public bool Splint = true;
+		public bool Surgery = true;
+	}
+
 	internal class Settings
 	{
+		public WarningSettings Warnings = new WarningSettings();
 		public SuppliesSettings Supplies = new SuppliesSettings();
 		public InjectorCaseTemplate InjectorCase = new InjectorCaseTemplate();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();

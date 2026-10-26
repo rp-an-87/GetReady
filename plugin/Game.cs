@@ -68,6 +68,8 @@ namespace GetReady
 
 		internal static float ResourceOf(Item item) => item.GetItemComponent<MedKitComponent>()?.HpResource ?? 0f;
 
+		internal static float MaxResourceOf(Item item) => item.GetItemComponent<MedKitComponent>()?.MaxHpResource ?? 0f;
+
 		internal static string NameOf(Item item) => item.ShortName.Localized();
 
 		// Moves count of the stack to the address (the whole stack as a move, else a split). Returns null, or why it failed.

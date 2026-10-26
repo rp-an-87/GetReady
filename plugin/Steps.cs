@@ -37,7 +37,16 @@ namespace GetReady
 
 	internal static class Steps
 	{
-		internal static readonly IStep[] All = { new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep() };
+		internal static readonly IStep[] All =
+		{
+			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(),
+			new MissingResourceWarning("Splint warning", "splint", s => s.Splint, (s, on) => s.Splint = on, "5af0454c86f7746bf20992e8", "544fb3364bdc2d34748b456a", "590c657e86f77412b013051d"),
+			new MissingResourceWarning("Surgery warning", "surgery kit", s => s.Surgery, (s, on) => s.Surgery = on, "5d02778e86f774203e7dedbe", "5d02797c86f774203f38e30a")
+		};
+
+		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
+		// (a Propital for the injector case also counts for the Propital supply). Cleared before every planning pass.
+		internal static readonly List<Item> Claimed = new List<Item>();
 
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
@@ -82,6 +91,38 @@ namespace GetReady
 
 			lines.AddRange(others);
 			return lines;
+		}
+	}
+
+	// Warns when you carry none of a kind of item (splints, surgery kits), counting what the other steps are about to bring
+	internal class MissingResourceWarning : IStep
+	{
+		private readonly string _kind;
+		private readonly Func<WarningSettings, bool> _get;
+		private readonly Action<WarningSettings, bool> _set;
+		private readonly string[] _templates;
+
+		public MissingResourceWarning(string name, string kind, Func<WarningSettings, bool> get, Action<WarningSettings, bool> set, params string[] templates)
+		{
+			Name = name;
+			_kind = kind;
+			_get = get;
+			_set = set;
+			_templates = templates;
+		}
+
+		public string Name { get; }
+		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
+		public bool Enabled { get => _get(SettingsStore.Current.Warnings); set => _set(SettingsStore.Current.Warnings, value); }
+		public string Saved() => "warns when you carry none";
+
+		public List<PlanLine> Plan(InventoryController controller)
+		{
+			int count = Game.CarriedAndSecured(controller.Inventory).Concat(Steps.Claimed).Count(item => _templates.Contains(item.TemplateId.ToString()));
+			return new List<PlanLine>
+			{
+				count > 0 ? Steps.Info($"{count} {_kind}(s) on you") : Steps.Problem($"Missing {_kind} resources: you carry none.")
+			};
 		}
 	}
 
@@ -161,6 +202,47 @@ namespace GetReady
 					{
 						others.Add(Steps.Problem($"{slotName}: holds {held.StackObjectsCount}x {Game.NameOf(held)}, expected {entry.Count} (topping up a stack isn't supported yet)."));
 					}
+					else if (Game.MaxResourceOf(held) > 1f && Game.ResourceOf(held) < Game.MaxResourceOf(held))
+					{
+						// A partly used kit (CMS 2/3): swap it for the fullest one in the stash
+						var current = held;
+						var fuller = Game.Candidates(stash.Where(item => !taken.Contains(item) && !Steps.Claimed.Contains(item)), entry.Templates.First(t => t.Template == current.TemplateId.ToString()).Template)
+							.FirstOrDefault(item => Game.ResourceOf(item) > Game.ResourceOf(current));
+						string usage = $"{Game.NameOf(held)} {Game.ResourceOf(held):0}/{Game.MaxResourceOf(held):0}";
+						if (fuller == null)
+						{
+							others.Add(Steps.Problem($"{slotName}: {usage}, the stash has no fuller one."));
+							inPlace++;
+						}
+						else
+						{
+							taken.Add(fuller);
+							Steps.Claimed.Add(fuller);
+							var better = fuller;
+							var target = slot;
+							others.Add(new PlanLine
+							{
+								Text = $"{slotName}: replace {usage} with {Game.NameOf(better)} {Game.ResourceOf(better):0}/{Game.MaxResourceOf(better):0}",
+								Run = async () =>
+								{
+									var error = await Game.MoveToContainers(controller, current, new List<CompoundItem> { controller.Inventory.Stash });
+									if (error != null)
+									{
+										return error;
+									}
+
+									error = await Game.PlaceAt(controller, better, 1, target.CreateItemAddress());
+									if (error != null)
+									{
+										await Game.PlaceAt(controller, current, 1, target.CreateItemAddress());
+									}
+
+									return error;
+								}
+							});
+							inPlace++;
+						}
+					}
 					else
 					{
 						inPlace++;
@@ -172,7 +254,7 @@ namespace GetReady
 				Item found = null;
 				foreach (var reference in entry.Templates)
 				{
-					found = Game.Candidates(stash.Where(item => !taken.Contains(item)), reference.Template).FirstOrDefault();
+					found = Game.Candidates(stash.Where(item => !taken.Contains(item) && !Steps.Claimed.Contains(item)), reference.Template).FirstOrDefault();
 					if (found != null)
 					{
 						break;
@@ -183,6 +265,7 @@ namespace GetReady
 				if (found != null)
 				{
 					taken.Add(found);
+					Steps.Claimed.Add(found);
 					var chosen = found;
 					var target = slot;
 					int count = Math.Min(entry.Count, found.StackObjectsCount);
@@ -277,11 +360,12 @@ namespace GetReady
 					continue;
 				}
 
-				var found = Game.Candidates(stash.Where(item => !taken.Contains(item)), cell.Template).FirstOrDefault();
+				var found = Game.Candidates(stash.Where(item => !taken.Contains(item) && !Steps.Claimed.Contains(item)), cell.Template).FirstOrDefault();
 				var need = new Need { Name = cell.Name };
 				if (found != null)
 				{
 					taken.Add(found);
+					Steps.Claimed.Add(found);
 					var chosen = found;
 					var target = cell;
 					need.Run = () => Game.PlaceAt(controller, chosen, 1, grid.CreateItemAddress(new LocationInGrid(target.X, target.Y, ItemRotation.Horizontal)));
