@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EFT.Communications;
 using EFT.InventoryLogic;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ namespace GetReady
 		private const int WindowId = 0x6e7264;
 
 		private static bool _open;
-		private static Rect _rect = new Rect(80, 80, 520, 640);
+		private static Rect _rect = new Rect(80, 80, 640, 680);
 		private static Vector2 _scroll;
 		private static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
 		private static string _status = "";
@@ -111,6 +112,26 @@ namespace GetReady
 
 		private static async void Go()
 		{
+			await RunPlan();
+		}
+
+		// The button's plain click: look at the gear, bring what is missing and say what happened, without the window
+		internal static async void QuickRun()
+		{
+			if (_running)
+			{
+				return;
+			}
+
+			Refresh();
+			await RunPlan();
+			int problems = Plan.Sum(entry => entry.Value.Count(line => line.Problem));
+			var message = "Get ready: " + _status.TrimEnd('.') + (problems > 0 ? $". {problems} thing(s) need a look, Ctrl+click the button to see." : ".");
+			NotificationManager.DisplayMessageNotification(message);
+		}
+
+		private static async System.Threading.Tasks.Task RunPlan()
+		{
 			if (_running)
 			{
 				return;
@@ -149,6 +170,36 @@ namespace GetReady
 				_running = false;
 				Refresh();
 			}
+		}
+
+		// One row of a step: its name, the amount with - and +, and where it goes (click to change)
+		private static bool GroupRow(GroupDef def)
+		{
+			var setting = SuppliesStep.Setting(def);
+			bool changed = false;
+			GUILayout.BeginHorizontal();
+			GUILayout.Label($"  {def.Name}", GUILayout.Width(170));
+			if (GUILayout.Button("-", GUILayout.Width(28)) && setting.Target > 0)
+			{
+				setting.Target = Math.Max(0, setting.Target - def.Step);
+				changed = true;
+			}
+
+			GUILayout.Label(setting.Target == 0 ? "off" : $"{setting.Target} {def.Unit}", GUILayout.Width(130));
+			if (GUILayout.Button("+", GUILayout.Width(28)) && setting.Target < def.Max)
+			{
+				setting.Target = Math.Min(def.Max, setting.Target + def.Step);
+				changed = true;
+			}
+
+			if (GUILayout.Button(new GUIContent(SuppliesStep.DestinationLabel(setting), "Where it goes, first with room first. Click to change.")))
+			{
+				SuppliesStep.NextDestination(setting);
+				changed = true;
+			}
+
+			GUILayout.EndHorizontal();
+			return changed;
 		}
 
 		// The step's switch and what is saved for it. True when the switch changed.
@@ -203,6 +254,27 @@ namespace GetReady
 						Refresh();
 					}
 				}
+			}
+
+			foreach (var supplies in Steps.All.Skip(2))
+			{
+				GUILayout.Space(10);
+				changed |= StepHeader(supplies);
+				foreach (var def in supplies.Groups)
+				{
+					changed |= GroupRow(def);
+				}
+			}
+
+			GUILayout.Space(10);
+			var supplySettings = settings.Supplies;
+			bool swap = GUILayout.Toggle(supplySettings.SwapWorse, new GUIContent("Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one"));
+			bool overshoot = GUILayout.Toggle(supplySettings.AllowOvershoot, new GUIContent("Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway"));
+			if (swap != supplySettings.SwapWorse || overshoot != supplySettings.AllowOvershoot)
+			{
+				supplySettings.SwapWorse = swap;
+				supplySettings.AllowOvershoot = overshoot;
+				changed = true;
 			}
 
 			GUILayout.Space(14);

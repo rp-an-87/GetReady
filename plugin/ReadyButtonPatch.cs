@@ -58,10 +58,20 @@ namespace GetReady
 				Place(clone.transform, pin.transform);
 
 				var click = clone.AddComponent<ClickHandler>();
-				click.OnClick = ReadyWindow.Toggle;
+				click.OnClick = () =>
+				{
+					if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+					{
+						ReadyWindow.Toggle();
+					}
+					else
+					{
+						ReadyWindow.QuickRun();
+					}
+				};
 
 				var hover = clone.GetComponent<HoverTrigger>() ?? clone.AddComponent<HoverTrigger>();
-				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show("Get ready for raid: opens a window that shows what is missing from your gear and brings it from the stash", null, 0.25f, null);
+				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show("Get ready for raid: click to bring what is missing from the stash into your gear. Ctrl+click opens the window to set it up.", null, 0.25f, null);
 				hover.OnHoverEnd += _ => ItemUiContext.Instance.Tooltip.Close();
 			}
 			catch (Exception e)

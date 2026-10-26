@@ -30,12 +30,14 @@ namespace GetReady
 		bool Enabled { get; set; }
 		// What the saved template holds, in a line
 		string Saved();
+		// The amounts and destinations the window lets you set (none for the steps that work from a saved template)
+		IReadOnlyList<GroupDef> Groups { get; }
 		List<PlanLine> Plan(InventoryController controller);
 	}
 
 	internal static class Steps
 	{
-		internal static readonly IStep[] All = { new SpecialSlotsStep(), new InjectorCaseStep() };
+		internal static readonly IStep[] All = { new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep() };
 
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
@@ -87,6 +89,7 @@ namespace GetReady
 	internal class SpecialSlotsStep : IStep
 	{
 		public string Name => "Special slots";
+		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
 		public bool Enabled { get => SettingsStore.Current.SpecialSlots.Enabled; set => SettingsStore.Current.SpecialSlots.Enabled = value; }
 
 		public string Saved()
@@ -197,6 +200,7 @@ namespace GetReady
 	internal class InjectorCaseStep : IStep
 	{
 		public string Name => "Injector case";
+		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
 		public bool Enabled { get => SettingsStore.Current.InjectorCase.Enabled; set => SettingsStore.Current.InjectorCase.Enabled = value; }
 
 		public string Saved()

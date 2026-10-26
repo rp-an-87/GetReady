@@ -43,8 +43,28 @@ namespace GetReady
 		public List<SlotEntry> Slots = new List<SlotEntry>();
 	}
 
+	// One group of supplies (healing kits, bandages, one grenade type...): how much to carry and where it goes
+	internal class GroupSetting
+	{
+		public int Target;
+		// Pockets, Vest (tactical vest or armored rig) and Backpack; the first with room wins
+		public List<string> Destinations = new List<string>();
+	}
+
+	internal class SuppliesSettings
+	{
+		public bool HealingEnabled = true;
+		public bool GrenadesEnabled = true;
+		// Replace carried items by better ones from the stash (more resource, higher priority, non-FiR)
+		public bool SwapWorse = true;
+		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
+		public bool AllowOvershoot = true;
+		public Dictionary<string, GroupSetting> Groups = new Dictionary<string, GroupSetting>();
+	}
+
 	internal class Settings
 	{
+		public SuppliesSettings Supplies = new SuppliesSettings();
 		public InjectorCaseTemplate InjectorCase = new InjectorCaseTemplate();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();
 	}
