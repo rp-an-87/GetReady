@@ -31,7 +31,7 @@ namespace GetReady
 		{
 			if (_open)
 			{
-				_rect = GUILayout.Window(WindowId, _rect, Contents, "Get ready");
+				_rect = GUILayout.Window(WindowId, _rect, Contents, "Get ready for raid");
 			}
 		}
 
@@ -101,6 +101,20 @@ namespace GetReady
 			}
 		}
 
+		// The step's switch and what is saved for it. True when the switch changed.
+		private static bool StepHeader(IStep step)
+		{
+			bool enabled = GUILayout.Toggle(step.Enabled, step.Name);
+			GUILayout.Label("  " + step.Saved());
+			if (enabled == step.Enabled)
+			{
+				return false;
+			}
+
+			step.Enabled = enabled;
+			return true;
+		}
+
 		private static void Contents(int id)
 		{
 			var controller = Game.Controller();
@@ -109,49 +123,43 @@ namespace GetReady
 
 			_scroll = GUILayout.BeginScrollView(_scroll);
 
-			foreach (var step in Steps.All)
+			// One block per step: switch, what is saved, and the button that saves it again from what you wear now
+			changed |= StepHeader(Steps.All[0]);
+			if (controller != null && GUILayout.Button(new GUIContent("Save my current special slots as the template", "Remembers what is in each special slot of your pockets right now")))
 			{
-				bool enabled = GUILayout.Toggle(step.Enabled, step.Name);
-				if (enabled != step.Enabled)
-				{
-					step.Enabled = enabled;
-					changed = true;
-				}
+				_status = $"Saved {SpecialSlotsStep.Capture(controller)} special slot(s).";
+				Refresh();
 			}
 
-			GUILayout.Space(8);
-			GUILayout.Label("Capture (arrange it by hand first)");
+			GUILayout.Space(10);
+			changed |= StepHeader(Steps.All[1]);
 			if (controller != null)
 			{
-				if (GUILayout.Button("Special slots: capture what the pockets hold"))
-				{
-					_status = $"Captured {SpecialSlotsStep.Capture(controller)} special slot(s).";
-					Refresh();
-				}
-
 				var cases = InjectorCaseStep.FindCases(controller.Inventory);
 				if (cases.Count == 0)
 				{
-					GUILayout.Label("Injector case: none carried (pockets, vest, backpack or pouch).");
+					GUILayout.Label("No injector case on you (pockets, vest, backpack or pouch).");
 				}
 
 				for (int i = 0; i < cases.Count; i++)
 				{
 					var injectorCase = cases[i];
 					bool bound = injectorCase.Id.ToString() == settings.InjectorCase.CaseId;
-					string label = $"Injector case {i + 1} ({injectorCase.Grids[0].Items.Count()} injectors){(bound ? " - captured" : "")}: capture";
-					if (GUILayout.Button(label))
+					string name = cases.Count == 1 ? "my injector case" : $"injector case {i + 1} ({injectorCase.Grids[0].Items.Count()} injectors inside)";
+					string label = $"Save {name} as the template" + (bound ? " (this is the saved one)" : "");
+					if (GUILayout.Button(new GUIContent(label, "Remembers which injector is in each cell. Only this case is filled later; other injector cases are left alone.")))
 					{
-						_status = $"Captured {InjectorCaseStep.Capture(injectorCase)} injector(s) from case {i + 1}.";
+						_status = $"Saved {InjectorCaseStep.Capture(injectorCase)} injector(s) from {name}.";
 						Refresh();
 					}
 				}
 			}
 
-			GUILayout.Space(8);
+			GUILayout.Space(10);
+			changed |= StepHeader(Steps.All[2]);
 			var flares = settings.Flares;
 			GUILayout.BeginHorizontal();
-			GUILayout.Label($"{flares.Item.Name}: carry at least {flares.Count}");
+			GUILayout.Label($"Amount to carry: {flares.Count}");
 			if (GUILayout.Button("-", GUILayout.Width(28)) && flares.Count > 0)
 			{
 				flares.Count--;
@@ -166,8 +174,13 @@ namespace GetReady
 
 			GUILayout.EndHorizontal();
 
-			GUILayout.Space(8);
-			GUILayout.Label("Plan");
+			GUILayout.Space(14);
+			GUILayout.Label("What is missing right now");
+			if (Plan.Count == 0)
+			{
+				GUILayout.Label("  Nothing is switched on.");
+			}
+
 			foreach (var entry in Plan)
 			{
 				GUILayout.Label(entry.Key.Name);
@@ -182,15 +195,15 @@ namespace GetReady
 
 			GUILayout.EndScrollView();
 
-			GUILayout.Label(_status);
+			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip);
 			GUILayout.BeginHorizontal();
-			if (GUILayout.Button("Refresh plan"))
+			if (GUILayout.Button(new GUIContent("Check again", "Looks at your gear and stash again")))
 			{
 				Refresh();
 			}
 
 			GUI.enabled = !_running && Plan.Any(entry => entry.Value.Any(line => line.Run != null));
-			if (GUILayout.Button("Go"))
+			if (GUILayout.Button(new GUIContent("Bring what is missing", "Moves the items listed in white from the stash into your gear")))
 			{
 				Go();
 			}

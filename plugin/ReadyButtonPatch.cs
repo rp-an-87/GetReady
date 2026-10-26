@@ -61,7 +61,7 @@ namespace GetReady
 				click.OnClick = ReadyWindow.Toggle;
 
 				var hover = clone.GetComponent<HoverTrigger>() ?? clone.AddComponent<HoverTrigger>();
-				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show("Get ready for a raid: see what is missing from your gear and bring it from the stash", null, 0.25f, null);
+				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show("Get ready for raid: opens a window that shows what is missing from your gear and brings it from the stash", null, 0.25f, null);
 				hover.OnHoverEnd += _ => ItemUiContext.Instance.Tooltip.Close();
 			}
 			catch (Exception e)
