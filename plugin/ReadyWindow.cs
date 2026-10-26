@@ -18,6 +18,11 @@ namespace GetReady
 		private static string _status = "";
 		private static bool _running;
 
+		// The plan is read again shortly after the inventory changes (an item moved in the stash, say)
+		private static InventoryController _watched;
+		private static bool _dirty;
+		private static float _dirtyAt;
+
 		internal static void Toggle()
 		{
 			_open = !_open;
@@ -25,6 +30,49 @@ namespace GetReady
 			{
 				Refresh();
 			}
+			else
+			{
+				Watch(null);
+			}
+		}
+
+		internal static void Tick()
+		{
+			if (_open && _dirty && !_running && Time.unscaledTime - _dirtyAt > 0.3f)
+			{
+				Refresh();
+			}
+		}
+
+		private static void Watch(InventoryController controller)
+		{
+			if (_watched == controller)
+			{
+				return;
+			}
+
+			if (_watched != null)
+			{
+				_watched.AddItemEvent -= OnItemAdded;
+				_watched.RemoveItemEvent -= OnItemRemoved;
+			}
+
+			_watched = controller;
+			if (controller != null)
+			{
+				controller.AddItemEvent += OnItemAdded;
+				controller.RemoveItemEvent += OnItemRemoved;
+			}
+		}
+
+		private static void OnItemAdded(AddItemEventArgs args) => MarkDirty();
+
+		private static void OnItemRemoved(RemoveItemEventArgs args) => MarkDirty();
+
+		private static void MarkDirty()
+		{
+			_dirty = true;
+			_dirtyAt = Time.unscaledTime;
 		}
 
 		internal static void Draw()
@@ -38,7 +86,9 @@ namespace GetReady
 		private static void Refresh()
 		{
 			Plan.Clear();
+			_dirty = false;
 			var controller = Game.Controller();
+			Watch(controller);
 			if (controller == null)
 			{
 				_status = "No stash here: open this in the hideout or the main menu.";
@@ -155,25 +205,6 @@ namespace GetReady
 				}
 			}
 
-			GUILayout.Space(10);
-			changed |= StepHeader(Steps.All[2]);
-			var flares = settings.Flares;
-			GUILayout.BeginHorizontal();
-			GUILayout.Label($"Amount to carry: {flares.Count}");
-			if (GUILayout.Button("-", GUILayout.Width(28)) && flares.Count > 0)
-			{
-				flares.Count--;
-				changed = true;
-			}
-
-			if (GUILayout.Button("+", GUILayout.Width(28)))
-			{
-				flares.Count++;
-				changed = true;
-			}
-
-			GUILayout.EndHorizontal();
-
 			GUILayout.Space(14);
 			GUILayout.Label("What is missing right now");
 			if (Plan.Count == 0)
@@ -212,6 +243,7 @@ namespace GetReady
 			if (GUILayout.Button("Close"))
 			{
 				_open = false;
+				Watch(null);
 			}
 
 			GUILayout.EndHorizontal();

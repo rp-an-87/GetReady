@@ -6,9 +6,9 @@ Open it with the blue button above the pin button of your stash (the same place 
 
 ## Steps (0.1.0)
 
-- **Special slots**: capture what your pockets' special slots hold (CMS kits), and the missing ones are brought from the stash. In `settings.json` a slot can list a fallback item after the first.
+- **Special slots**: save what your pockets' special slots hold (CMS kits), and the missing ones are brought from the stash. In `settings.json` a slot can list a fallback item after the first.
 - **Injector case**: capture the injectors in your injector case, cell by cell, and the empty cells are refilled with the same injector. The template is bound to that specific case, so a second injector case (a loot one, say) is never touched.
-- **Flares**: carry at least N of an item (green flares), placed in the first of your destination containers with room.
+(flares and other special-slot items are part of the special slots template: put them in the slot and save)
 
 Planned: meds by health points, grenades, ammo and magazine top-up, repair, emptying loot into the stash, MergeConsumables support, buying what is missing from the flea market.
 

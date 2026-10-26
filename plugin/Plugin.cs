@@ -31,6 +31,7 @@ namespace GetReady
 
 		private void Update()
 		{
+			ReadyWindow.Tick();
 			if (OpenHotkey.Value.MainKey != KeyCode.None && OpenHotkey.Value.IsDown())
 			{
 				ReadyWindow.Toggle();

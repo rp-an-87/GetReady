@@ -24,6 +24,8 @@ namespace GetReady
 	internal class SlotEntry
 	{
 		public string SlotId;
+		// How many of it the slot held when saved (a flare stack, say)
+		public int Count = 1;
 		public List<ItemRef> Templates = new List<ItemRef>();
 	}
 
@@ -41,20 +43,10 @@ namespace GetReady
 		public List<SlotEntry> Slots = new List<SlotEntry>();
 	}
 
-	internal class FlaresTemplate
-	{
-		public bool Enabled;
-		public ItemRef Item = new ItemRef { Template = Game.GreenFlare, Name = "Signal flare (Green)" };
-		public int Count = 1;
-		// Where flares go, first with room wins: Pockets, TacticalVest, ArmorVest, Backpack
-		public List<string> Destinations = new List<string> { "TacticalVest", "Pockets", "Backpack" };
-	}
-
 	internal class Settings
 	{
 		public InjectorCaseTemplate InjectorCase = new InjectorCaseTemplate();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();
-		public FlaresTemplate Flares = new FlaresTemplate();
 	}
 
 	internal static class SettingsStore

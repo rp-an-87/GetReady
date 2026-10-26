@@ -13,7 +13,6 @@ namespace GetReady
 	internal static class Game
 	{
 		internal const string InjectorCase = "619cbf7d23893217ec30b689";
-		internal const string GreenFlare = "624c0570c9b794431568f5d5";
 
 		private static readonly FieldInfo ControllerField = typeof(ItemUiContext).GetField("_inventoryController", BindingFlags.Instance | BindingFlags.NonPublic);
 
