@@ -4,6 +4,7 @@ using System.Linq;
 using EFT.Communications;
 using EFT.InventoryLogic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace GetReady
 {
@@ -44,8 +45,37 @@ namespace GetReady
 			}
 		}
 
+		private static EventSystem _blocked;
+
+		// The game's own UI (stash scrolling, clicks) listens to the EventSystem and knows nothing of this IMGUI window, so
+		// it is switched off while the mouse is over the window, and back on when the mouse leaves
+		private static void BlockGameInput()
+		{
+			var mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+			bool over = (_open && _rect.Contains(mouse)) || (Alerts.Count > 0 && _alertRect.Contains(mouse));
+			if (over == (_blocked != null))
+			{
+				return;
+			}
+
+			if (over)
+			{
+				_blocked = EventSystem.current;
+				if (_blocked != null)
+				{
+					_blocked.enabled = false;
+				}
+			}
+			else
+			{
+				_blocked.enabled = true;
+				_blocked = null;
+			}
+		}
+
 		internal static void Tick()
 		{
+			BlockGameInput();
 			if (_open && _dirty && !_running && Time.unscaledTime - _dirtyAt > 0.3f)
 			{
 				Refresh();

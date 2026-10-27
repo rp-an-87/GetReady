@@ -40,9 +40,16 @@ namespace GetReady
 		internal static readonly IStep[] All =
 		{
 			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(),
-			new MissingResourceWarning("Splint warning", "splint", s => s.Splint, (s, on) => s.Splint = on, "5af0454c86f7746bf20992e8", "544fb3364bdc2d34748b456a", "590c657e86f77412b013051d"),
-			new MissingResourceWarning("Surgery warning", "surgery kit", s => s.Surgery, (s, on) => s.Surgery = on, "5d02778e86f774203e7dedbe", "5d02797c86f774203f38e30a")
+			// Found by what the item treats, so modded splints count too: anything that fixes a fracture without doing surgery
+			// (Surv12 does both and counts as surgery only); Grizzly fixes fractures and counts as a splint
+			new MissingResourceWarning("Splint warning", "splint", s => s.Splint, (s, on) => s.Splint = on,
+				item => Treats(item, EDamageEffectType.Fracture) && !Treats(item, EDamageEffectType.DestroyedPart)),
+			new MissingResourceWarning("Surgery warning", "surgery kit", s => s.Surgery, (s, on) => s.Surgery = on,
+				item => Treats(item, EDamageEffectType.DestroyedPart))
 		};
+
+		private static bool Treats(Item item, EDamageEffectType effect) =>
+			item.GetItemComponent<HealthEffectsComponent>()?.AffectsAny(effect) ?? false;
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
 		// (a Propital for the injector case also counts for the Propital supply). Cleared before every planning pass.
@@ -100,15 +107,15 @@ namespace GetReady
 		private readonly string _kind;
 		private readonly Func<WarningSettings, bool> _get;
 		private readonly Action<WarningSettings, bool> _set;
-		private readonly string[] _templates;
+		private readonly Func<Item, bool> _matches;
 
-		public MissingResourceWarning(string name, string kind, Func<WarningSettings, bool> get, Action<WarningSettings, bool> set, params string[] templates)
+		public MissingResourceWarning(string name, string kind, Func<WarningSettings, bool> get, Action<WarningSettings, bool> set, Func<Item, bool> matches)
 		{
 			Name = name;
 			_kind = kind;
 			_get = get;
 			_set = set;
-			_templates = templates;
+			_matches = matches;
 		}
 
 		public string Name { get; }
@@ -118,7 +125,7 @@ namespace GetReady
 
 		public List<PlanLine> Plan(InventoryController controller)
 		{
-			int count = Game.CarriedAndSecured(controller.Inventory).Concat(Steps.Claimed).Count(item => _templates.Contains(item.TemplateId.ToString()));
+			int count = Game.CarriedAndSecured(controller.Inventory).Concat(Steps.Claimed).Count(_matches);
 			return new List<PlanLine>
 			{
 				count > 0 ? Steps.Info($"{count} {_kind}(s) on you") : Steps.Problem($"Missing {_kind} resources: you carry none.")
