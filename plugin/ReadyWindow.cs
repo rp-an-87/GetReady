@@ -425,7 +425,24 @@ namespace GetReady
 				changed = true;
 			}
 
-			GUILayout.Label(on ? $"{setting.Target} {def.Unit}" : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(150));
+			if (def.Money)
+			{
+				// Typed in: the amounts are too big to click up to
+				string typed = GUILayout.TextField(setting.Target.ToString(), 8, Ui.Field, GUILayout.Width(100));
+				int parsed;
+				if (typed != setting.Target.ToString() && int.TryParse(typed == "" ? "0" : typed, out parsed))
+				{
+					setting.Target = Math.Max(0, Math.Min(def.Max, parsed));
+					changed = true;
+				}
+
+				GUILayout.Label(def.Unit, Ui.Muted, GUILayout.Width(40));
+			}
+			else
+			{
+				GUILayout.Label(on ? $"{setting.Target} {def.Unit}" : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(150));
+			}
+
 			if (GUILayout.Button("+", Ui.Small) && setting.Target < def.Max)
 			{
 				setting.Target = Math.Min(def.Max, setting.Target + def.Step);
@@ -458,14 +475,24 @@ namespace GetReady
 			{
 				GUILayout.Space(2);
 				GUILayout.BeginHorizontal();
-				GUILayout.Label(new GUIContent("Goes to", "The places you click are tried in order. If they are all full, the pockets, vest and backpack are tried after them."), Ui.Muted, GUILayout.Width(52));
-				foreach (var place in SuppliesStep.Locations)
+				GUILayout.Label(new GUIContent("Goes to", def.NoFallback ? "The places you click are tried in order. Nothing else is used: if they are full or missing, you get a warning." : "The places you click are tried in order. If they are all full, the pockets, vest and backpack are tried after them."), Ui.Muted, GUILayout.Width(52));
+				int shownPlaces = 0;
+				foreach (var place in def.Locations ?? SuppliesStep.Locations)
 				{
 					if ((place == "Pouch" || place == "Special slots") && !def.AllowPouch)
 					{
 						continue;
 					}
 
+					// Five to a row
+					if (shownPlaces > 0 && shownPlaces % 5 == 0)
+					{
+						GUILayout.EndHorizontal();
+						GUILayout.BeginHorizontal();
+						GUILayout.Space(56);
+					}
+
+					shownPlaces++;
 					int rank = setting.Destinations.IndexOf(place);
 					string label = rank >= 0 ? $"{rank + 1}. {PlaceLabel(place)}" : PlaceLabel(place);
 					if (GUILayout.Button(new GUIContent(label, "Click to use this place. They are tried in the order you click them; click again to drop one."), rank >= 0 ? Ui.PickOn : Ui.Pick, GUILayout.Width(90)))
@@ -539,7 +566,7 @@ namespace GetReady
 			GUILayout.BeginVertical();
 			GUILayout.BeginHorizontal();
 			GUILayout.Label(line.Subject, Ui.Body);
-			GUILayout.Label($"{line.Have:0}/{line.Want:0} {line.Unit}", done ? Ui.ValueOk : line.Have > 0 ? Ui.ValueWarn : Ui.ValueBad);
+			GUILayout.Label($"{line.Have:N0}/{line.Want:N0} {line.Unit}", done ? Ui.ValueOk : line.Have > 0 ? Ui.ValueWarn : Ui.ValueBad);
 			GUILayout.EndHorizontal();
 			var bar = GUILayoutUtility.GetRect(10, 6, GUILayout.ExpandWidth(true), GUILayout.Height(6));
 			var previous = GUI.color;

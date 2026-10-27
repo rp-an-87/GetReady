@@ -109,7 +109,10 @@ namespace GetReady
 		public bool Random; // the entries are equal: whichever the stash has, picked at random
 		public bool Impact; // left out of the grenade quota's random picks
 		public bool IsQuota; // total grenades: topped up with random ones after the groups
-		public bool Stack; // the items are stacks of which only the missing count is brought (flares)
+		public bool Stack; // the items are stacks of which only the missing count is brought (money)
+		public bool Money; // shown with thousands separators and as "Bring 25,000 RUB"
+		public bool NoFallback; // only the places picked, never the pockets, vest or backpack after them
+		public string[] Locations; // the places that can be picked (default: the usual ones)
 		public string[] DefaultOff = new string[0]; // items that start switched off
 		public bool AllowPouch = true; // the secured container and the special slots can hold it (not grenades)
 		public int DefaultTarget;
@@ -225,6 +228,9 @@ namespace GetReady
 			var stash = Game.Stash(inventory).Where(item => !claimed.Contains(item)).ToList();
 			var lines = new List<PlanLine>();
 
+			// What the groups above are about to bring: the grenade total counts it too, it is not carried yet
+			var planned = new List<Item>();
+
 			foreach (var def in Defs.Where(def => !def.IsQuota))
 			{
 				var setting = Setting(def);
@@ -233,7 +239,7 @@ namespace GetReady
 					continue;
 				}
 
-				var places = WithFallback(setting.Destinations);
+				var places = def.NoFallback ? setting.Destinations.ToList() : WithFallback(setting.Destinations);
 				float alreadyBringing = Steps.Bringing.Sum(item => WeightOf(def, item));
 				float leavingWeight = leaving.Sum(item => WeightOf(def, item));
 				float fixedWeight = owned.Sum(item => WeightOf(def, item)) - leavingWeight;
@@ -275,26 +281,29 @@ namespace GetReady
 					need -= def.Stack ? count : weight;
 				}
 
+				planned.AddRange(brought.Select(pair => pair.Key));
 				foreach (var group in brought.GroupBy(pair => Game.NameOf(pair.Key)))
 				{
 					var moves = group.ToList();
 					lines.Add(new PlanLine
 					{
 						Template = moves[0].Key.TemplateId.ToString(),
-						Text = $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1)}x {group.Key}",
+						Text = def.Money
+							? $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1):N0} {def.Unit} to {places[0]}"
+							: $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1)}x {group.Key}",
 						Run = () => MoveAll(controller, moves, places)
 					});
 				}
 
 				if (need > 0)
 				{
-					lines.Add(Steps.Problem(def.Name, $"Missing {need:0} {def.Unit}: none left in the stash", ActiveEntries(def).FirstOrDefault()?.Template));
+					lines.Add(Steps.Problem(def.Name, $"Missing {need:N0} {def.Unit}: none left in the stash", ActiveEntries(def).FirstOrDefault()?.Template));
 				}
 			}
 
 			foreach (var def in Defs.Where(def => def.IsQuota))
 			{
-				PlanQuota(controller, def, carried.Concat(Steps.Bringing).ToList(), stash, lines);
+				PlanQuota(controller, def, carried.Concat(Steps.Bringing).Concat(planned).ToList(), stash.Where(item => !planned.Contains(item)).ToList(), lines);
 			}
 
 			return lines;
@@ -507,6 +516,7 @@ namespace GetReady
 				foreach (var item in items
 					.Where(item => item.TemplateId.ToString() == entry.Template)
 					.OrderBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
+					.ThenBy(item => def.Stack ? item.StackObjectsCount : 0)
 					.ThenByDescending(Game.ResourceOf))
 				{
 					yield return item;
@@ -621,6 +631,31 @@ namespace GetReady
 				Entries = new[] { Entry.Count("62178c4d4ecf221597654e3d") } // RSP-30 reactive signal cartridge (Red)
 			},
 			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, AllowPouch = false, DefaultTarget = 2 }
+		};
+
+		protected override GroupDef[] Defs => Definitions;
+	}
+
+	// Money to carry, and which case it goes in: roubles in a wallet early on, a docs or SICC case later, euros for coop extracts
+	internal class CashStep : SuppliesStep
+	{
+		public override string Name => "Cash";
+		public override bool Enabled { get => SettingsStore.Current.Supplies.CashEnabled; set => SettingsStore.Current.Supplies.CashEnabled = value; }
+
+		private static readonly string[] Places = { "Wallet", "WZ wallet", "Docs case", "SICC case", "Pockets", "Vest", "Backpack", "Pouch" };
+
+		private static GroupDef Currency(string id, string name, string unit, string template, int step, int max) => new GroupDef
+		{
+			Id = id, Name = name, Unit = unit, Stack = true, Money = true, NoFallback = true, DefaultTarget = 0, Max = max, Step = step,
+			DefaultDestinations = new[] { "Wallet" }, Locations = Places,
+			Entries = new[] { Entry.Stack(template) }
+		};
+
+		private static readonly GroupDef[] Definitions =
+		{
+			Currency("cash_rub", "Roubles", "RUB", "5449016a4bdc2d6f028b456f", 25000, 10000000),
+			Currency("cash_eur", "Euros", "EUR", "569668774bdc2da2298b4568", 500, 1000000),
+			Currency("cash_usd", "Dollars", "USD", "5696686a4bdc2da3298b456a", 500, 1000000)
 		};
 
 		protected override GroupDef[] Defs => Definitions;

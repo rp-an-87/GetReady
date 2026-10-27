@@ -16,7 +16,7 @@ namespace GetReady
 		internal static readonly Color Warn = new Color(1f, 0.64f, 0.28f);
 		internal static readonly Color Bad = new Color(1f, 0.4f, 0.36f);
 
-		internal static GUIStyle Window, Section, Group, Inner, Divider, ValueOk, ValueWarn, ValueBad, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
+		internal static GUIStyle Window, Section, Group, Inner, Divider, Field, ValueOk, ValueWarn, ValueBad, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
 			Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, Centered,
 			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert;
 
@@ -135,6 +135,8 @@ namespace GetReady
 			OkCard = Panel(new Color(0.12f, 0.22f, 0.13f), new Color(0.35f, 0.6f, 0.38f), 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
 			TodoCard = Panel(new Color(0.22f, 0.2f, 0.12f), Sand, 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
 
+			Field = Back(new GUIStyle(GUI.skin.textField) { fontSize = 14, alignment = TextAnchor.MiddleCenter, padding = new RectOffset(6, 6, 4, 4), margin = new RectOffset(2, 2, 2, 2), fixedHeight = 26 }, new Color(0.07f, 0.075f, 0.075f), new Color(0.38f, 0.39f, 0.37f), 1);
+			TextColor(Field, Color.white);
 			ValueOk = Label(14, Ok, FontStyle.Bold, TextAnchor.MiddleRight);
 			ValueWarn = Label(14, Warn, FontStyle.Bold, TextAnchor.MiddleRight);
 			ValueBad = Label(14, Bad, FontStyle.Bold, TextAnchor.MiddleRight);
@@ -171,7 +173,7 @@ namespace GetReady
 
 			if (Font != null)
 			{
-				foreach (var style in new[] { ValueOk, ValueWarn, ValueBad, Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard,
+				foreach (var style in new[] { Field, ValueOk, ValueWarn, ValueBad, Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard,
 					Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
 				{
 					style.font = Font;

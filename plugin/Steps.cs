@@ -51,7 +51,7 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep()
+			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep()
 		};
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time

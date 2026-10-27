@@ -58,6 +58,7 @@ namespace GetReady
 	{
 		public bool HealingEnabled = true;
 		public bool GrenadesEnabled = true;
+		public bool CashEnabled = true;
 		// Replace carried items by better ones from the stash (more resource, higher priority, non-FiR)
 		public bool SwapWorse = true;
 		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
