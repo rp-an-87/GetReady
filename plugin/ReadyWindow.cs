@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Comfort.Common;
 using EFT.Communications;
+using EFT.UI;
 using EFT.InventoryLogic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -198,9 +200,26 @@ namespace GetReady
 			_dirtyAt = 0f;
 		}
 
-		private static async void Go()
+		// The window's button: close the window and do it like the stash button does (alert and sound included)
+		private static void Go()
 		{
-			await RunPlan();
+			_closeRequested = true;
+			QuickRun();
+		}
+
+		// What could not be moved in the last run, shown with the other problems
+		private static readonly List<KeyValuePair<string, PlanLine>> Failures = new List<KeyValuePair<string, PlanLine>>();
+
+		private static void Play(EUISoundType sound)
+		{
+			try
+			{
+				Singleton<GUISounds>.Instance?.PlayUISound(sound);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not play the sound: {e.Message}");
+			}
 		}
 
 		// What is wrong right now, one line each: the problems of every step in the plan
@@ -217,8 +236,9 @@ namespace GetReady
 
 			Refresh();
 			await RunPlan();
-			var problems = Problems();
+			var problems = Failures.Concat(Problems()).ToList();
 			NotificationManager.DisplayMessageNotification("Get ready: " + _status.TrimEnd('.') + (problems.Count > 0 ? $". {problems.Count} thing(s) need attention!" : "."));
+			Play(problems.Count > 0 ? EUISoundType.ErrorMessage : EUISoundType.TradeOperationComplete);
 			if (problems.Count > 0)
 			{
 				Alerts.Clear();
@@ -238,6 +258,7 @@ namespace GetReady
 			try
 			{
 				int done = 0, failed = 0;
+				Failures.Clear();
 				foreach (var entry in Plan.ToList())
 				{
 					foreach (var line in entry.Value.Where(line => line.Run != null))
@@ -251,6 +272,7 @@ namespace GetReady
 						{
 							failed++;
 							Plugin.Log.LogWarning($"{entry.Key.Name}: {line.Text} failed: {error}");
+							Failures.Add(new KeyValuePair<string, PlanLine>(entry.Key.Name, new PlanLine { Problem = true, Subject = line.Text, Detail = "Could not move it: " + error, Template = line.Template }));
 						}
 					}
 				}
@@ -465,6 +487,34 @@ namespace GetReady
 			return changed;
 		}
 
+		// What is wanted against what is there: icon, name, a bar and the numbers, green when complete, amber when partly, red when none
+		private static void ProgressRow(PlanLine line)
+		{
+			bool done = line.Have >= line.Want;
+			var color = done ? Ui.Ok : line.Have > 0 ? Ui.Warn : Ui.Bad;
+			GUILayout.BeginHorizontal();
+			if (!string.IsNullOrEmpty(line.Template))
+			{
+				Icons.Slot(line.Template, line.Subject, 34);
+			}
+
+			GUILayout.BeginVertical();
+			GUILayout.BeginHorizontal();
+			GUILayout.Label(line.Subject, Ui.Body);
+			GUILayout.Label($"{line.Have:0}/{line.Want:0} {line.Unit}", done ? Ui.ValueOk : line.Have > 0 ? Ui.ValueWarn : Ui.ValueBad);
+			GUILayout.EndHorizontal();
+			var bar = GUILayoutUtility.GetRect(10, 6, GUILayout.ExpandWidth(true), GUILayout.Height(6));
+			var previous = GUI.color;
+			GUI.color = new Color(0.07f, 0.075f, 0.075f);
+			GUI.DrawTexture(bar, Texture2D.whiteTexture);
+			GUI.color = color;
+			GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(line.Want > 0 ? line.Have / line.Want : 1f), bar.height), Texture2D.whiteTexture);
+			GUI.color = previous;
+			GUILayout.EndVertical();
+			GUILayout.EndHorizontal();
+			GUILayout.Space(3);
+		}
+
 		private static void PlanLines(List<PlanLine> lines)
 		{
 			foreach (var line in lines)
@@ -486,6 +536,10 @@ namespace GetReady
 
 					GUILayout.EndVertical();
 					GUILayout.EndHorizontal();
+				}
+				else if (line.IsProgress)
+				{
+					ProgressRow(line);
 				}
 				else if (line.Run != null)
 				{
@@ -733,11 +787,6 @@ namespace GetReady
 			GUILayout.Box(GUIContent.none, Ui.Divider);
 			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip, Ui.Muted);
 			GUILayout.BeginHorizontal();
-			if (GUILayout.Button(new GUIContent("Check again", "Looks at your gear and stash again"), Ui.Button))
-			{
-				RefreshSoon();
-			}
-
 			GUILayout.FlexibleSpace();
 			GUI.enabled = !_running && Plan.Any(entry => entry.Value.Any(line => line.Run != null));
 			if (GUILayout.Button(new GUIContent("Get ready", "Moves the items marked + from the stash into your gear"), Ui.Primary))

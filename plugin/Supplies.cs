@@ -237,7 +237,7 @@ namespace GetReady
 				float alreadyBringing = Steps.Bringing.Sum(item => WeightOf(def, item));
 				float leavingWeight = leaving.Sum(item => WeightOf(def, item));
 				float fixedWeight = owned.Sum(item => WeightOf(def, item)) - leavingWeight;
-				lines.Add(Steps.Info($"{def.Name}: {carried.Sum(item => WeightOf(def, item)) - leavingWeight + alreadyBringing:0}/{setting.Target} {def.Unit} carried"));
+				lines.Add(Steps.Progress(def.Name, carried.Sum(item => WeightOf(def, item)) - leavingWeight + alreadyBringing, setting.Target, def.Unit, ActiveEntries(def).FirstOrDefault()?.Template));
 
 				if (settings.SwapWorse && !def.Stack)
 				{
@@ -313,7 +313,7 @@ namespace GetReady
 			var groups = Defs.Where(def => !def.IsQuota && !def.Stack).ToList();
 			var all = new HashSet<string>(groups.SelectMany(def => def.Entries.Select(entry => entry.Template)));
 			int need = setting.Target - carried.Count(item => all.Contains(item.TemplateId.ToString()));
-			lines.Add(Steps.Info($"{quotaDef.Name}: {setting.Target - Math.Max(need, 0)}/{setting.Target} carried"));
+			lines.Add(Steps.Progress(quotaDef.Name, setting.Target - Math.Max(need, 0), setting.Target, "grenades"));
 			if (need <= 0)
 			{
 				return;
@@ -602,13 +602,15 @@ namespace GetReady
 			Grenade("impact", "Impact RGN/RGO", true, "617fd91e5539a84ec44ce155", "618a431df1eb8e24b8741deb"),
 			new GroupDef
 			{
-				Id = "flares", Name = "Signal cartridges", Unit = "cartridges", DefaultTarget = 0, Max = 10,
+				Id = "flares", Name = "Green signal cartridges", Unit = "cartridges", DefaultTarget = 0, Max = 10,
 				DefaultDestinations = new[] { "Special slots", "Pockets" },
-				Entries = new[]
-				{
-					Entry.Count("6217726288ed9f0845317459"), // RSP-30 reactive signal cartridge (Green)
-					Entry.Count("62178c4d4ecf221597654e3d")  // RSP-30 reactive signal cartridge (Red)
-				}
+				Entries = new[] { Entry.Count("6217726288ed9f0845317459") } // RSP-30 reactive signal cartridge (Green)
+			},
+			new GroupDef
+			{
+				Id = "flaresred", Name = "Red signal cartridges", Unit = "cartridges", DefaultTarget = 0, Max = 10,
+				DefaultDestinations = new[] { "Special slots", "Pockets" },
+				Entries = new[] { Entry.Count("62178c4d4ecf221597654e3d") } // RSP-30 reactive signal cartridge (Red)
 			},
 			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, AllowPouch = false, DefaultTarget = 2 }
 		};

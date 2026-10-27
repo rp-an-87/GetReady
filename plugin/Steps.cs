@@ -18,6 +18,12 @@ namespace GetReady
 		public string Subject;
 		public string Detail;
 		public string Template;
+
+		// A progress line: how much of what is wanted is there (drawn as a bar)
+		public bool IsProgress;
+		public float Have;
+		public float Want;
+		public string Unit;
 	}
 
 	// One item a template wants and the gear lacks: what it is, where it goes, and how to bring it (null when the stash has none)
@@ -75,6 +81,9 @@ namespace GetReady
 		}
 
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
+		internal static PlanLine Progress(string subject, float have, float want, string unit, string template = null) =>
+			new PlanLine { Text = $"{subject}: {have:0}/{want:0} {unit}", Subject = subject, Have = have, Want = want, Unit = unit, Template = template, IsProgress = true };
+
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
 
 		internal static PlanLine Problem(string subject, string detail, string template = null) =>
@@ -90,7 +99,7 @@ namespace GetReady
 		// "2/3 in place", then what to bring grouped by name ("Bring 2x Propital (cells 0,0, 1,0)"), then what the stash lacks
 		internal static List<PlanLine> Summarize(int inPlace, int total, string unit, List<Need> needs, List<PlanLine> others)
 		{
-			var lines = new List<PlanLine> { Info($"{inPlace}/{total} {unit} in place") };
+			var lines = new List<PlanLine> { Progress(char.ToUpperInvariant(unit[0]) + unit.Substring(1), inPlace, total, "in place") };
 			foreach (var group in needs.Where(need => need.Run != null).GroupBy(need => need.Name))
 			{
 				var runs = group.Select(need => need.Run).ToList();
