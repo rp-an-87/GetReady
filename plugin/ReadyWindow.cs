@@ -24,6 +24,7 @@ namespace GetReady
 		private static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
 		private static string _status = "";
 		private static bool _running;
+		private static int _moved;
 
 		// What a quick run found wrong, shown in the middle of the screen until it is dismissed
 		private static readonly List<KeyValuePair<string, PlanLine>> Alerts = new List<KeyValuePair<string, PlanLine>>();
@@ -275,8 +276,14 @@ namespace GetReady
 			Refresh();
 			await RunPlan();
 			var problems = Failures.Concat(Problems()).ToList();
-			NotificationManager.DisplayMessageNotification("Get ready: " + _status.TrimEnd('.') + (problems.Count > 0 ? $". {problems.Count} thing(s) need attention!" : "."));
-			Play(problems.Count > 0 ? EUISoundType.ErrorMessage : EUISoundType.TradeOperationComplete);
+
+			// The red box says what is wrong, so a notification is only for when all went well
+			if (problems.Count == 0)
+			{
+				NotificationManager.DisplayMessageNotification(_moved > 0 ? $"Ready for raid: {_moved} item(s) brought." : "Ready for raid: you already have everything.");
+			}
+
+			Play(problems.Count > 0 ? EUISoundType.ErrorMessage : EUISoundType.QuestSubTrackComplete);
 			if (problems.Count > 0)
 			{
 				Alerts.Clear();
@@ -315,6 +322,7 @@ namespace GetReady
 					}
 				}
 
+				_moved = done;
 				_status = failed == 0 ? $"Done: {done} moved." : $"{done} moved, {failed} failed (see the log).";
 			}
 			catch (Exception e)
@@ -722,11 +730,6 @@ namespace GetReady
 						}
 					}
 				}
-				else if (step.Groups.Count == 0)
-				{
-					GUILayout.Label(step.Saved(), Ui.Muted);
-				}
-
 				foreach (var def in step.Groups)
 				{
 					changed |= GroupRow(def);

@@ -133,12 +133,6 @@ namespace GetReady
 
 		public IReadOnlyList<GroupDef> Groups => Defs;
 
-		public string Saved()
-		{
-			var parts = Defs.Where(def => Setting(def).Target > 0).Select(def => $"{Setting(def).Target} {def.Unit}").ToArray();
-			return parts.Length == 0 ? "nothing wanted" : string.Join(", ", parts);
-		}
-
 		// Where a group can go, in the order they are clicked: the first with room wins. "Vest" is the tactical vest or an armored
 		// rig, "Pouch" the secured container.
 		internal static readonly string[] Locations = { "Special slots", "Pockets", "Vest", "Backpack", "Pouch" };

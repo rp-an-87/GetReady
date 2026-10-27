@@ -40,8 +40,6 @@ namespace GetReady
 	{
 		string Name { get; }
 		bool Enabled { get; set; }
-		// What the saved template holds, in a line
-		string Saved();
 		// The amounts and destinations the window lets you set (none for the steps that work from a saved template)
 		IReadOnlyList<GroupDef> Groups { get; }
 		List<PlanLine> Plan(InventoryController controller);
@@ -133,14 +131,6 @@ namespace GetReady
 		public string Name => "Special slots";
 		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
 		public bool Enabled { get => SettingsStore.Current.SpecialSlots.Enabled; set => SettingsStore.Current.SpecialSlots.Enabled = value; }
-
-		public string Saved()
-		{
-			var slots = SettingsStore.Current.SpecialSlots.Slots;
-			return slots.Count == 0
-				? "nothing saved yet"
-				: string.Join(", ", slots.Select(entry => $"{entry.SlotId.Replace("SpecialSlot", "slot ")}: {entry.Templates[0].Name}").ToArray());
-		}
 
 		internal static List<Slot> SlotsOf(Inventory inventory) =>
 			Game.EquippedContainer(inventory, EquipmentSlot.Pockets)?.Slots.ToList() ?? new List<Slot>();
@@ -294,14 +284,6 @@ namespace GetReady
 		public string Name => "Injector case";
 		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
 		public bool Enabled { get => SettingsStore.Current.InjectorCase.Enabled; set => SettingsStore.Current.InjectorCase.Enabled = value; }
-
-		public string Saved()
-		{
-			var cells = SettingsStore.Current.InjectorCase.Cells;
-			return cells.Count == 0
-				? "nothing saved yet"
-				: $"{cells.Count} injectors saved: " + string.Join(", ", cells.OrderBy(cell => cell.Y).ThenBy(cell => cell.X).Select(cell => cell.Name).ToArray());
-		}
 
 		// Injector cases you carry, in the pockets, vest, backpack or the secured container
 		internal static List<CompoundItem> FindCases(Inventory inventory) =>
