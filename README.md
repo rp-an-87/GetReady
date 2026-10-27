@@ -32,6 +32,9 @@ Every row has a "Goes to" list: click the places in the order you want them trie
 
 ## Next
 
-- **Magazine top-up**: the logic of `MagazineTopUp` in CustomRpTweaks.Client (top up magazines, reload equipped weapons, top up removed magazines), as a step with its own settings (which ammo, how full, where).
-- **Repair**: repair everything equipped, with a choice of repair kit or trader (the logic of `RepairWithKit` in CustomRpTweaks.Client for the kit part).
+Magazine top-up and repair move here completely from CustomRpTweaks.Client (`MagazineTopUp`, `RepairWithKit` and their hotkey hints), and then they are removed from there. Both keep working in raid, where they are used most: the hotkey on the item under the cursor, as now. What GetReady adds is the same actions as steps of Get ready (in the stash), with settings in the window.
+
+- **Magazine top-up**: top up magazines, reload equipped weapons, top up removed magazines. More configurable than now (which ammo, how full, where).
+- **Repair**: repair everything equipped, with a choice of repair kit or trader.
+- Don't remove anything from CustomRpTweaks.Client until GetReady does the same in raid, including the hotkey hints.
 - Later: emptying loot into the stash, MergeConsumables support (combine stacks instead of swapping), buying what is missing from the flea market.
