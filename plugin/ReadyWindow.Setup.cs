@@ -68,6 +68,16 @@ namespace GetReady
 			GUILayout.EndVertical();
 
 			GUILayout.FlexibleSpace();
+			if (def.Bindable)
+			{
+				string key = def.HotkeyChoice;
+				if (GUILayout.Button(new GUIContent(Hotkeys.Label(key), "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be)."), key == "" ? Ui.Pick : Ui.PickOn, GUILayout.Width(78)))
+				{
+					setting.Hotkey = Hotkeys.Next(key);
+					changed = true;
+				}
+			}
+
 			if (def.Entries.Length > 1)
 			{
 				bool open = Expanded.Contains(def.Id);
@@ -146,6 +156,25 @@ namespace GetReady
 					}
 
 					GUILayout.Label(def.Random ? entry.Name : $"{i + 1}. {entry.Name}", off ? Ui.Muted : Ui.Body);
+					if (!def.Random)
+					{
+						// The most of this one to carry; it is given up when nothing else can make up the amount
+						int max = def.MaxOf(entry.Template);
+						GUILayout.Label(new GUIContent("Max", "The most of this item to carry for the group. If nothing else can make up the amount, more are still brought."), Ui.Muted, GUILayout.Width(30));
+						if (GUILayout.Button("-", Ui.Small) && max > 0)
+						{
+							def.SetMax(entry.Template, max - 1);
+							changed = true;
+						}
+
+						GUILayout.Label(max == 0 ? "any" : max.ToString(), Ui.Centered, GUILayout.Width(34));
+						if (GUILayout.Button("+", Ui.Small) && max < 20)
+						{
+							def.SetMax(entry.Template, max + 1);
+							changed = true;
+						}
+					}
+
 					if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(90)))
 					{
 						def.ToggleEntry(entry.Template);

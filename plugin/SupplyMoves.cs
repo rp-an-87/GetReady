@@ -92,7 +92,7 @@ namespace GetReady
 				Item better = null;
 				foreach (var current in needed.Where(item => !handled.Contains(item.Id.ToString())).OrderByDescending(def.PriorityOf).ThenBy(Game.ResourceOf))
 				{
-					better = candidates.FirstOrDefault(candidate => IsBetter(def, candidate, current, total < target)
+					better = candidates.FirstOrDefault(candidate => IsBetter(def, candidate, current, total < target) && WithinLimit(def, carried, candidate, current)
 						&& total - def.WeightOf(current) + def.WeightOf(candidate) >= Math.Min(total, target));
 					if (better != null)
 					{
@@ -116,6 +116,14 @@ namespace GetReady
 			}
 
 			return swaps;
+		}
+
+		// A swap doesn't take the group over the owner's limit for an item (replacing an item by one of its own kind never does)
+		private static bool WithinLimit(GroupDef def, List<Item> carried, Item candidate, Item current)
+		{
+			var template = candidate.TemplateId.ToString();
+			int max = def.MaxOf(template);
+			return max <= 0 || template == current.TemplateId.ToString() || carried.Count(item => item.TemplateId.ToString() == template) < max;
 		}
 
 		// The same template with more resource (FiR is the tie-breaker: non-FiR wins a tie), or a higher priority template,

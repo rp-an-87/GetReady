@@ -79,7 +79,8 @@ namespace GetReady
 			return operation.Failed ? operation.Error.ToString() : await Run(controller, operation);
 		}
 
-		// Into the first of the containers that has a spot: added to a stack of the same item when there is room for all of it,
+		// Into the first of the containers that has a spot: added to a stack of the same item when there is room for all of it
+		// (and it is the same kind: adding new money to a found-in-raid stack would make the whole stack lose its FiR status),
 		// else a free spot of a grid, else a free slot. The game's own "quick move" is not used: it falls back to the stash (a
 		// "successful" move inside the stash) and stops at the first failure in a container.
 		private static async Task<string> PlaceInto(InventoryController controller, Item item, int count, List<Target> targets)
@@ -94,7 +95,8 @@ namespace GetReady
 
 				var existing = item.StackMaxSize > 1
 					? container.GetAllItems().FirstOrDefault(other => other != container && other != item && other.TemplateId.ToString() == template
-						&& other.PinLockState != EItemPinLockState.Locked && other.StackMaxSize - other.StackObjectsCount >= count)
+						&& other.PinLockState != EItemPinLockState.Locked && other.StackMaxSize - other.StackObjectsCount >= count
+						&& other.MarkedAsSpawnedInSession == item.MarkedAsSpawnedInSession)
 					: null;
 				if (existing != null)
 				{

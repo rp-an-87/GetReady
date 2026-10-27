@@ -99,27 +99,57 @@ namespace GetReady
 			}
 		}
 
-		// Plans what the stash brings for the missing amount; returns what is still missing
+		// Plans what the stash brings for the missing amount; returns what is still missing. The owner's per-item limits come first:
+		// items are taken in priority order without going over a limit, and only when that can't make up the amount the limits are
+		// given up (the lines say so).
 		private static float PlanBring(GroupDef def, Context context, float need, List<string> places, List<PlanLine> lines)
 		{
+			var candidates = def.Candidates(context.Stash).ToList();
+			var counts = context.Carried.Where(item => def.WeightOf(item) > 0).GroupBy(item => item.TemplateId.ToString()).ToDictionary(group => group.Key, group => group.Count());
 			var brought = new List<KeyValuePair<Item, int>>();
-			foreach (var item in def.Candidates(context.Stash))
+			var overLimit = new HashSet<Item>();
+
+			for (int pass = 0; pass < 2 && need > 0; pass++)
 			{
-				if (need <= 0)
+				foreach (var item in candidates)
 				{
-					break;
-				}
+					if (need <= 0)
+					{
+						break;
+					}
 
-				float weight = def.WeightOf(item);
-				if (weight <= 0 || (!def.Stack && !context.Settings.AllowOvershoot && weight > need))
-				{
-					continue;
-				}
+					if (brought.Any(pair => pair.Key == item))
+					{
+						continue;
+					}
 
-				// A stack gives only what is missing, anything else moves whole (count 0)
-				int count = def.Stack ? Math.Max(1, (int)Math.Min(weight, need)) : 0;
-				brought.Add(new KeyValuePair<Item, int>(item, count));
-				need -= def.Stack ? count : weight;
+					float weight = def.WeightOf(item);
+					if (weight <= 0 || (!def.Stack && !context.Settings.AllowOvershoot && weight > need))
+					{
+						continue;
+					}
+
+					var template = item.TemplateId.ToString();
+					int have;
+					counts.TryGetValue(template, out have);
+					int max = def.MaxOf(template);
+					bool atLimit = max > 0 && have >= max;
+					if (atLimit && pass == 0)
+					{
+						continue;
+					}
+
+					// A stack gives only what is missing, anything else moves whole (count 0)
+					int count = def.Stack ? Math.Max(1, (int)Math.Min(weight, need)) : 0;
+					brought.Add(new KeyValuePair<Item, int>(item, count));
+					counts[template] = have + 1;
+					if (atLimit)
+					{
+						overLimit.Add(item);
+					}
+
+					need -= def.Stack ? count : weight;
+				}
 			}
 
 			context.Planned.AddRange(brought.Select(pair => pair.Key));
@@ -127,11 +157,12 @@ namespace GetReady
 			{
 				var moves = group.ToList();
 				int amount = moves.Sum(pair => pair.Value > 0 ? pair.Value : 1);
+				string over = moves.Any(pair => overLimit.Contains(pair.Key)) ? $" (over your limit of {def.MaxOf(moves[0].Key.TemplateId.ToString())}, nothing else is left)" : "";
 				lines.Add(new PlanLine
 				{
 					Template = moves[0].Key.TemplateId.ToString(),
 					Items = moves.Count,
-					Text = def.Money ? $"Bring {amount:N0} {def.Unit} to {places[0]}" : $"Bring {amount}x {group.Key}",
+					Text = def.Money ? $"Bring {amount:N0} {def.Unit} to {places[0]}" : $"Bring {amount}x {group.Key}{over}",
 					Run = () => SupplyMoves.MoveAll(context.Controller, moves, places)
 				});
 			}

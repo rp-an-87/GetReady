@@ -13,7 +13,7 @@ namespace GetReady
 		{
 			new GroupDef
 			{
-				Under = Game.UnderMedikit, Match = Game.IsHealingKit, Id = "health", Name = "Healing kits", Unit = "HP", DefaultTarget = 300, Max = 2000, Step = 50,
+				Under = Game.UnderMedikit, Match = Game.IsHealingKit, Id = "health", Name = "Healing kits", Unit = "HP", DefaultTarget = 300, Max = 2000, Step = 50, DefaultHotkey = "4",
 				Entries = new[]
 				{
 					Entry.Resource("60098ad7c2240c0fe85c570a"), // AFAK
@@ -25,7 +25,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsBandage, Id = "bandage", Name = "Bandages", Unit = "bandage points", DefaultTarget = 2, Max = 20,
+				Under = Game.UnderMedicalItem, Match = Game.IsBandage, Id = "bandage", Name = "Bandages", Unit = "bandage points", DefaultTarget = 2, Max = 20, DefaultHotkey = "6",
 				Entries = new[]
 				{
 					Entry.Resource("5751a25924597722c463c472"), // Army bandage: its remaining uses (2 new)
@@ -34,7 +34,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsTourniquet, Id = "heavybleed", Name = "Heavy bleed", Unit = "tourniquet points", DefaultTarget = 2, Max = 20,
+				Under = Game.UnderMedicalItem, Match = Game.IsTourniquet, Id = "heavybleed", Name = "Heavy bleed", Unit = "tourniquet points", DefaultTarget = 2, Max = 20, DefaultHotkey = "5",
 				Entries = new[]
 				{
 					Entry.Resource("5e8488fa988a8701445df1e4"), // CALOK-B: its remaining uses (3 new)
@@ -64,7 +64,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Id = "propital", Name = "Propital", Unit = "Propital", DefaultTarget = 1,
+				Id = "propital", Name = "Propital", Unit = "Propital", DefaultTarget = 1, DefaultHotkey = "7",
 				Entries = new[] { Entry.Count("5c0e530286f7747fa1419862") }
 			}
 		};
@@ -86,7 +86,7 @@ namespace GetReady
 
 		private static GroupDef Cartridge(string id, string name, string template) => new GroupDef
 		{
-			Id = id, Name = name, Unit = "cartridges", DefaultTarget = 0, Max = 10,
+			Id = id, Name = name, Unit = "cartridges", DefaultTarget = 0, Max = 10, Bindable = false,
 			DefaultDestinations = new[] { "Special slots", "Pockets" },
 			Entries = new[] { Entry.Count(template) }
 		};
@@ -100,7 +100,7 @@ namespace GetReady
 			Grenade("impact", "Impact RGN/RGO", true, "617fd91e5539a84ec44ce155", "618a431df1eb8e24b8741deb"),
 			Cartridge("flares", "Green signal cartridges", "6217726288ed9f0845317459"), // RSP-30 reactive signal cartridge (Green)
 			Cartridge("flaresred", "Red signal cartridges", "62178c4d4ecf221597654e3d"), // RSP-30 reactive signal cartridge (Red)
-			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, AllowPouch = false, DefaultTarget = 2 }
+			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, Bindable = false, AllowPouch = false, DefaultTarget = 2 }
 		};
 
 		protected override GroupDef[] Defs => Definitions;
@@ -116,7 +116,7 @@ namespace GetReady
 
 		private static GroupDef Currency(string id, string name, string unit, string template, int step, int max) => new GroupDef
 		{
-			Id = id, Name = name, Unit = unit, Stack = true, Money = true, NoFallback = true, DefaultTarget = 0, Max = max, Step = step,
+			Id = id, Name = name, Unit = unit, Stack = true, Money = true, Bindable = false, NoFallback = true, DefaultTarget = 0, Max = max, Step = step,
 			DefaultDestinations = new[] { "Wallet" }, Locations = Places,
 			Entries = new[] { Entry.Stack(template) }
 		};

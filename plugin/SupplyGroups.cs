@@ -35,6 +35,8 @@ namespace GetReady
 		public int Max = 10;
 		public int Step = 1;
 		public bool Money; // shown with thousands separators and as "Bring 25,000 RUB"
+		public bool Bindable = true; // can go on a quick-slot key
+		public string DefaultHotkey = "";
 
 		// Where it goes
 		public string[] DefaultDestinations = { "Pockets", "Vest" };
@@ -142,6 +144,9 @@ namespace GetReady
 			}
 		}
 
+		// The key it goes on: the owner's choice, else the default
+		public string HotkeyChoice => Setting.Hotkey ?? DefaultHotkey;
+
 		// The places that can be clicked on in the window: Special slots, Pockets, Vest, Backpack, Pouch, or the cases for money
 		public IEnumerable<string> PickablePlaces =>
 			(Locations ?? new[] { "Special slots", "Pockets", "Vest", "Backpack", "Pouch" })
@@ -180,6 +185,26 @@ namespace GetReady
 			templates.RemoveAt(index);
 			templates.Insert(target, template);
 			Setting.Order = templates;
+		}
+
+		// The most of this item to carry for the group (0: no limit). It is a preference: when nothing else can make up the target,
+		// more of it are brought.
+		public int MaxOf(string template)
+		{
+			int max;
+			return Setting.MaxPer.TryGetValue(template, out max) ? max : 0;
+		}
+
+		public void SetMax(string template, int max)
+		{
+			if (max <= 0)
+			{
+				Setting.MaxPer.Remove(template);
+			}
+			else
+			{
+				Setting.MaxPer[template] = max;
+			}
 		}
 
 		public void ToggleEntry(string template)

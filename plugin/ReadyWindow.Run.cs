@@ -14,6 +14,7 @@ namespace GetReady
 		private static bool _running;
 
 		private static int _moved;
+		private static int _keys;
 
 		// The window's button: close the window and do it like the stash button does (alert and sound included)
 		private static void Go()
@@ -52,7 +53,10 @@ namespace GetReady
 			// The red box says what is wrong, so a notification is only for when all went well
 			if (problems.Count == 0)
 			{
-				NotificationManager.DisplayMessageNotification(_moved > 0 ? $"Ready for raid: {_moved} item(s) brought." : "Ready for raid: you already have everything.");
+				var brought = _moved > 0 ? $"{_moved} item(s) brought" : "";
+				var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
+				var report = string.Join(", ", new[] { brought, keys }.Where(part => part != "").ToArray());
+				NotificationManager.DisplayMessageNotification("Ready for raid: " + (report == "" ? "you already have everything" : report) + ".");
 			}
 
 			Play(problems.Count > 0 ? EUISoundType.ErrorMessage : EUISoundType.QuestStarted);
@@ -93,6 +97,10 @@ namespace GetReady
 						}
 					}
 				}
+
+				// The keys last, when everything is where it should be
+				var controller = Game.Controller();
+				_keys = controller == null ? 0 : await Hotkeys.Apply(controller);
 
 				_moved = done;
 				_status = failed == 0 ? $"Done: {done} moved." : $"{done} moved, {failed} failed (see the log).";

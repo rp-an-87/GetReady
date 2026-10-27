@@ -51,6 +51,10 @@ namespace GetReady
 		// The group's items by template, best first (empty = the default order), and the ones switched off
 		public List<string> Order = new List<string>();
 		public List<string> Off = new List<string>();
+		// The quick-slot key (4 to 9, 0 or G): null is the group's default, "" none
+		public string Hotkey;
+		// The most of one item to carry for the group, by template (missing or 0: no limit)
+		public Dictionary<string, int> MaxPer = new Dictionary<string, int>();
 
 		// Adds the place to the end of the list, or takes it out (the last one stays)
 		public void ToggleDestination(string place)

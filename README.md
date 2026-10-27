@@ -21,6 +21,8 @@ Settings and templates are kept in `BepInEx\config\GetReady\settings.json` and e
 - **Grenades and flares**: an amount per grenade type, a total topped up with random ones (what is about to be brought counts too), and red and green signal cartridges.
 - **Cash**: roubles, euros and dollars, typed in, with the case they go into: Wallet, WZ wallet, Docs case or SICC case (carried or in the pouch), or loose. Added to a stack in the case when there is room, otherwise a part of the stack is split off.
 
+Each supply can also go on a **quick-slot key** (4 to 9, 0 or G): after getting ready the best one you carry is bound to it (pockets and tactical vest only, the game's rule). Under "Items" each item has a **Max**: with 700 HP wanted and a max of 1 AFAK, the rest is made up with other kits, and only if nothing else can, a second AFAK is brought (the plan line says so).
+
 Every row has a "Goes to" list: click the places in the order you want them tried (Special slots, Pockets, Vest, Backpack, Pouch, and the cases for cash). Supplies fall back to pockets, vest and backpack when those are full; cash only goes where you pick.
 
 ## Notes
