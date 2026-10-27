@@ -12,7 +12,7 @@ namespace GetReady
 		internal static readonly Color Dim = new Color(0.62f, 0.64f, 0.64f);
 
 		internal static GUIStyle Window, Card, Title, Muted, Body, Plain, Move, Problem, Toggle, Button, Small, Primary,
-			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, Alert;
+			Pick, PickOn, ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, Alert;
 
 		private static bool _ready;
 
@@ -114,6 +114,9 @@ namespace GetReady
 
 			Button = Press(new GUIStyle(GUI.skin.button) { fontSize = 14, padding = new RectOffset(12, 12, 7, 7), margin = new RectOffset(2, 2, 3, 3) }, new Color(0.25f, 0.27f, 0.29f), new Color(0.33f, 0.36f, 0.38f), new Color(0.19f, 0.2f, 0.22f));
 			Small = Press(new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 2, 2), fixedWidth = 30 }, new Color(0.25f, 0.27f, 0.29f), new Color(0.33f, 0.36f, 0.38f), new Color(0.19f, 0.2f, 0.22f));
+			Pick = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, padding = new RectOffset(10, 10, 4, 4), margin = new RectOffset(2, 2, 2, 2) }, new Color(0.22f, 0.24f, 0.25f), new Color(0.3f, 0.33f, 0.35f), new Color(0.17f, 0.18f, 0.2f));
+			TextColor(Pick, Dim);
+			PickOn = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 4, 4), margin = new RectOffset(2, 2, 2, 2) }, new Color(0.2f, 0.36f, 0.58f), new Color(0.26f, 0.44f, 0.68f), new Color(0.15f, 0.28f, 0.46f));
 			Primary = Press(new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold, padding = new RectOffset(18, 18, 9, 9), margin = new RectOffset(2, 2, 3, 3) }, new Color(0.2f, 0.5f, 0.3f), new Color(0.26f, 0.6f, 0.37f), new Color(0.15f, 0.4f, 0.24f));
 
 			ChipOk = Chip(new Color(0.18f, 0.42f, 0.25f));

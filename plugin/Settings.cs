@@ -49,6 +49,9 @@ namespace GetReady
 		public int Target;
 		// Pockets, Vest (tactical vest or armored rig) and Backpack; the first with room wins
 		public List<string> Destinations = new List<string>();
+		// The group's items by template, best first (empty = the default order), and the ones switched off
+		public List<string> Order = new List<string>();
+		public List<string> Off = new List<string>();
 	}
 
 	internal class SuppliesSettings

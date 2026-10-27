@@ -12,6 +12,7 @@ namespace GetReady
 	{
 		public string Template;
 		public Func<Item, float> Weight;
+		public string Name => (Template + " ShortName").Localized();
 
 		internal static Entry Count(string template) => new Entry { Template = template, Weight = item => 1f };
 		internal static Entry Points(string template, float points) => new Entry { Template = template, Weight = item => points };
@@ -53,21 +54,9 @@ namespace GetReady
 			return parts.Length == 0 ? "nothing wanted" : string.Join(", ", parts);
 		}
 
-		// Where each group can go: first the places in the list with room win. "Vest" is the tactical vest or an armored rig.
-		// "Pouch" is the secured container
-		internal static readonly string[][] DestinationPresets =
-		{
-			new[] { "Pockets", "Vest" },
-			new[] { "Vest", "Pockets" },
-			new[] { "Pockets" },
-			new[] { "Vest" },
-			new[] { "Backpack" },
-			new[] { "Pouch" },
-			new[] { "Pockets", "Pouch" },
-			new[] { "Vest", "Pouch" },
-			new[] { "Pockets", "Vest", "Pouch" },
-			new[] { "Pockets", "Vest", "Backpack" },
-		};
+		// Where a group can go, in the order they are clicked: the first with room wins. "Vest" is the tactical vest or an armored
+		// rig, "Pouch" the secured container.
+		internal static readonly string[] Locations = { "Pockets", "Vest", "Backpack", "Pouch" };
 
 		internal static GroupSetting Setting(GroupDef def)
 		{
@@ -82,13 +71,60 @@ namespace GetReady
 			return setting;
 		}
 
-		internal static string DestinationLabel(GroupSetting setting) => string.Join(" > ", setting.Destinations.ToArray());
-
-		internal static void NextDestination(GroupSetting setting, GroupDef def)
+		// Adds the place to the end of the group's list, or takes it out (the last one stays)
+		internal static void ToggleDestination(GroupSetting setting, string place)
 		{
-			var presets = DestinationPresets.Where(preset => def.AllowPouch || !preset.Contains("Pouch")).ToArray();
-			int index = Array.FindIndex(presets, preset => preset.SequenceEqual(setting.Destinations));
-			setting.Destinations = presets[(index + 1) % presets.Length].ToList();
+			if (!setting.Destinations.Remove(place))
+			{
+				setting.Destinations.Add(place);
+			}
+			else if (setting.Destinations.Count == 0)
+			{
+				setting.Destinations.Add(place);
+			}
+		}
+
+		// The group's items in the order the owner set (the rest in the default order after them)
+		internal static List<Entry> OrderedEntries(GroupDef def)
+		{
+			var order = Setting(def).Order;
+			return def.Entries
+				.Select((entry, index) => new { entry, key = order.IndexOf(entry.Template) is int k && k >= 0 ? k : 1000 + index })
+				.OrderBy(pair => pair.key)
+				.Select(pair => pair.entry)
+				.ToList();
+		}
+
+		// What counts: ordered and without the items switched off
+		internal static Entry[] ActiveEntries(GroupDef def)
+		{
+			var off = Setting(def).Off;
+			return OrderedEntries(def).Where(entry => !off.Contains(entry.Template)).ToArray();
+		}
+
+		// Moves an item one place up or down the group's order, and writes the order out in full
+		internal static void Move(GroupDef def, string template, int step)
+		{
+			var entries = OrderedEntries(def).Select(entry => entry.Template).ToList();
+			int index = entries.IndexOf(template);
+			int target = index + step;
+			if (index < 0 || target < 0 || target >= entries.Count)
+			{
+				return;
+			}
+
+			entries.RemoveAt(index);
+			entries.Insert(target, template);
+			Setting(def).Order = entries;
+		}
+
+		internal static void ToggleItem(GroupDef def, string template)
+		{
+			var off = Setting(def).Off;
+			if (!off.Remove(template))
+			{
+				off.Add(template);
+			}
 		}
 
 		private static List<CompoundItem> Containers(Inventory inventory, IEnumerable<string> names)
@@ -220,7 +256,7 @@ namespace GetReady
 			var piles = groups
 				.Where(def => !def.Impact)
 				.Select(def => new Queue<Item>(stash
-					.Where(item => def.Entries.Any(entry => entry.Template == item.TemplateId.ToString()))
+					.Where(item => ActiveEntries(def).Any(entry => entry.Template == item.TemplateId.ToString()))
 					.OrderBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
 					.ThenBy(_ => Guid.NewGuid())))
 				.Where(pile => pile.Count > 0)
@@ -373,20 +409,20 @@ namespace GetReady
 			}
 
 			var template = item.TemplateId.ToString();
-			return Array.FindIndex(def.Entries, entry => entry.Template == template);
+			return Array.FindIndex(ActiveEntries(def), entry => entry.Template == template);
 		}
 
 		private static float WeightOf(GroupDef def, Item item)
 		{
 			var template = item.TemplateId.ToString();
-			var entry = def.Entries.FirstOrDefault(candidate => candidate.Template == template);
+			var entry = ActiveEntries(def).FirstOrDefault(candidate => candidate.Template == template);
 			return entry == null ? 0f : entry.Weight(item);
 		}
 
 		// Group entries in priority order; within one template, non-FiR first, then the fullest resource
 		private static IEnumerable<Item> Candidates(List<Item> items, GroupDef def)
 		{
-			foreach (var entry in def.Random ? def.Entries.OrderBy(_ => Guid.NewGuid()) : def.Entries.AsEnumerable())
+			foreach (var entry in def.Random ? ActiveEntries(def).OrderBy(_ => Guid.NewGuid()) : ActiveEntries(def).AsEnumerable())
 			{
 				foreach (var item in items
 					.Where(item => item.TemplateId.ToString() == entry.Template)

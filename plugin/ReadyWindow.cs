@@ -277,7 +277,11 @@ namespace GetReady
 			}
 		}
 
-		// One row of a step: its name, the amount with - and +, and where it goes (click to change)
+		// Groups whose item list is open
+		private static readonly HashSet<string> Expanded = new HashSet<string>();
+
+		// A supply group: its name and amount with - and +, where it goes (click the places in the order you want them tried)
+		// and, opened with "Items", which items count and in what order
 		private static bool GroupRow(GroupDef def)
 		{
 			var setting = SuppliesStep.Setting(def);
@@ -297,13 +301,89 @@ namespace GetReady
 				changed = true;
 			}
 
-			if (GUILayout.Button(new GUIContent(SuppliesStep.DestinationLabel(setting), "Where it goes, first with room first. Click to change."), Ui.Button))
+			if (def.Entries.Length > 1)
 			{
-				SuppliesStep.NextDestination(setting, def);
-				changed = true;
+				GUILayout.FlexibleSpace();
+				bool open = Expanded.Contains(def.Id);
+				if (GUILayout.Button(new GUIContent(open ? "Items ▲" : "Items ▼", "Which items count for this and in what order they are used"), open ? Ui.PickOn : Ui.Pick))
+				{
+					if (open)
+					{
+						Expanded.Remove(def.Id);
+					}
+					else
+					{
+						Expanded.Add(def.Id);
+					}
+				}
 			}
 
 			GUILayout.EndHorizontal();
+
+			if (setting.Target > 0 && !def.IsQuota)
+			{
+				GUILayout.BeginHorizontal();
+				GUILayout.Space(16);
+				GUILayout.Label("Goes to", Ui.Plain, GUILayout.Width(60));
+				foreach (var place in SuppliesStep.Locations)
+				{
+					if (place == "Pouch" && !def.AllowPouch)
+					{
+						continue;
+					}
+
+					int rank = setting.Destinations.IndexOf(place);
+					string label = rank >= 0 ? $"{rank + 1}. {place}" : place;
+					if (GUILayout.Button(new GUIContent(label, "Click to use this place. They are tried in the order you click them; click again to drop one."), rank >= 0 ? Ui.PickOn : Ui.Pick))
+					{
+						SuppliesStep.ToggleDestination(setting, place);
+						changed = true;
+					}
+				}
+
+				GUILayout.EndHorizontal();
+			}
+
+			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))
+			{
+				var entries = SuppliesStep.OrderedEntries(def);
+				for (int i = 0; i < entries.Count; i++)
+				{
+					var entry = entries[i];
+					bool off = setting.Off.Contains(entry.Template);
+					GUILayout.BeginHorizontal();
+					GUILayout.Space(16);
+					if (!def.Random)
+					{
+						GUI.enabled = i > 0;
+						if (GUILayout.Button("▲", Ui.Small))
+						{
+							SuppliesStep.Move(def, entry.Template, -1);
+							changed = true;
+						}
+
+						GUI.enabled = i < entries.Count - 1;
+						if (GUILayout.Button("▼", Ui.Small))
+						{
+							SuppliesStep.Move(def, entry.Template, 1);
+							changed = true;
+						}
+
+						GUI.enabled = true;
+					}
+
+					GUILayout.Label(def.Random ? entry.Name : $"{i + 1}. {entry.Name}", off ? Ui.Plain : Ui.Body, GUILayout.Width(200));
+					if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn))
+					{
+						SuppliesStep.ToggleItem(def, entry.Template);
+						changed = true;
+					}
+
+					GUILayout.EndHorizontal();
+				}
+			}
+
+			GUILayout.Space(2);
 			return changed;
 		}
 
