@@ -59,7 +59,15 @@ namespace GetReady
 				NotificationManager.DisplayMessageNotification("Ready for raid: " + (report == "" ? "you already have everything" : report) + ".");
 			}
 
-			Play(problems.Count > 0 ? EUISoundType.ErrorMessage : EUISoundType.QuestStarted);
+			// Nothing to say, nothing to hear: no sound when you already had everything
+			if (problems.Count > 0)
+			{
+				Play(EUISoundType.ErrorMessage);
+			}
+			else if (_moved > 0 || _keys > 0)
+			{
+				Play(EUISoundType.QuestStarted);
+			}
 			if (problems.Count > 0)
 			{
 				Alerts.Clear();
