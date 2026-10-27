@@ -30,4 +30,8 @@ Every row has a "Goes to" list: click the places in the order you want them trie
 - Moves are placed by looking for a free spot in the container's grids when the game's quick placement fails, and each move is checked to have left the stash.
 - Needs the SPT 4.1.x client (Assembly-CSharp, BepInEx 5). MIT license.
 
-Planned: ammo and magazine top-up, repair, emptying loot into the stash, MergeConsumables support, buying what is missing from the flea market.
+## Next
+
+- **Magazine top-up**: the logic of `MagazineTopUp` in CustomRpTweaks.Client (top up magazines, reload equipped weapons, top up removed magazines), as a step with its own settings (which ammo, how full, where).
+- **Repair**: repair everything equipped, with a choice of repair kit or trader (the logic of `RepairWithKit` in CustomRpTweaks.Client for the kit part).
+- Later: emptying loot into the stash, MergeConsumables support (combine stacks instead of swapping), buying what is missing from the flea market.
