@@ -282,6 +282,7 @@ namespace GetReady
 					lines.Add(new PlanLine
 					{
 						Template = moves[0].Key.TemplateId.ToString(),
+						Items = moves.Count,
 						Text = def.Money
 							? $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1):N0} {def.Unit} to {places[0]}"
 							: $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1)}x {group.Key}",
@@ -350,7 +351,7 @@ namespace GetReady
 			foreach (var group in picked.GroupBy(item => Game.NameOf(item)))
 			{
 				var items = group.ToList();
-				lines.Add(new PlanLine { Template = items[0].TemplateId.ToString(), Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items.Select(item => new KeyValuePair<Item, int>(item, 0)).ToList(), places) });
+				lines.Add(new PlanLine { Template = items[0].TemplateId.ToString(), Items = items.Count, Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items.Select(item => new KeyValuePair<Item, int>(item, 0)).ToList(), places) });
 			}
 
 			if (need > 0)
@@ -388,7 +389,7 @@ namespace GetReady
 		// The carried one goes to the stash first, and goes back if the better one can't be brought
 		private static async Task<string> Swap(InventoryController controller, Item worse, Item better, List<string> places)
 		{
-			var error = await Game.MoveToContainers(controller, worse, new List<CompoundItem> { controller.Inventory.Stash });
+			var error = await Game.MoveTo(controller, worse, new[] { "Stash" });
 			if (error != null)
 			{
 				return error;

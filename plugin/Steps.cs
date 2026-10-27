@@ -19,6 +19,9 @@ namespace GetReady
 		public string Detail;
 		public string Template;
 
+		// How many items the line moves (the notification adds them up)
+		public int Items = 1;
+
 		// A progress line: how much of what is wanted is there (drawn as a bar)
 		public bool IsProgress;
 		public float Have;
@@ -98,6 +101,7 @@ namespace GetReady
 				lines.Add(new PlanLine
 				{
 					Template = group.First().Template,
+					Items = group.Count(),
 					Text = $"Bring {group.Count()}x {group.Key}{WhereOf(group)}",
 					Run = async () =>
 					{
@@ -223,7 +227,7 @@ namespace GetReady
 								Text = $"{slotName}: replace {usage} with {Game.NameOf(better)} {Game.ResourceOf(better):0}/{Game.MaxResourceOf(better):0}",
 								Run = async () =>
 								{
-									var error = await Game.MoveToContainers(controller, current, new List<CompoundItem> { controller.Inventory.Stash });
+									var error = await Game.MoveTo(controller, current, new[] { "Stash" });
 									if (error != null)
 									{
 										return error;

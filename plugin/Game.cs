@@ -100,43 +100,10 @@ namespace GetReady
 
 		internal static bool IsSurgeryKit(Item item) => Treats(item, EDamageEffectType.DestroyedPart);
 
-		// Moves count of the stack to the address (the whole stack as a move, else a split). Returns null, or why it failed.
-		internal static async Task<string> PlaceAt(InventoryController controller, Item item, int count, ItemAddress address)
-		{
-			OperationResult operation = item.StackObjectsCount == count
-				? (OperationResult)ItemManipulator.Move(item, address, controller, true)
-				: ItemManipulator.SplitExact(item, count, address, controller, controller, true);
-			if (operation.Failed)
-			{
-				return operation.Error.ToString();
-			}
+		// ---- Placing items: one way for everything. A place is a name (Special slots, Pockets, Vest, Backpack, Pouch, Stash or one of
+		// the cases); it resolves to containers of yours, and an item goes to the first spot found in them.
 
-			var outcome = await controller.TryRunNetworkTransaction(operation);
-			return outcome.Failed ? outcome.Error.ToString() : null;
-		}
-
-		// "Vest" is the tactical vest or an armored rig, "Pouch" the secured container
-		internal static List<CompoundItem> ContainersOf(Inventory inventory, string place)
-		{
-			var slots = new List<EquipmentSlot>();
-			switch (place)
-			{
-				case "Vest":
-					slots.Add(EquipmentSlot.TacticalVest);
-					slots.Add(EquipmentSlot.ArmorVest);
-					break;
-				case "Pouch":
-					slots.Add(EquipmentSlot.SecuredContainer);
-					break;
-				default:
-					slots.Add((EquipmentSlot)Enum.Parse(typeof(EquipmentSlot), place));
-					break;
-			}
-
-			return slots.Select(slot => EquippedContainer(inventory, slot)).Where(container => container != null).ToList();
-		}
-
-		// Cases that hold money, as places a supply can go: carried or in the secured container (the pouch)
+		// Cases that hold money, as places an item can go: carried or in the secured container (the pouch)
 		internal static readonly Dictionary<string, string> CasePlaces = new Dictionary<string, string>
 		{
 			{ "Wallet", "5783c43d2459774bbe137486" },
@@ -145,41 +112,97 @@ namespace GetReady
 			{ "SICC case", "5d235bb686f77443f4331278" }
 		};
 
-		// Moves count of the stack into the first case that takes it: added to a stack of the same item when there is room for
-		// all of it, otherwise as a split (or the whole stack) into a free spot of the case.
-		private static async Task<string> MoveIntoCases(InventoryController controller, Item stack, int count, List<CompoundItem> cases)
+		// A container of yours and which of its parts an item may go into
+		private class Target
 		{
-			if (count <= 0 || count > stack.StackObjectsCount)
+			public CompoundItem Container;
+			public bool Grids = true;
+			public bool Slots;
+		}
+
+		private static List<Target> TargetsOf(Inventory inventory, string place)
+		{
+			string caseTemplate;
+			if (CasePlaces.TryGetValue(place, out caseTemplate))
 			{
-				count = stack.StackObjectsCount;
+				return CarriedAndSecured(inventory).OfType<CompoundItem>().Where(container => container.TemplateId.ToString() == caseTemplate).Select(container => new Target { Container = container }).ToList();
 			}
 
-			string last = "no room";
-			var template = stack.TemplateId.ToString();
-			foreach (var container in cases)
+			switch (place)
 			{
-				var existing = container.GetAllItems().FirstOrDefault(item => item != container && item.TemplateId.ToString() == template
-					&& item.PinLockState != EItemPinLockState.Locked && item.StackMaxSize - item.StackObjectsCount >= count);
+				case "Special slots":
+					return One(EquippedContainer(inventory, EquipmentSlot.Pockets), false, true);
+				case "Pockets":
+					return One(EquippedContainer(inventory, EquipmentSlot.Pockets), true, true);
+				case "Vest":
+					return One(EquippedContainer(inventory, EquipmentSlot.TacticalVest), true, false).Concat(One(EquippedContainer(inventory, EquipmentSlot.ArmorVest), true, false)).ToList();
+				case "Backpack":
+					return One(EquippedContainer(inventory, EquipmentSlot.Backpack), true, false);
+				case "Pouch":
+					return One(EquippedContainer(inventory, EquipmentSlot.SecuredContainer), true, false);
+				case "Stash":
+					return One(inventory.Stash, true, false);
+				default:
+					return new List<Target>();
+			}
+		}
+
+		private static List<Target> One(CompoundItem container, bool grids, bool slots) =>
+			container == null ? new List<Target>() : new List<Target> { new Target { Container = container, Grids = grids, Slots = slots } };
+
+		// Moves count of the item to the address (the whole stack as a move, else a split), checked but not run
+		private static OperationResult Simulate(InventoryController controller, Item item, int count, ItemAddress address) =>
+			item.StackObjectsCount == count
+				? (OperationResult)ItemManipulator.Move(item, address, controller, true)
+				: ItemManipulator.SplitExact(item, count, address, controller, controller, true);
+
+		private static async Task<string> Run(InventoryController controller, OperationResult operation)
+		{
+			var outcome = await controller.TryRunNetworkTransaction(operation);
+			return outcome.Failed ? outcome.Error.ToString() : null;
+		}
+
+		// To an exact address (a cell of the injector case, a special slot). Returns null, or why it failed.
+		internal static async Task<string> PlaceAt(InventoryController controller, Item item, int count, ItemAddress address)
+		{
+			var operation = Simulate(controller, item, count, address);
+			return operation.Failed ? operation.Error.ToString() : await Run(controller, operation);
+		}
+
+		// Into the first of the containers that has a spot: added to a stack of the same item when there is room for all of it,
+		// else a free spot of a grid, else a free slot. The game's own "quick move" is not used: it falls back to the stash (a
+		// "successful" move inside the stash) and stops at the first failure in a container.
+		private static async Task<string> PlaceInto(InventoryController controller, Item item, int count, List<Target> targets)
+		{
+			string last = "no room";
+			var template = item.TemplateId.ToString();
+			foreach (var target in targets)
+			{
+				var container = target.Container;
 				OperationResult operation = default;
 				bool planned = false;
+
+				var existing = item.StackMaxSize > 1
+					? container.GetAllItems().FirstOrDefault(other => other != container && other != item && other.TemplateId.ToString() == template
+						&& other.PinLockState != EItemPinLockState.Locked && other.StackMaxSize - other.StackObjectsCount >= count)
+					: null;
 				if (existing != null)
 				{
-					operation = ItemManipulator.TransferExact(stack, count, existing, controller, true);
+					operation = ItemManipulator.TransferExact(item, count, existing, controller, true);
 					planned = true;
 				}
-				else
+
+				if ((!planned || operation.Failed) && target.Grids)
 				{
 					foreach (var grid in container.Grids)
 					{
-						var address = grid.FindLocationForItem(stack);
+						var address = grid.FindLocationForItem(item);
 						if (address == null)
 						{
 							continue;
 						}
 
-						operation = stack.StackObjectsCount == count
-							? ItemManipulator.Move(stack, address, controller, true)
-							: ItemManipulator.SplitExact(stack, count, address, controller, controller, true);
+						operation = Simulate(controller, item, count, address);
 						planned = true;
 						if (operation.Succeeded)
 						{
@@ -188,20 +211,74 @@ namespace GetReady
 					}
 				}
 
-				if (!planned || operation.Failed)
+				if ((!planned || operation.Failed) && target.Slots)
 				{
-					last = planned ? operation.Error.ToString() : $"no free spot in {container.ShortName.Localized()} ({container.Grids.Count()} grids)";
+					foreach (var slot in container.Slots)
+					{
+						if (slot.ContainedItem != null)
+						{
+							continue;
+						}
+
+						operation = Simulate(controller, item, count, slot.CreateItemAddress());
+						planned = true;
+						if (operation.Succeeded)
+						{
+							break;
+						}
+					}
+				}
+
+				if (!planned)
+				{
+					last = $"no free spot in {container.ShortName.Localized()}";
 					continue;
 				}
 
-				var outcome = await controller.TryRunNetworkTransaction(operation);
-				if (outcome.Failed)
+				if (operation.Failed)
 				{
-					last = outcome.Error.ToString();
+					last = operation.Error.ToString();
 					continue;
 				}
 
-				return null;
+				var error = await Run(controller, operation);
+				if (error == null)
+				{
+					return null;
+				}
+
+				last = error;
+			}
+
+			return last;
+		}
+
+		// Moves the item (count of it, or all) to the first of the places that takes it. Returns null, or why the last one refused.
+		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places, int count = 0)
+		{
+			if (count <= 0 || count > item.StackObjectsCount)
+			{
+				count = item.StackObjectsCount;
+			}
+
+			string last = "no place to put it";
+			foreach (var place in places)
+			{
+				var targets = TargetsOf(controller.Inventory, place);
+				if (targets.Count == 0)
+				{
+					last = $"no {place} on you";
+					continue;
+				}
+
+				var error = await PlaceInto(controller, item, count, targets);
+				if (error == null)
+				{
+					return null;
+				}
+
+				last = error;
+				Plugin.Log.LogInfo($"{NameOf(item)}: {place} did not take it ({error})");
 			}
 
 			return last;
@@ -236,123 +313,6 @@ namespace GetReady
 			}
 
 			return false;
-		}
-
-		// Moves the item to the first of the places (Special slots, Pockets, Vest, Backpack, Pouch) that takes it.
-		// With a count below the stack, only that many are split off. Returns null, or why the last one refused.
-		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places, int count = 0)
-		{
-			bool split = count > 0 && count < item.StackObjectsCount;
-			string last = "no place to put it";
-			foreach (var place in places)
-			{
-				string error;
-				string caseTemplate;
-				if (CasePlaces.TryGetValue(place, out caseTemplate))
-				{
-					var cases = CarriedAndSecured(controller.Inventory).OfType<CompoundItem>().Where(container => container.TemplateId.ToString() == caseTemplate).ToList();
-					if (cases.Count == 0)
-					{
-						last = $"no {place} on you";
-						continue;
-					}
-
-					error = await MoveIntoCases(controller, item, count, cases);
-				}
-				else if (place == "Special slots")
-				{
-					error = await MoveToSpecialSlots(controller, item, split ? count : item.StackObjectsCount);
-				}
-				else
-				{
-					var containers = ContainersOf(controller.Inventory, place);
-					if (containers.Count == 0)
-					{
-						last = $"no {place} equipped";
-						continue;
-					}
-
-					error = split ? await SplitToContainers(controller, item, count, containers) : await MoveToContainers(controller, item, containers);
-					if (error != null)
-					{
-						// The game's own "find a place" gave up on this container: look for a free spot in its grids ourselves
-						var direct = await MoveIntoCases(controller, item, split ? count : item.StackObjectsCount, containers);
-						error = direct == null ? null : $"{error}; looking in the grids: {direct}";
-					}
-				}
-
-				if (error == null)
-				{
-					return null;
-				}
-
-				last = error;
-				Plugin.Log.LogInfo($"{NameOf(item)}: {place} did not take it ({error})");
-			}
-
-			return last;
-		}
-
-		// Splits count off the stack into the first grid with room for one
-		private static async Task<string> SplitToContainers(InventoryController controller, Item item, int count, List<CompoundItem> containers)
-		{
-			string last = "no room";
-			foreach (var grid in containers.SelectMany(container => container.Grids))
-			{
-				ItemAddress location;
-				if (!grid.TryFindLocationForItem(item, out location))
-				{
-					continue;
-				}
-
-				var error = await PlaceAt(controller, item, count, location);
-				if (error == null)
-				{
-					return null;
-				}
-
-				last = error;
-			}
-
-			return last;
-		}
-
-		// The first empty special slot of the pockets that accepts the item
-		private static async Task<string> MoveToSpecialSlots(InventoryController controller, Item item, int count)
-		{
-			string last = "no free special slot";
-			var pockets = EquippedContainer(controller.Inventory, EquipmentSlot.Pockets);
-			foreach (var slot in pockets?.Slots ?? new Slot[0])
-			{
-				if (slot.ContainedItem != null)
-				{
-					continue;
-				}
-
-				var error = await PlaceAt(controller, item, count, slot.CreateItemAddress());
-				if (error == null)
-				{
-					return null;
-				}
-
-				last = error;
-			}
-
-			return last;
-		}
-
-		// Moves the item to the first of the containers with room. IgnoreItemParent matters: without it the game adds the item's
-		// own container (the stash) as the last place to try, and "moving" the item to another spot of the stash counts as success.
-		internal static async Task<string> MoveToContainers(InventoryController controller, Item item, List<CompoundItem> targets)
-		{
-			var result = ItemManipulator.QuickFindAppropriatePlace(item, controller, targets, ItemManipulator.EMoveItemOrder.PrioritizeTargetsOrder | ItemManipulator.EMoveItemOrder.IgnoreItemParent, true);
-			if (result.Failed)
-			{
-				return result.Error.ToString();
-			}
-
-			var outcome = await controller.TryRunNetworkTransaction(result);
-			return outcome.Failed ? outcome.Error.ToString() : null;
 		}
 	}
 }

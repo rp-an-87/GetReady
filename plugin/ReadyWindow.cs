@@ -207,14 +207,64 @@ namespace GetReady
 		}
 
 		// The count on the stash button, and the text of its tooltip
-		private static void UpdateBadge() => ReadyButtonPatch.SetBadge(Problems().Count, Plan.Sum(entry => entry.Value.Count(line => line.Run != null)));
+		private static void UpdateBadge()
+		{
+			int toBring, withProblems;
+			Tally(out toBring, out withProblems);
+			ReadyButtonPatch.SetBadge(withProblems, toBring);
+		}
+
+		// How many groups (a supply, a template: a card of the Ready page) have something to bring, and how many have a problem.
+		// It counts groups, not items: "bring 3 grenades" is one thing to get ready, not one per grenade type.
+		private static void Tally(out int toBring, out int withProblems)
+		{
+			toBring = 0;
+			withProblems = 0;
+			foreach (var entry in Plan)
+			{
+				bool run = false, problem = false, open = false;
+				foreach (var line in entry.Value)
+				{
+					if (line.IsProgress)
+					{
+						if (open)
+						{
+							toBring += run ? 1 : 0;
+							withProblems += problem ? 1 : 0;
+						}
+
+						open = true;
+						run = false;
+						problem = false;
+						continue;
+					}
+
+					if (!open)
+					{
+						toBring += line.Run != null ? 1 : 0;
+						withProblems += line.Problem ? 1 : 0;
+						continue;
+					}
+
+					run |= line.Run != null;
+					problem |= line.Problem;
+				}
+
+				if (open)
+				{
+					toBring += run ? 1 : 0;
+					withProblems += problem ? 1 : 0;
+				}
+			}
+		}
 
 		internal static string Summary()
 		{
-			int moves = Plan.Sum(entry => entry.Value.Count(line => line.Run != null));
+			int moves, problemGroups;
+			Tally(out moves, out problemGroups);
 			var problems = Problems();
 			var text = new System.Text.StringBuilder("Get ready for raid\nClick: bring what is missing. Ctrl+click: open the window.");
-			if (moves == 0 && problems.Count == 0)
+			if (moves == 0 && problemGroups == 0)
 			{
 				text.Append("\n\nYou are all set.");
 			}
@@ -311,7 +361,7 @@ namespace GetReady
 						var error = await line.Run();
 						if (error == null)
 						{
-							done++;
+							done += line.Items;
 						}
 						else
 						{
@@ -757,15 +807,15 @@ namespace GetReady
 		// The Ready page: one line of status on top, then what each step found
 		private static void ReadyPage()
 		{
-			int moves = Plan.Sum(entry => entry.Value.Count(line => line.Run != null));
-			var problems = Problems();
+			int moves, problemGroups;
+			Tally(out moves, out problemGroups);
 			if (Plan.Count == 0)
 			{
 				GUILayout.BeginVertical(Ui.Section);
 				GUILayout.Label("Nothing is switched on. Turn something on in Setup.", Ui.Body);
 				GUILayout.EndVertical();
 			}
-			else if (moves == 0 && problems.Count == 0)
+			else if (moves == 0 && problemGroups == 0)
 			{
 				GUILayout.BeginVertical(Ui.OkCard);
 				GUILayout.Label("You are all set", Ui.SectionTitle);
@@ -774,11 +824,11 @@ namespace GetReady
 			}
 			else
 			{
-				GUILayout.BeginVertical(problems.Count > 0 && moves == 0 ? Ui.AlertCard : Ui.TodoCard);
+				GUILayout.BeginVertical(problemGroups > 0 && moves == 0 ? Ui.AlertCard : Ui.TodoCard);
 				GUILayout.Label(moves > 0 ? (moves == 1 ? "1 thing to bring from the stash" : $"{moves} things to bring from the stash") : "Nothing to bring", Ui.SectionTitle);
-				if (problems.Count > 0)
+				if (problemGroups > 0)
 				{
-					GUILayout.Label(problems.Count == 1 ? "1 thing needs your attention" : $"{problems.Count} things need your attention", Ui.Problem);
+					GUILayout.Label(problemGroups == 1 ? "1 thing needs your attention" : $"{problemGroups} things need your attention", Ui.Problem);
 				}
 
 				GUILayout.EndVertical();
