@@ -43,13 +43,10 @@ namespace GetReady
 			// Found by what the item treats, so modded splints count too: anything that fixes a fracture without doing surgery
 			// (Surv12 does both and counts as surgery only); Grizzly fixes fractures and counts as a splint
 			new MissingResourceWarning("Splint warning", "splint", s => s.Splint, (s, on) => s.Splint = on,
-				item => Treats(item, EDamageEffectType.Fracture) && !Treats(item, EDamageEffectType.DestroyedPart)),
+				Game.IsSplint),
 			new MissingResourceWarning("Surgery warning", "surgery kit", s => s.Surgery, (s, on) => s.Surgery = on,
-				item => Treats(item, EDamageEffectType.DestroyedPart))
+				Game.IsSurgeryKit)
 		};
-
-		private static bool Treats(Item item, EDamageEffectType effect) =>
-			item.GetItemComponent<HealthEffectsComponent>()?.AffectsAny(effect) ?? false;
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
 		// (a Propital for the injector case also counts for the Propital supply). Cleared before every planning pass.
@@ -58,11 +55,15 @@ namespace GetReady
 		// Items already in a special slot of the template (managed by that step, so the supplies leave them alone but count
 		// them) and the ones it is about to swap out (which stop counting)
 		internal static readonly List<Item> Owned = new List<Item>();
+
+		// What the special slots step brings: it counts for the supplies (an injector case's contents don't, it keeps its own)
+		internal static readonly List<Item> Bringing = new List<Item>();
 		internal static readonly List<Item> Leaving = new List<Item>();
 
 		internal static void NewPass()
 		{
 			Claimed.Clear();
+			Bringing.Clear();
 			Owned.Clear();
 			Leaving.Clear();
 		}
@@ -242,6 +243,7 @@ namespace GetReady
 						{
 							taken.Add(fuller);
 							Steps.Claimed.Add(fuller);
+						Steps.Bringing.Add(fuller);
 							Steps.Leaving.Add(held);
 							var better = fuller;
 							var target = slot;
@@ -291,6 +293,7 @@ namespace GetReady
 				{
 					taken.Add(found);
 					Steps.Claimed.Add(found);
+					Steps.Bringing.Add(found);
 					var chosen = found;
 					var target = slot;
 					int count = Math.Min(entry.Count, found.StackObjectsCount);

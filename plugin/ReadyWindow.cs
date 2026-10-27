@@ -141,7 +141,7 @@ namespace GetReady
 			}
 
 			Steps.NewPass();
-			Icons.Index(controller.Inventory);
+			Icons.Index(controller);
 			foreach (var step in Steps.All.Where(step => step.Enabled))
 			{
 				try
@@ -499,13 +499,16 @@ namespace GetReady
 						{
 							var injectorCase = cases[i];
 							bool bound = injectorCase.Id.ToString() == SettingsStore.Current.InjectorCase.CaseId;
-							string name = cases.Count == 1 ? "my injector case" : $"injector case {i + 1} ({injectorCase.Grids[0].Items.Count()} injectors inside)";
-							string label = $"Save {name} as the template" + (bound ? " (this is the saved one)" : "");
-							if (GUILayout.Button(new GUIContent(label, "Remembers which injector is in each cell. Only this case is filled later; other injector cases are left alone."), Ui.Button))
+							string name = cases.Count == 1 ? "Your injector case" : $"Injector case {i + 1}";
+							GUILayout.BeginHorizontal();
+							GUILayout.Label($"{name}  -  {injectorCase.Grids[0].Items.Count()} injectors inside" + (bound ? "  -  this is the saved one" : ""), bound ? Ui.Name : Ui.Body);
+							if (GUILayout.Button(new GUIContent(bound ? "Update template" : "Use as template", "Remembers which injector is in each cell of this case. Only this case is filled later; other injector cases are left alone."), Ui.Button, GUILayout.Width(150)))
 							{
-								_status = $"Saved {InjectorCaseStep.Capture(injectorCase)} injector(s) from {name}.";
+								_status = $"Saved {InjectorCaseStep.Capture(injectorCase)} injector(s) from {name.ToLowerInvariant()}.";
 								RefreshSoon();
 							}
+
+							GUILayout.EndHorizontal();
 						}
 					}
 				}
@@ -519,7 +522,8 @@ namespace GetReady
 					changed |= GroupRow(def);
 				}
 
-				if (lines != null && lines.Count > 0)
+				// Only when there is something to do or to look at: a step that has all it needs shows nothing
+				if (lines != null && lines.Any(line => line.Run != null || line.Problem))
 				{
 					PlanLines(lines);
 				}

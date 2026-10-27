@@ -1,4 +1,5 @@
 using System;
+using EFT;
 using System.Collections.Generic;
 using System.Linq;
 using EFT.InventoryLogic;
@@ -16,13 +17,71 @@ namespace GetReady
 
 		// One item of each template found in the stash or on you, to take the icon from, and the icons asked for so far
 		private static readonly Dictionary<string, Item> Known = new Dictionary<string, Item>();
+		private static readonly Dictionary<string, Item> Made = new Dictionary<string, Item>();
 		private static readonly Dictionary<string, ItemIcon> Loaded = new Dictionary<string, ItemIcon>();
 
-		// Remembers an item of every template in the inventory (the game builds icons from items, not templates)
-		internal static void Index(Inventory inventory)
+		private static InventoryController _controller;
+		private static readonly Dictionary<string, bool> Examined = new Dictionary<string, bool>();
+
+		// Whether the template is in the item tree below the parent
+		internal static bool IsUnder(ItemTemplate template, string parent)
 		{
+			for (var node = template; node != null; node = node.Parent)
+			{
+				if (node._id.ToString() == parent)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// An item of the template: one you own, or a throwaway one made from the template (the game builds icons and reads
+		// components from items, not templates). Null when it can't be made.
+		internal static Item ItemFor(string template)
+		{
+			Item item;
+			if (Known.TryGetValue(template, out item))
+			{
+				return item;
+			}
+
+			try
+			{
+				var factory = Comfort.Common.Singleton<ItemFactory>.Instance;
+				item = factory?.CreateItem(factory.NextId.ToString(), template, null);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not make {template}: {e.Message}");
+			}
+
+			Made[template] = item;
+			return item;
+		}
+
+		// Items you haven't examined show as a question mark, like in the stash
+		private static bool IsExamined(string template)
+		{
+			bool known;
+			if (!Examined.TryGetValue(template, out known))
+			{
+				var item = ItemFor(template);
+				known = item != null && (_controller == null || _controller.Examined(item));
+				Examined[template] = known;
+			}
+
+			return known;
+		}
+
+		// Remembers an item of every template in the inventory
+		internal static void Index(InventoryController controller)
+		{
+			_controller = controller;
+			Examined.Clear();
 			Known.Clear();
-			foreach (var item in Game.Stash(inventory).Concat(Game.CarriedAndSecured(inventory)))
+			foreach (var item in Game.Stash(controller.Inventory).Concat(Game.CarriedAndSecured(controller.Inventory)))
 			{
 				var template = item.TemplateId.ToString();
 				if (!Known.ContainsKey(template))
@@ -34,11 +93,16 @@ namespace GetReady
 
 		internal static Sprite Of(string template)
 		{
+			if (!IsExamined(template))
+			{
+				return null;
+			}
+
 			ItemIcon icon;
 			if (!Loaded.TryGetValue(template, out icon))
 			{
-				Item item;
-				if (!Known.TryGetValue(template, out item))
+				var item = ItemFor(template);
+				if (item == null)
 				{
 					return null;
 				}
@@ -65,6 +129,11 @@ namespace GetReady
 		{
 			GUI.Box(rect, GUIContent.none, Ui.Inner);
 			var sprite = Of(template);
+			if (sprite == null && !IsExamined(template))
+			{
+				GUI.Label(rect, "?", Ui.Centered);
+			}
+
 			if (sprite != null && sprite.texture != null)
 			{
 				var source = sprite.textureRect;

@@ -71,7 +71,34 @@ namespace GetReady
 
 		internal static float MaxResourceOf(Item item) => item.GetItemComponent<MedKitComponent>()?.MaxHpResource ?? 0f;
 
-		internal static string NameOf(Item item) => item.ShortName.Localized();
+		// Templates whose short name is shared with another item of the same group (two items called "Bandage"): shown with their
+		// full name
+		internal static readonly HashSet<string> LongNames = new HashSet<string>();
+
+		internal static string TemplateName(string template) => (template + (LongNames.Contains(template) ? " Name" : " ShortName")).Localized();
+
+		internal static string NameOf(Item item) => TemplateName(item.TemplateId.ToString());
+
+		// What an item treats (a bandage the light bleeding, a splint the fracture, a surgery kit a destroyed part)
+		internal static bool Treats(Item item, EDamageEffectType effect) =>
+			item.GetItemComponent<HealthEffectsComponent>()?.AffectsAny(effect) ?? false;
+
+		// Where the medical items live in the item tree: medikits (AFAK, Salewa...) and the single-purpose "medical items"
+		internal static readonly string[] UnderMedikit = { "5448f39d4bdc2d0a728b4568" };
+		internal static readonly string[] UnderMedicalItem = { "5448f3ac4bdc2dce718b4569" };
+
+		internal static bool IsHealingKit(Item item) => item.GetItemComponent<MedKitComponent>() != null && !Treats(item, EDamageEffectType.DestroyedPart);
+
+		internal static bool IsBandage(Item item) =>
+			Treats(item, EDamageEffectType.LightBleeding) && !Treats(item, EDamageEffectType.HeavyBleeding) && !Treats(item, EDamageEffectType.Fracture) && !Treats(item, EDamageEffectType.DestroyedPart);
+
+		internal static bool IsTourniquet(Item item) =>
+			Treats(item, EDamageEffectType.HeavyBleeding) && !Treats(item, EDamageEffectType.Fracture) && !Treats(item, EDamageEffectType.DestroyedPart);
+
+		// Surv12 treats fractures too but counts as a surgery kit only
+		internal static bool IsSplint(Item item) => Treats(item, EDamageEffectType.Fracture) && !Treats(item, EDamageEffectType.DestroyedPart);
+
+		internal static bool IsSurgeryKit(Item item) => Treats(item, EDamageEffectType.DestroyedPart);
 
 		// Moves count of the stack to the address (the whole stack as a move, else a split). Returns null, or why it failed.
 		internal static async Task<string> PlaceAt(InventoryController controller, Item item, int count, ItemAddress address)
@@ -109,17 +136,32 @@ namespace GetReady
 			return slots.Select(slot => EquippedContainer(inventory, slot)).Where(container => container != null).ToList();
 		}
 
-		// Moves the item to the first of the places (Special slots, Pockets, Vest, Backpack, Pouch) that takes it.
-		// Returns null, or why the last one refused.
-		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places)
+		// Inside an injector case, which the injector case template looks after
+		internal static bool InsideInjectorCase(Item item)
 		{
+			for (var parent = item.Parent?.Container?.ParentItem; parent != null; parent = parent.Parent?.Container?.ParentItem)
+			{
+				if (parent.TemplateId.ToString() == InjectorCase)
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		// Moves the item to the first of the places (Special slots, Pockets, Vest, Backpack, Pouch) that takes it.
+		// With a count below the stack, only that many are split off. Returns null, or why the last one refused.
+		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places, int count = 0)
+		{
+			bool split = count > 0 && count < item.StackObjectsCount;
 			string last = "no place to put it";
 			foreach (var place in places)
 			{
 				string error;
 				if (place == "Special slots")
 				{
-					error = await MoveToSpecialSlots(controller, item);
+					error = await MoveToSpecialSlots(controller, item, split ? count : item.StackObjectsCount);
 				}
 				else
 				{
@@ -130,7 +172,7 @@ namespace GetReady
 						continue;
 					}
 
-					error = await MoveToContainers(controller, item, containers);
+					error = split ? await SplitToContainers(controller, item, count, containers) : await MoveToContainers(controller, item, containers);
 				}
 
 				if (error == null)
@@ -144,8 +186,32 @@ namespace GetReady
 			return last;
 		}
 
+		// Splits count off the stack into the first grid with room for one
+		private static async Task<string> SplitToContainers(InventoryController controller, Item item, int count, List<CompoundItem> containers)
+		{
+			string last = "no room";
+			foreach (var grid in containers.SelectMany(container => container.Grids))
+			{
+				ItemAddress location;
+				if (!grid.TryFindLocationForItem(item, out location))
+				{
+					continue;
+				}
+
+				var error = await PlaceAt(controller, item, count, location);
+				if (error == null)
+				{
+					return null;
+				}
+
+				last = error;
+			}
+
+			return last;
+		}
+
 		// The first empty special slot of the pockets that accepts the item
-		private static async Task<string> MoveToSpecialSlots(InventoryController controller, Item item)
+		private static async Task<string> MoveToSpecialSlots(InventoryController controller, Item item, int count)
 		{
 			string last = "no free special slot";
 			var pockets = EquippedContainer(controller.Inventory, EquipmentSlot.Pockets);
@@ -156,7 +222,7 @@ namespace GetReady
 					continue;
 				}
 
-				var error = await PlaceAt(controller, item, item.StackObjectsCount, slot.CreateItemAddress());
+				var error = await PlaceAt(controller, item, count, slot.CreateItemAddress());
 				if (error == null)
 				{
 					return null;

@@ -12,10 +12,16 @@ namespace GetReady
 	{
 		public string Template;
 		public Func<Item, float> Weight;
-		public string Name => (Template + " ShortName").Localized();
+		public string Name => Game.TemplateName(Template);
 
 		internal static Entry Count(string template) => new Entry { Template = template, Weight = item => 1f };
 		internal static Entry Points(string template, float points) => new Entry { Template = template, Weight = item => points };
+		// Counts for its health resource, or one when it has none (a CAT, a plain bandage)
+		internal static Entry Auto(string template) => new Entry { Template = template, Weight = item => Game.ResourceOf(item) > 0f ? Game.ResourceOf(item) : 1f };
+
+		// A stack counts for the items in it (flares)
+		internal static Entry Stack(string template) => new Entry { Template = template, Weight = item => item.StackObjectsCount };
+
 		internal static Entry Resource(string template) => new Entry { Template = template, Weight = Game.ResourceOf };
 	}
 
@@ -25,10 +31,83 @@ namespace GetReady
 		public string Id;
 		public string Name;
 		public string Unit;
-		public Entry[] Entries = new Entry[0]; // in priority order
+		private Entry[] _entries = new Entry[0];
+		private bool _discovered;
+
+		// Where in the item tree to look, and which of those items belong: when set, the items are found in the game's item
+		// database (modded ones too) and the ones listed in Entries come first, in that order
+		public string[] Under;
+		public Func<Item, bool> Match;
+
+		public Entry[] Entries
+		{
+			get
+			{
+				Discover();
+				return _entries;
+			}
+			set => _entries = value;
+		}
+
+		private void Discover()
+		{
+			if (_discovered || Match == null)
+			{
+				return;
+			}
+
+			var factory = Comfort.Common.Singleton<ItemFactory>.Instance;
+			if (factory == null)
+			{
+				return; // not loaded yet: the listed items stand in
+			}
+
+			_discovered = true;
+			try
+			{
+				var found = new List<string>();
+				foreach (var template in factory.ItemTemplates.Values)
+				{
+					if (!Under.Any(parent => Icons.IsUnder(template, parent)))
+					{
+						continue;
+					}
+
+					var item = Icons.ItemFor(template._id.ToString());
+					if (item != null && Match(item))
+					{
+						found.Add(template._id.ToString());
+					}
+				}
+
+				if (found.Count == 0)
+				{
+					return;
+				}
+
+				var preferred = _entries.Select(entry => entry.Template).ToList();
+				var ordered = preferred.Where(found.Contains).Concat(found.Where(id => !preferred.Contains(id)).OrderBy(id => (id + " ShortName").Localized()));
+				_entries = ordered.Select(Entry.Auto).ToArray();
+
+				// Two items with the same short name ("Bandage") are told apart by their full names
+				foreach (var group in _entries.GroupBy(entry => (entry.Template + " ShortName").Localized()).Where(group => group.Count() > 1))
+				{
+					foreach (var entry in group)
+					{
+						Game.LongNames.Add(entry.Template);
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not list the items of {Id}: {e.Message}");
+			}
+		}
 		public bool Random; // the entries are equal: whichever the stash has, picked at random
 		public bool Impact; // left out of the grenade quota's random picks
 		public bool IsQuota; // total grenades: topped up with random ones after the groups
+		public bool Stack; // the items are stacks of which only the missing count is brought (flares)
+		public string[] DefaultOff = new string[0]; // items that start switched off
 		public bool AllowPouch = true; // the secured container and the special slots can hold it (not grenades)
 		public int DefaultTarget;
 		public int Max = 10;
@@ -64,7 +143,7 @@ namespace GetReady
 			GroupSetting setting;
 			if (!groups.TryGetValue(def.Id, out setting))
 			{
-				setting = new GroupSetting { Target = def.DefaultTarget, Destinations = def.DefaultDestinations.ToList() };
+				setting = new GroupSetting { Target = def.DefaultTarget, Destinations = def.DefaultDestinations.ToList(), Off = def.DefaultOff.ToList() };
 				groups[def.Id] = setting;
 			}
 
@@ -131,7 +210,7 @@ namespace GetReady
 		{
 			var inventory = controller.Inventory;
 			var settings = SettingsStore.Current.Supplies;
-			var carried = Game.CarriedAndSecured(inventory).ToList();
+			var carried = Game.CarriedAndSecured(inventory).Where(item => !Game.InsideInjectorCase(item)).ToList();
 			var owned = new HashSet<Item>(Steps.Owned);
 			var leaving = Steps.Leaving.ToList();
 			var claimed = Steps.Claimed.ToList();
@@ -147,12 +226,12 @@ namespace GetReady
 				}
 
 				var places = setting.Destinations.ToList();
-				float alreadyBringing = claimed.Sum(item => WeightOf(def, item));
+				float alreadyBringing = Steps.Bringing.Sum(item => WeightOf(def, item));
 				float leavingWeight = leaving.Sum(item => WeightOf(def, item));
 				float fixedWeight = owned.Sum(item => WeightOf(def, item)) - leavingWeight;
 				lines.Add(Steps.Info($"{def.Name}: {carried.Sum(item => WeightOf(def, item)) - leavingWeight + alreadyBringing:0}/{setting.Target} {def.Unit} carried"));
 
-				if (settings.SwapWorse)
+				if (settings.SwapWorse && !def.Stack)
 				{
 					foreach (var swap in PlanSwaps(def, setting.Target, carried, stash, owned, fixedWeight))
 					{
@@ -167,7 +246,7 @@ namespace GetReady
 				}
 
 				float need = setting.Target - carried.Sum(item => WeightOf(def, item)) + leavingWeight - alreadyBringing;
-				var brought = new List<Item>();
+				var brought = new List<KeyValuePair<Item, int>>();
 				foreach (var item in Candidates(stash, def))
 				{
 					if (need <= 0)
@@ -176,22 +255,24 @@ namespace GetReady
 					}
 
 					float weight = WeightOf(def, item);
-					if (weight <= 0 || (!settings.AllowOvershoot && weight > need))
+					if (weight <= 0 || (!def.Stack && !settings.AllowOvershoot && weight > need))
 					{
 						continue;
 					}
 
-					brought.Add(item);
-					need -= weight;
+					// A stack gives only what is missing, anything else moves whole (count 0)
+					int count = def.Stack ? Math.Max(1, (int)Math.Min(weight, need)) : 0;
+					brought.Add(new KeyValuePair<Item, int>(item, count));
+					need -= def.Stack ? count : weight;
 				}
 
-				foreach (var group in brought.GroupBy(item => Game.NameOf(item)))
+				foreach (var group in brought.GroupBy(pair => Game.NameOf(pair.Key)))
 				{
-					var items = group.ToList();
+					var moves = group.ToList();
 					lines.Add(new PlanLine
 					{
-						Text = $"Bring {items.Count}x {group.Key}",
-						Run = () => MoveAll(controller, items, places)
+						Text = $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1)}x {group.Key}",
+						Run = () => MoveAll(controller, moves, places)
 					});
 				}
 
@@ -203,7 +284,7 @@ namespace GetReady
 
 			foreach (var def in Defs.Where(def => def.IsQuota))
 			{
-				PlanQuota(controller, def, carried.Concat(claimed).ToList(), stash, lines);
+				PlanQuota(controller, def, carried.Concat(Steps.Bringing).ToList(), stash, lines);
 			}
 
 			return lines;
@@ -219,7 +300,7 @@ namespace GetReady
 				return;
 			}
 
-			var groups = Defs.Where(def => !def.IsQuota).ToList();
+			var groups = Defs.Where(def => !def.IsQuota && !def.Stack).ToList();
 			var all = new HashSet<string>(groups.SelectMany(def => def.Entries.Select(entry => entry.Template)));
 			int need = setting.Target - carried.Count(item => all.Contains(item.TemplateId.ToString()));
 			lines.Add(Steps.Info($"{quotaDef.Name}: {setting.Target - Math.Max(need, 0)}/{setting.Target} carried"));
@@ -256,7 +337,7 @@ namespace GetReady
 			foreach (var group in picked.GroupBy(item => Game.NameOf(item)))
 			{
 				var items = group.ToList();
-				lines.Add(new PlanLine { Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items, places) });
+				lines.Add(new PlanLine { Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items.Select(item => new KeyValuePair<Item, int>(item, 0)).ToList(), places) });
 			}
 
 			if (need > 0)
@@ -265,11 +346,11 @@ namespace GetReady
 			}
 		}
 
-		private static async Task<string> MoveAll(InventoryController controller, List<Item> items, List<string> places)
+		private static async Task<string> MoveAll(InventoryController controller, List<KeyValuePair<Item, int>> moves, List<string> places)
 		{
-			foreach (var item in items)
+			foreach (var move in moves)
 			{
-				var error = await Game.MoveTo(controller, item, places);
+				var error = await Game.MoveTo(controller, move.Key, places, move.Value);
 				if (error != null)
 				{
 					return error;
@@ -428,7 +509,7 @@ namespace GetReady
 		{
 			new GroupDef
 			{
-				Id = "health", Name = "Healing kits", Unit = "HP", DefaultTarget = 300, Max = 2000, Step = 50,
+				Under = Game.UnderMedikit, Match = Game.IsHealingKit, Id = "health", Name = "Healing kits", Unit = "HP", DefaultTarget = 300, Max = 2000, Step = 50,
 				Entries = new[]
 				{
 					Entry.Resource("60098ad7c2240c0fe85c570a"), // AFAK
@@ -440,7 +521,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Id = "bandage", Name = "Bandages", Unit = "bandage points", DefaultTarget = 2, Max = 20,
+				Under = Game.UnderMedicalItem, Match = Game.IsBandage, Id = "bandage", Name = "Bandages", Unit = "bandage points", DefaultTarget = 2, Max = 20,
 				Entries = new[]
 				{
 					Entry.Resource("5751a25924597722c463c472"), // Army bandage: its remaining uses (2 new)
@@ -449,7 +530,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Id = "heavybleed", Name = "Heavy bleed", Unit = "tourniquet points", DefaultTarget = 2, Max = 20,
+				Under = Game.UnderMedicalItem, Match = Game.IsTourniquet, Id = "heavybleed", Name = "Heavy bleed", Unit = "tourniquet points", DefaultTarget = 2, Max = 20,
 				Entries = new[]
 				{
 					Entry.Resource("5e8488fa988a8701445df1e4"), // CALOK-B: its remaining uses (3 new)
@@ -459,7 +540,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Id = "splint", Name = "Splints", Unit = "splint uses", DefaultTarget = 5, Max = 50, Step = 5,
+				Under = Game.UnderMedicalItem, Match = Game.IsSplint, Id = "splint", Name = "Splints", Unit = "splint uses", DefaultTarget = 5, Max = 50, Step = 5,
 				DefaultDestinations = new[] { "Vest", "Pouch" },
 				Entries = new[]
 				{
@@ -470,7 +551,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 3,
+				Under = Game.UnderMedicalItem, Match = Game.IsSurgeryKit, Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 3,
 				Entries = new[]
 				{
 					Entry.Resource("5d02778e86f774203e7dedbe"), // CMS: 3 uses
@@ -489,12 +570,12 @@ namespace GetReady
 
 	internal class GrenadesStep : SuppliesStep
 	{
-		public override string Name => "Grenades";
+		public override string Name => "Grenades and flares";
 		public override bool Enabled { get => SettingsStore.Current.Supplies.GrenadesEnabled; set => SettingsStore.Current.Supplies.GrenadesEnabled = value; }
 
 		private static GroupDef Grenade(string id, string name, bool impact, params string[] templates) => new GroupDef
 		{
-			Id = id, Name = name, Unit = name, Impact = impact, AllowPouch = false, Random = templates.Length > 1, DefaultTarget = 0,
+			Id = id, Name = name, Unit = "grenades", Impact = impact, AllowPouch = false, Random = templates.Length > 1, DefaultTarget = 0,
 			Entries = templates.Select(Entry.Count).ToArray()
 		};
 
@@ -505,6 +586,22 @@ namespace GetReady
 			Grenade("f1", "F-1", false, "5710c24ad2720bc3458b45a3"),
 			Grenade("vog", "VOG-17/25", false, "5e32f56fcb6d5863cc5e5ee4", "5e340dcdcb6d5863cc5e5efb"),
 			Grenade("impact", "Impact RGN/RGO", true, "617fd91e5539a84ec44ce155", "618a431df1eb8e24b8741deb"),
+			new GroupDef
+			{
+				Id = "flares", Name = "Signal flares", Unit = "flares", Stack = true, DefaultTarget = 0, Max = 60,
+				DefaultDestinations = new[] { "Special slots", "Pockets" },
+				DefaultOff = new[] { "624c09cfbc2e27219346d955", "624c09da2cec124eb67c1046", "624c09e49b98e019a3315b66", "66d97834d2985e11480d5c1e", "66d9f3047b82b9a9aa055d81", "675ea4891b2579e8fe0250aa" },
+				Entries = new[]
+				{
+					Entry.Stack("624c0570c9b794431568f5d5"), // green
+					Entry.Stack("624c09cfbc2e27219346d955"), // red
+					Entry.Stack("624c09da2cec124eb67c1046"), // white
+					Entry.Stack("624c09e49b98e019a3315b66"), // yellow
+					Entry.Stack("66d97834d2985e11480d5c1e"), // blue
+					Entry.Stack("66d9f3047b82b9a9aa055d81"), // special yellow
+					Entry.Stack("675ea4891b2579e8fe0250aa")  // new year
+				}
+			},
 			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, AllowPouch = false, DefaultTarget = 2 }
 		};
 
