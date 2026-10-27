@@ -67,6 +67,7 @@ namespace GetReady
 			else if (_moved > 0 || _keys > 0)
 			{
 				Play(EUISoundType.QuestStarted);
+				ReadyFlash.Show();
 			}
 			if (problems.Count > 0)
 			{

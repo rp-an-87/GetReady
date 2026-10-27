@@ -59,10 +59,26 @@ namespace GetReady
 
 		internal static List<Item> Stash(Inventory inventory) => inventory.GetPlayerItems(EPlayerItems.Stash).ToList();
 
-		// Stash items of a template, best first: non-FiR before FiR (the FiR ones are worth more kept), then the fullest resource
+		// 1 when the item sits inside a container of the stash (a case, a bag), 0 when it lies loose on the stash grid. Sorted
+		// first, so what lies loose is always taken before anything inside a container.
+		internal static int InContainer(Item item)
+		{
+			var parent = item.Parent?.Container?.ParentItem;
+			return parent != null && parent != Controller()?.Inventory?.Stash ? 1 : 0;
+		}
+
+		// The two places in a sort for "loose before in a container": after FiR when NonFiRBeforeLoose is on (a tie-breaker), before it when off
+		internal static int LooseBeforeFiR(Item item) => SettingsStore.Current.Supplies.NonFiRBeforeLoose ? 0 : InContainer(item);
+
+		internal static int LooseAfterFiR(Item item) => SettingsStore.Current.Supplies.NonFiRBeforeLoose ? InContainer(item) : 0;
+
+		// Stash items of a template, best first: loose on the stash before in a container, then non-FiR before FiR (the FiR ones are
+		// worth more kept), then the fullest resource (the order of the first two can be switched in the settings)
 		internal static IEnumerable<Item> Candidates(IEnumerable<Item> stash, string template) =>
 			stash.Where(item => item.TemplateId.ToString() == template && item.PinLockState != EItemPinLockState.Locked)
-				.OrderBy(item => item.SpawnedInSession)
+				.OrderBy(LooseBeforeFiR)
+				.ThenBy(item => item.SpawnedInSession)
+				.ThenBy(LooseAfterFiR)
 				.ThenByDescending(ResourceOf);
 
 		internal static float ResourceOf(Item item) => item.GetItemComponent<MedKitComponent>()?.HpResource ?? 0f;

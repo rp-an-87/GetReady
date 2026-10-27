@@ -197,7 +197,9 @@ namespace GetReady
 				.Where(def => !def.Impact)
 				.Select(def => new Queue<Item>(available
 					.Where(item => def.ActiveEntries().Any(entry => entry.Template == item.TemplateId.ToString()))
-					.OrderBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
+					.OrderBy(Game.LooseBeforeFiR)
+					.ThenBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
+					.ThenBy(Game.LooseAfterFiR)
 					.ThenBy(_ => Guid.NewGuid())))
 				.Where(pile => pile.Count > 0)
 				.ToList();

@@ -75,11 +75,22 @@ namespace GetReady
 		public bool SwapWorse = true;
 		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
 		public bool AllowOvershoot = true;
+		// Non-FiR copies of an item go before FiR ones, even when the non-FiR one is in a container and the FiR one lies loose. Between
+		// equals the loose one always goes first. Off: loose before in a container, whatever FiR is.
+		public bool NonFiRBeforeLoose = true;
 		public Dictionary<string, GroupSetting> Groups = new Dictionary<string, GroupSetting>();
+	}
+
+	// The rules for loading ammo into magazines, shared by the T key and the Get ready ammo step
+	internal class AmmoSettings
+	{
+		// The share of a magazine (of its capacity, rounded up) that is the highest-penetration ammo, loaded last so it is fired first (0: off)
+		public int BestOnTopPercent;
 	}
 
 	internal class Settings
 	{
+		public AmmoSettings Ammo = new AmmoSettings();
 		public SuppliesSettings Supplies = new SuppliesSettings();
 		public InjectorCaseTemplate InjectorCase = new InjectorCaseTemplate();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();

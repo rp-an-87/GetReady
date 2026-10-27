@@ -238,15 +238,17 @@ namespace GetReady
 			return Array.FindIndex(ActiveEntries(), entry => entry.Template == template);
 		}
 
-		// The group's items among these, in priority order; within one template, non-FiR first, then the smallest stack or the
-		// fullest resource
+		// The group's items among these, in priority order; within one template, loose on the stash before in a container, then
+		// non-FiR first, then the smallest stack or the fullest resource
 		public IEnumerable<Item> Candidates(List<Item> items)
 		{
 			foreach (var entry in Random ? ActiveEntries().OrderBy(_ => Guid.NewGuid()) : ActiveEntries().AsEnumerable())
 			{
 				foreach (var item in items
 					.Where(item => item.TemplateId.ToString() == entry.Template)
-					.OrderBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
+					.OrderBy(Game.LooseBeforeFiR)
+					.ThenBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
+					.ThenBy(Game.LooseAfterFiR)
 					.ThenBy(item => Stack ? item.StackObjectsCount : 0)
 					.ThenByDescending(Game.ResourceOf))
 				{

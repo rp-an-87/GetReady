@@ -305,11 +305,37 @@ namespace GetReady
 			GUILayout.Box(GUIContent.none, Ui.Divider);
 			bool swap = OptionRow(supplies.SwapWorse, "Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one");
 			bool overshoot = OptionRow(supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway");
+			bool nonFir = OptionRow(supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is");
 			GUILayout.EndVertical();
-			if (swap != supplies.SwapWorse || overshoot != supplies.AllowOvershoot)
+
+			// The magazine rules, used by the T key and the ammo step alike
+			var ammo = SettingsStore.Current.Ammo;
+			GUILayout.BeginVertical(Ui.Section);
+			GUILayout.Label("Magazine top-up (the T key too)", Ui.SectionTitle);
+			GUILayout.Box(GUIContent.none, Ui.Divider);
+			GUILayout.BeginHorizontal();
+			GUILayout.Label(new GUIContent("Best ammo on top: share of the magazine that is the highest-penetration ammo, loaded last so it fires first", "0 is off. A share of the magazine's size, rounded up (20% of 30 rounds is 6, of 5 rounds is 1). Only fills free space: rounds already in a magazine are never swapped, and it isn't used when the magazine's own ammo is already the best."), Ui.Body);
+			GUILayout.FlexibleSpace();
+			if (GUILayout.Button("-", Ui.Small) && ammo.BestOnTopPercent > 0)
+			{
+				ammo.BestOnTopPercent = Math.Max(0, ammo.BestOnTopPercent - 5);
+				changed = true;
+			}
+
+			GUILayout.Label(ammo.BestOnTopPercent == 0 ? "off" : ammo.BestOnTopPercent + "%", ammo.BestOnTopPercent == 0 ? Ui.Muted : Ui.Centered, GUILayout.Width(50));
+			if (GUILayout.Button("+", Ui.Small) && ammo.BestOnTopPercent < 100)
+			{
+				ammo.BestOnTopPercent = Math.Min(100, ammo.BestOnTopPercent + 5);
+				changed = true;
+			}
+
+			GUILayout.EndHorizontal();
+			GUILayout.EndVertical();
+			if (swap != supplies.SwapWorse || overshoot != supplies.AllowOvershoot || nonFir != supplies.NonFiRBeforeLoose)
 			{
 				supplies.SwapWorse = swap;
 				supplies.AllowOvershoot = overshoot;
+				supplies.NonFiRBeforeLoose = nonFir;
 				changed = true;
 			}
 
