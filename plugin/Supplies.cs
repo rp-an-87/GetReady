@@ -28,6 +28,7 @@ namespace GetReady
 		public bool Random; // the entries are equal: whichever the stash has, picked at random
 		public bool Impact; // left out of the grenade quota's random picks
 		public bool IsQuota; // total grenades: topped up with random ones after the groups
+		public bool AllowPouch = true; // the secured container can hold it (not grenades)
 		public int DefaultTarget;
 		public int Max = 10;
 		public int Step = 1;
@@ -53,6 +54,7 @@ namespace GetReady
 		}
 
 		// Where each group can go: first the places in the list with room win. "Vest" is the tactical vest or an armored rig.
+		// "Pouch" is the secured container
 		internal static readonly string[][] DestinationPresets =
 		{
 			new[] { "Pockets", "Vest" },
@@ -60,6 +62,11 @@ namespace GetReady
 			new[] { "Pockets" },
 			new[] { "Vest" },
 			new[] { "Backpack" },
+			new[] { "Pouch" },
+			new[] { "Pockets", "Pouch" },
+			new[] { "Vest", "Pouch" },
+			new[] { "Pockets", "Vest", "Pouch" },
+			new[] { "Pockets", "Vest", "Backpack" },
 		};
 
 		internal static GroupSetting Setting(GroupDef def)
@@ -77,10 +84,11 @@ namespace GetReady
 
 		internal static string DestinationLabel(GroupSetting setting) => string.Join(" > ", setting.Destinations.ToArray());
 
-		internal static void NextDestination(GroupSetting setting)
+		internal static void NextDestination(GroupSetting setting, GroupDef def)
 		{
-			int index = Array.FindIndex(DestinationPresets, preset => preset.SequenceEqual(setting.Destinations));
-			setting.Destinations = DestinationPresets[(index + 1) % DestinationPresets.Length].ToList();
+			var presets = DestinationPresets.Where(preset => def.AllowPouch || !preset.Contains("Pouch")).ToArray();
+			int index = Array.FindIndex(presets, preset => preset.SequenceEqual(setting.Destinations));
+			setting.Destinations = presets[(index + 1) % presets.Length].ToList();
 		}
 
 		private static List<CompoundItem> Containers(Inventory inventory, IEnumerable<string> names)
@@ -92,6 +100,10 @@ namespace GetReady
 				{
 					slots.Add(EquipmentSlot.TacticalVest);
 					slots.Add(EquipmentSlot.ArmorVest);
+				}
+				else if (name == "Pouch")
+				{
+					slots.Add(EquipmentSlot.SecuredContainer);
 				}
 				else
 				{
@@ -106,7 +118,9 @@ namespace GetReady
 		{
 			var inventory = controller.Inventory;
 			var settings = SettingsStore.Current.Supplies;
-			var carried = Game.Carried(inventory).ToList();
+			var carried = Game.CarriedAndSecured(inventory).ToList();
+			var owned = new HashSet<Item>(Steps.Owned);
+			var leaving = Steps.Leaving.ToList();
 			var claimed = Steps.Claimed.ToList();
 			var stash = Game.Stash(inventory).Where(item => !claimed.Contains(item)).ToList();
 			var lines = new List<PlanLine>();
@@ -121,11 +135,13 @@ namespace GetReady
 
 				var targets = Containers(inventory, setting.Destinations);
 				float alreadyBringing = claimed.Sum(item => WeightOf(def, item));
-				lines.Add(Steps.Info($"{def.Name}: {carried.Sum(item => WeightOf(def, item)) + alreadyBringing:0}/{setting.Target} {def.Unit} carried"));
+				float leavingWeight = leaving.Sum(item => WeightOf(def, item));
+				float fixedWeight = owned.Sum(item => WeightOf(def, item)) - leavingWeight;
+				lines.Add(Steps.Info($"{def.Name}: {carried.Sum(item => WeightOf(def, item)) - leavingWeight + alreadyBringing:0}/{setting.Target} {def.Unit} carried"));
 
 				if (settings.SwapWorse)
 				{
-					foreach (var swap in PlanSwaps(def, setting.Target, carried, stash))
+					foreach (var swap in PlanSwaps(def, setting.Target, carried, stash, owned, fixedWeight))
 					{
 						var worse = swap.Key;
 						var better = swap.Value;
@@ -137,7 +153,7 @@ namespace GetReady
 					}
 				}
 
-				float need = setting.Target - carried.Sum(item => WeightOf(def, item)) - alreadyBringing;
+				float need = setting.Target - carried.Sum(item => WeightOf(def, item)) + leavingWeight - alreadyBringing;
 				var brought = new List<Item>();
 				foreach (var item in Candidates(stash, def))
 				{
@@ -272,7 +288,9 @@ namespace GetReady
 		// carried items are taken until the target is met, and anything beyond that is a spare that is left alone. A swap must
 		// not lower the total of the needed items (or the target). Works on copies of the lists, which end up as they will
 		// look after the swaps.
-		private static List<KeyValuePair<Item, Item>> PlanSwaps(GroupDef def, int target, List<Item> carried, List<Item> stash)
+		// Items in owned are managed by another step (the special slots template) and are never swapped here; fixedWeight is
+		// what they count for.
+		private static List<KeyValuePair<Item, Item>> PlanSwaps(GroupDef def, int target, List<Item> carried, List<Item> stash, ICollection<Item> owned, float fixedWeight)
 		{
 			var swaps = new List<KeyValuePair<Item, Item>>();
 			var handled = new HashSet<string>();
@@ -280,8 +298,8 @@ namespace GetReady
 			for (int guard = 0; guard < 20; guard++)
 			{
 				var needed = new List<Item>();
-				float total = 0f;
-				foreach (var item in carried.Where(item => WeightOf(def, item) > 0).OrderBy(item => PriorityOf(def, item)).ThenByDescending(Game.ResourceOf))
+				float total = fixedWeight;
+				foreach (var item in carried.Where(item => WeightOf(def, item) > 0 && !owned.Contains(item)).OrderBy(item => PriorityOf(def, item)).ThenByDescending(Game.ResourceOf))
 				{
 					if (total >= target)
 					{
@@ -428,6 +446,26 @@ namespace GetReady
 			},
 			new GroupDef
 			{
+				Id = "splint", Name = "Splints", Unit = "splint uses", DefaultTarget = 5, Max = 50, Step = 5,
+				DefaultDestinations = new[] { "Vest", "Pouch" },
+				Entries = new[]
+				{
+					Entry.Resource("5af0454c86f7746bf20992e8"), // Aluminum splint: 5 uses
+					Entry.Resource("6937ecf8628ee476240c07cb"), // Tigz'Resq splint (WTT Content Backport)
+					Entry.Points("544fb3364bdc2d34748b456a", 1f) // Immobilizing splint
+				}
+			},
+			new GroupDef
+			{
+				Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 3,
+				Entries = new[]
+				{
+					Entry.Resource("5d02778e86f774203e7dedbe"), // CMS: 3 uses
+					Entry.Resource("5d02797c86f774203f38e30a")  // Surv12: 9 uses
+				}
+			},
+			new GroupDef
+			{
 				Id = "propital", Name = "Propital", Unit = "Propital", DefaultTarget = 1,
 				Entries = new[] { Entry.Count("5c0e530286f7747fa1419862") }
 			}
@@ -443,7 +481,7 @@ namespace GetReady
 
 		private static GroupDef Grenade(string id, string name, bool impact, params string[] templates) => new GroupDef
 		{
-			Id = id, Name = name, Unit = name, Impact = impact, Random = templates.Length > 1, DefaultTarget = 0,
+			Id = id, Name = name, Unit = name, Impact = impact, AllowPouch = false, Random = templates.Length > 1, DefaultTarget = 0,
 			Entries = templates.Select(Entry.Count).ToArray()
 		};
 
@@ -454,7 +492,7 @@ namespace GetReady
 			Grenade("f1", "F-1", false, "5710c24ad2720bc3458b45a3"),
 			Grenade("vog", "VOG-17/25", false, "5e32f56fcb6d5863cc5e5ee4", "5e340dcdcb6d5863cc5e5efb"),
 			Grenade("impact", "Impact RGN/RGO", true, "617fd91e5539a84ec44ce155", "618a431df1eb8e24b8741deb"),
-			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, DefaultTarget = 2 }
+			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, AllowPouch = false, DefaultTarget = 2 }
 		};
 
 		protected override GroupDef[] Defs => Definitions;

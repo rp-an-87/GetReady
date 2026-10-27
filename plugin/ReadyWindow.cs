@@ -140,7 +140,7 @@ namespace GetReady
 				return;
 			}
 
-			Steps.Claimed.Clear();
+			Steps.NewPass();
 			foreach (var step in Steps.All.Where(step => step.Enabled))
 			{
 				try
@@ -299,7 +299,7 @@ namespace GetReady
 
 			if (GUILayout.Button(new GUIContent(SuppliesStep.DestinationLabel(setting), "Where it goes, first with room first. Click to change."), Ui.Button))
 			{
-				SuppliesStep.NextDestination(setting);
+				SuppliesStep.NextDestination(setting, def);
 				changed = true;
 			}
 

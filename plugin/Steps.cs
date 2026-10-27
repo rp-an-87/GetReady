@@ -55,6 +55,18 @@ namespace GetReady
 		// (a Propital for the injector case also counts for the Propital supply). Cleared before every planning pass.
 		internal static readonly List<Item> Claimed = new List<Item>();
 
+		// Items already in a special slot of the template (managed by that step, so the supplies leave them alone but count
+		// them) and the ones it is about to swap out (which stop counting)
+		internal static readonly List<Item> Owned = new List<Item>();
+		internal static readonly List<Item> Leaving = new List<Item>();
+
+		internal static void NewPass()
+		{
+			Claimed.Clear();
+			Owned.Clear();
+			Leaving.Clear();
+		}
+
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
 
@@ -201,6 +213,11 @@ namespace GetReady
 				var held = slot.ContainedItem;
 				if (held != null)
 				{
+					if (entry.Templates.Any(t => t.Template == held.TemplateId.ToString()))
+					{
+						Steps.Owned.Add(held);
+					}
+
 					if (!entry.Templates.Any(t => t.Template == held.TemplateId.ToString()))
 					{
 						others.Add(Steps.Problem($"{slotName}: holds {Game.NameOf(held)}, expected {wanted}."));
@@ -225,6 +242,7 @@ namespace GetReady
 						{
 							taken.Add(fuller);
 							Steps.Claimed.Add(fuller);
+							Steps.Leaving.Add(held);
 							var better = fuller;
 							var target = slot;
 							others.Add(new PlanLine
