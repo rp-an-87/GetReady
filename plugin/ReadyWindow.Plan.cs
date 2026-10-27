@@ -1,0 +1,189 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Comfort.Common;
+using EFT.Communications;
+using EFT.UI;
+using EFT.InventoryLogic;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+namespace GetReady
+{
+	// The plan: what each step found, kept up to date while the stash is up, with the counts the button and the pages show.
+	internal static partial class ReadyWindow
+	{
+		private static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
+
+		private static string _status = "";
+
+		// The plan is read again shortly after the inventory changes (an item moved in the stash, say)
+		private static InventoryController _watched;
+
+		private static bool _dirty;
+
+		private static float _dirtyAt;
+
+		private static void Watch(InventoryController controller)
+		{
+			if (_watched == controller)
+			{
+				return;
+			}
+
+			if (_watched != null)
+			{
+				_watched.AddItemEvent -= OnItemAdded;
+				_watched.RemoveItemEvent -= OnItemRemoved;
+			}
+
+			_watched = controller;
+			if (controller != null)
+			{
+				controller.AddItemEvent += OnItemAdded;
+				controller.RemoveItemEvent += OnItemRemoved;
+			}
+		}
+
+		private static void OnItemAdded(AddItemEventArgs args) => MarkDirty();
+
+		private static void OnItemRemoved(RemoveItemEventArgs args) => MarkDirty();
+
+		private static void MarkDirty()
+		{
+			_dirty = true;
+			_dirtyAt = Time.unscaledTime;
+		}
+
+		private static bool _loggedFirst;
+
+		private static void Refresh()
+		{
+			Plan.Clear();
+			_dirty = false;
+			var controller = Game.Controller();
+			Watch(controller);
+			if (controller == null)
+			{
+				_status = "No stash here: open this in the hideout or the main menu.";
+				ReadyButtonPatch.SetBadge(0, 0);
+				return;
+			}
+
+			Steps.NewPass();
+			if (!_loggedFirst)
+			{
+				Plugin.Log.LogInfo("Indexing the inventory");
+			}
+
+			Icons.Index(controller);
+			foreach (var step in Steps.All.Where(step => step.Enabled))
+			{
+				if (!_loggedFirst)
+				{
+					Plugin.Log.LogInfo($"Planning {step.Name}");
+				}
+
+				try
+				{
+					Plan.Add(new KeyValuePair<IStep, List<PlanLine>>(step, step.Plan(controller)));
+				}
+				catch (Exception e)
+				{
+					Plugin.Log.LogError($"Plan of {step.Name} failed: {e}");
+					Plan.Add(new KeyValuePair<IStep, List<PlanLine>>(step, new List<PlanLine> { Steps.Problem("Could not read the inventory, see the log.") }));
+				}
+			}
+
+			_loggedFirst = true;
+			UpdateBadge();
+		}
+
+		// The count on the stash button, and the text of its tooltip
+		private static void UpdateBadge()
+		{
+			int toBring, withProblems;
+			Tally(out toBring, out withProblems);
+			ReadyButtonPatch.SetBadge(withProblems, toBring);
+		}
+
+		// How many groups (a supply, a template: a card of the Ready page) have something to bring, and how many have a problem.
+		// It counts groups, not items: "bring 3 grenades" is one thing to get ready, not one per grenade type.
+		private static void Tally(out int toBring, out int withProblems)
+		{
+			toBring = 0;
+			withProblems = 0;
+			foreach (var entry in Plan)
+			{
+				bool run = false, problem = false, open = false;
+				foreach (var line in entry.Value)
+				{
+					if (line.IsProgress)
+					{
+						if (open)
+						{
+							toBring += run ? 1 : 0;
+							withProblems += problem ? 1 : 0;
+						}
+
+						open = true;
+						run = false;
+						problem = false;
+						continue;
+					}
+
+					if (!open)
+					{
+						toBring += line.Run != null ? 1 : 0;
+						withProblems += line.Problem ? 1 : 0;
+						continue;
+					}
+
+					run |= line.Run != null;
+					problem |= line.Problem;
+				}
+
+				if (open)
+				{
+					toBring += run ? 1 : 0;
+					withProblems += problem ? 1 : 0;
+				}
+			}
+		}
+
+		internal static string Summary()
+		{
+			int moves, problemGroups;
+			Tally(out moves, out problemGroups);
+			var problems = Problems();
+			var text = new System.Text.StringBuilder("Get ready for raid\nClick: bring what is missing. Ctrl+click: open the window.");
+			if (moves == 0 && problemGroups == 0)
+			{
+				text.Append("\n\nYou are all set.");
+			}
+
+			if (moves > 0)
+			{
+				text.Append($"\n\n{moves} to bring from the stash");
+			}
+
+			foreach (var problem in problems.Take(6))
+			{
+				text.Append($"\n! {problem.Value.Subject ?? problem.Value.Text}" + (problem.Value.Detail != null ? ": " + problem.Value.Detail : ""));
+			}
+
+			return text.ToString();
+		}
+
+		// Redraw with a fresh plan on the next frame (never in the middle of drawing)
+		private static void RefreshSoon()
+		{
+			_dirty = true;
+			_dirtyAt = 0f;
+		}
+
+		// What is wrong right now, one line each: the problems of every step in the plan
+		private static List<KeyValuePair<string, PlanLine>> Problems() =>
+			Plan.SelectMany(entry => entry.Value.Where(line => line.Problem).Select(line => new KeyValuePair<string, PlanLine>(entry.Key.Name, line))).ToList();
+	}
+}
