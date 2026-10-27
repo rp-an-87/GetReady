@@ -16,7 +16,7 @@ namespace GetReady
 		internal static readonly Color Bad = new Color(1f, 0.4f, 0.36f);
 
 		internal static GUIStyle Window, Section, Group, Inner, Divider, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
-			Button, Small, Primary, Pick, PickOn, SwitchOn, SwitchOff, Centered,
+			Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, Centered,
 			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, Alert;
 
 		internal static Font Font;
@@ -131,6 +131,9 @@ namespace GetReady
 			Alert = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(24, 24, 20, 20) }, new Color(0.15f, 0.05f, 0.05f, 0.99f), Bad, 3);
 			ProblemBox = Panel(new Color(0.25f, 0.15f, 0.07f), new Color(0.55f, 0.33f, 0.12f), 1, new RectOffset(8, 8, 4, 4), new RectOffset(0, 0, 2, 2));
 
+			OkCard = Panel(new Color(0.12f, 0.22f, 0.13f), new Color(0.35f, 0.6f, 0.38f), 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
+			TodoCard = Panel(new Color(0.22f, 0.2f, 0.12f), Sand, 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
+
 			Title = Label(21, Heading, FontStyle.Bold);
 			SectionTitle = Label(16, Heading, FontStyle.Bold);
 			Name = Label(15, Heading, FontStyle.Bold);
@@ -147,6 +150,8 @@ namespace GetReady
 			var down = new Color(0.14f, 0.15f, 0.15f);
 			Button = Press(new GUIStyle(GUI.skin.button) { fontSize = 14, padding = new RectOffset(12, 12, 6, 6), margin = new RectOffset(2, 2, 3, 3) }, fill, hover, down, new Color(0.38f, 0.39f, 0.37f), Text);
 			Small = Press(new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 2, 3), fixedWidth = 28, fixedHeight = 26, margin = new RectOffset(2, 2, 2, 2) }, fill, hover, down, new Color(0.38f, 0.39f, 0.37f), Heading);
+			Tab = Press(new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(22, 22, 5, 6), margin = new RectOffset(0, 4, 0, 0), fixedHeight = 32 }, new Color(0.13f, 0.135f, 0.135f), hover, down, new Color(0.3f, 0.31f, 0.3f), Dim);
+			TabOn = Press(new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(22, 22, 5, 6), margin = new RectOffset(0, 4, 0, 0), fixedHeight = 32 }, new Color(0.25f, 0.23f, 0.15f), new Color(0.31f, 0.29f, 0.19f), new Color(0.2f, 0.18f, 0.11f), Sand, new Color(0.95f, 0.9f, 0.72f));
 			Primary = Press(new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold, padding = new RectOffset(26, 26, 9, 9), margin = new RectOffset(2, 2, 3, 3) }, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), new Color(0.18f, 0.28f, 0.14f), new Color(0.5f, 0.62f, 0.38f), Color.white);
 			Pick = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, padding = new RectOffset(8, 8, 3, 4), margin = new RectOffset(2, 2, 2, 2), fixedHeight = 26 }, new Color(0.15f, 0.155f, 0.155f), hover, down, new Color(0.3f, 0.31f, 0.3f), Dim);
 			PickOn = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, fontStyle = FontStyle.Bold, padding = new RectOffset(8, 8, 3, 4), margin = new RectOffset(2, 2, 2, 2), fixedHeight = 26 }, new Color(0.25f, 0.23f, 0.15f), new Color(0.31f, 0.29f, 0.19f), new Color(0.2f, 0.18f, 0.11f), Sand, new Color(0.95f, 0.9f, 0.72f));
@@ -161,7 +166,7 @@ namespace GetReady
 			if (Font != null)
 			{
 				foreach (var style in new[] { Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, Alert, AlertCard,
-					Button, Small, Primary, Pick, PickOn, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
+					Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
 				{
 					style.font = Font;
 				}

@@ -425,8 +425,6 @@ namespace GetReady
 
 		private static void PlanLines(List<PlanLine> lines)
 		{
-			GUILayout.Space(4);
-			GUILayout.Label("What will happen", Ui.Muted);
 			foreach (var line in lines)
 			{
 				if (line.Problem)
@@ -470,7 +468,6 @@ namespace GetReady
 		private static bool StepSection(IStep step, InventoryController controller)
 		{
 			bool changed = false;
-			var lines = Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
 			GUILayout.BeginVertical(Ui.Section);
 			GUILayout.BeginHorizontal();
 			if (GUILayout.Button(step.Enabled ? "ON" : "OFF", step.Enabled ? Ui.SwitchOn : Ui.SwitchOff))
@@ -480,8 +477,6 @@ namespace GetReady
 			}
 
 			GUILayout.Label(step.Name, Ui.SectionTitle);
-			GUILayout.FlexibleSpace();
-			Chip(step, lines);
 			GUILayout.EndHorizontal();
 
 			if (step.Enabled)
@@ -536,11 +531,6 @@ namespace GetReady
 					changed |= GroupRow(def);
 				}
 
-				// Only when there is something to do or to look at: a step that has all it needs shows nothing
-				if (lines != null && lines.Any(line => line.Run != null || line.Problem))
-				{
-					PlanLines(lines);
-				}
 			}
 
 			GUILayout.EndVertical();
@@ -557,37 +547,66 @@ namespace GetReady
 			return flip ? !value : value;
 		}
 
-		private static void Contents(int id)
+		// Which page is showing: 0 = Ready (what is missing and the button), 1 = Setup (what to bring and where)
+		private static int _tab;
+
+		// The Ready page: one line of status on top, then what each step found
+		private static void ReadyPage()
 		{
-			var controller = Game.Controller();
-			var supplies = SettingsStore.Current.Supplies;
-			bool changed = false;
-
-			GUILayout.BeginHorizontal();
-			GUILayout.Label("Get ready for raid", Ui.Title);
-			GUILayout.FlexibleSpace();
-			if (GUILayout.Button(new GUIContent("x", "Close"), Ui.Small))
-			{
-				_closeRequested = true;
-			}
-
-			GUILayout.EndHorizontal();
-			GUILayout.Label("Clicking the stash button does everything below at once. Ctrl+click opens this window.", Ui.Muted);
-			GUILayout.Box(GUIContent.none, Ui.Divider);
-
+			int moves = Plan.Sum(entry => entry.Value.Count(line => line.Run != null));
 			var problems = Problems();
-			if (problems.Count > 0)
+			if (Plan.Count == 0)
 			{
-				GUILayout.BeginVertical(Ui.AlertCard);
-				GUILayout.Label(problems.Count == 1 ? "1 thing needs attention" : $"{problems.Count} things need attention", Ui.Problem);
-				foreach (var text in problems)
+				GUILayout.BeginVertical(Ui.Section);
+				GUILayout.Label("Nothing is switched on. Turn something on in Setup.", Ui.Body);
+				GUILayout.EndVertical();
+			}
+			else if (moves == 0 && problems.Count == 0)
+			{
+				GUILayout.BeginVertical(Ui.OkCard);
+				GUILayout.Label("You are all set", Ui.SectionTitle);
+				GUILayout.Label("Everything you asked for is already on you.", Ui.Body);
+				GUILayout.EndVertical();
+			}
+			else
+			{
+				GUILayout.BeginVertical(problems.Count > 0 && moves == 0 ? Ui.AlertCard : Ui.TodoCard);
+				GUILayout.Label(moves > 0 ? (moves == 1 ? "1 thing to bring from the stash" : $"{moves} things to bring from the stash") : "Nothing to bring", Ui.SectionTitle);
+				if (problems.Count > 0)
 				{
-					GUILayout.Label("•  " + text, Ui.Body);
+					GUILayout.Label(problems.Count == 1 ? "1 thing needs your attention" : $"{problems.Count} things need your attention", Ui.Problem);
 				}
 
 				GUILayout.EndVertical();
 			}
 
+			_scroll = GUILayout.BeginScrollView(_scroll);
+			foreach (var step in Steps.All)
+			{
+				var lines = Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
+				GUILayout.BeginVertical(Ui.Section);
+				GUILayout.BeginHorizontal();
+				GUILayout.Label(step.Name, Ui.SectionTitle);
+				GUILayout.FlexibleSpace();
+				Chip(step, lines);
+				GUILayout.EndHorizontal();
+				if (step.Enabled && lines != null && lines.Count > 0)
+				{
+					GUILayout.Box(GUIContent.none, Ui.Divider);
+					PlanLines(lines);
+				}
+
+				GUILayout.EndVertical();
+			}
+
+			GUILayout.EndScrollView();
+		}
+
+		// The Setup page: what to bring and where, per step
+		private static bool SetupPage(InventoryController controller)
+		{
+			var supplies = SettingsStore.Current.Supplies;
+			bool changed = false;
 			_scroll = GUILayout.BeginScrollView(_scroll);
 			foreach (var step in Steps.All)
 			{
@@ -608,6 +627,47 @@ namespace GetReady
 			}
 
 			GUILayout.EndScrollView();
+			return changed;
+		}
+
+		private static void Contents(int id)
+		{
+			var controller = Game.Controller();
+			bool changed = false;
+
+			GUILayout.BeginHorizontal();
+			GUILayout.Label("Get ready for raid", Ui.Title);
+			GUILayout.FlexibleSpace();
+			if (GUILayout.Button(new GUIContent("x", "Close"), Ui.Small))
+			{
+				_closeRequested = true;
+			}
+
+			GUILayout.EndHorizontal();
+			GUILayout.Label("Clicking the stash button does everything on the Ready page at once. Ctrl+click opens this window.", Ui.Muted);
+			GUILayout.Space(4);
+			GUILayout.BeginHorizontal();
+			if (GUILayout.Button("Ready", _tab == 0 ? Ui.TabOn : Ui.Tab))
+			{
+				_tab = 0;
+			}
+
+			if (GUILayout.Button("Setup", _tab == 1 ? Ui.TabOn : Ui.Tab))
+			{
+				_tab = 1;
+			}
+
+			GUILayout.EndHorizontal();
+			GUILayout.Box(GUIContent.none, Ui.Divider);
+
+			if (_tab == 0)
+			{
+				ReadyPage();
+			}
+			else
+			{
+				changed = SetupPage(controller);
+			}
 
 			GUILayout.Box(GUIContent.none, Ui.Divider);
 			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip, Ui.Muted);
