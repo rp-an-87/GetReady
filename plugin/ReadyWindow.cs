@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using Comfort.Common;
-using EFT.Communications;
-using EFT.UI;
-using EFT.InventoryLogic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 

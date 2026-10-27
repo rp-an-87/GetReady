@@ -1,12 +1,6 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using Comfort.Common;
-using EFT.Communications;
-using EFT.UI;
-using EFT.InventoryLogic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace GetReady
 {
@@ -152,7 +146,7 @@ namespace GetReady
 			else
 			{
 				GUILayout.BeginVertical(problemGroups > 0 && moves == 0 ? Ui.AlertCard : Ui.TodoCard);
-				GUILayout.Label(moves > 0 ? (moves == 1 ? "1 thing to bring from the stash" : $"{moves} things to bring from the stash") : "Nothing to bring", Ui.SectionTitle);
+				GUILayout.Label(moves > 0 ? (moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil") : "Nothing to bring", Ui.SectionTitle);
 				if (problemGroups > 0)
 				{
 					GUILayout.Label(problemGroups == 1 ? "1 thing needs your attention" : $"{problemGroups} things need your attention", Ui.Problem);

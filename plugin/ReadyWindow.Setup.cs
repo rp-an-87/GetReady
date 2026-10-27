@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Comfort.Common;
-using EFT.Communications;
-using EFT.UI;
 using EFT.InventoryLogic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace GetReady
 {
@@ -22,8 +18,8 @@ namespace GetReady
 		// order you want them tried) and, opened with "Items", which items count and in what order
 		private static bool GroupRow(GroupDef def)
 		{
-			var setting = SuppliesStep.Setting(def);
-			var active = SuppliesStep.ActiveEntries(def);
+			var setting = def.Setting;
+			var active = def.ActiveEntries();
 			bool changed = false;
 			bool on = setting.Target > 0;
 
@@ -96,13 +92,8 @@ namespace GetReady
 				GUILayout.BeginHorizontal();
 				GUILayout.Label(new GUIContent("Goes to", def.NoFallback ? "The places you click are tried in order. Nothing else is used: if they are full or missing, you get a warning." : "The places you click are tried in order. If they are all full, the pockets, vest and backpack are tried after them."), Ui.Muted, GUILayout.Width(52));
 				int shownPlaces = 0;
-				foreach (var place in def.Locations ?? SuppliesStep.Locations)
+				foreach (var place in def.PickablePlaces)
 				{
-					if ((place == "Pouch" || place == "Special slots") && !def.AllowPouch)
-					{
-						continue;
-					}
-
 					// Five to a row
 					if (shownPlaces > 0 && shownPlaces % 5 == 0)
 					{
@@ -116,7 +107,7 @@ namespace GetReady
 					string label = rank >= 0 ? $"{rank + 1}. {PlaceLabel(place)}" : PlaceLabel(place);
 					if (GUILayout.Button(new GUIContent(label, "Click to use this place. They are tried in the order you click them; click again to drop one."), rank >= 0 ? Ui.PickOn : Ui.Pick, GUILayout.Width(90)))
 					{
-						SuppliesStep.ToggleDestination(setting, place);
+						setting.ToggleDestination(place);
 						changed = true;
 					}
 				}
@@ -128,7 +119,7 @@ namespace GetReady
 			{
 				GUILayout.BeginVertical(Ui.Inner);
 				GUILayout.Label(def.Random ? "Used, in any order" : "Used, best first", Ui.Muted);
-				var entries = SuppliesStep.OrderedEntries(def);
+				var entries = def.OrderedEntries();
 				for (int i = 0; i < entries.Count; i++)
 				{
 					var entry = entries[i];
@@ -140,14 +131,14 @@ namespace GetReady
 						GUI.enabled = i > 0;
 						if (GUILayout.Button("▲", Ui.Small))
 						{
-							SuppliesStep.Move(def, entry.Template, -1);
+							def.MoveEntry(entry.Template, -1);
 							changed = true;
 						}
 
 						GUI.enabled = i < entries.Count - 1;
 						if (GUILayout.Button("▼", Ui.Small))
 						{
-							SuppliesStep.Move(def, entry.Template, 1);
+							def.MoveEntry(entry.Template, 1);
 							changed = true;
 						}
 
@@ -157,7 +148,7 @@ namespace GetReady
 					GUILayout.Label(def.Random ? entry.Name : $"{i + 1}. {entry.Name}", off ? Ui.Muted : Ui.Body);
 					if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(90)))
 					{
-						SuppliesStep.ToggleItem(def, entry.Template);
+						def.ToggleEntry(entry.Template);
 						changed = true;
 					}
 

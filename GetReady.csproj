@@ -30,7 +30,7 @@
     <Reference Include="Sirenix.Serialization"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Sirenix.Serialization.dll</HintPath><Private>false</Private></Reference>
   </ItemGroup>
 
-  <Target Name="CopyToSPT" AfterTargets="Build" Condition="'$(SptDir)' != ''">
+  <Target Name="CopyToSPT" AfterTargets="Build" Condition="'$(SptDir)' != '' And '$(NoDeploy)' != 'true'">
     <!-- .orig = the first DLL ever replaced (never overwritten); .bak = the previous deploy. A loaded DLL can be renamed but not overwritten, so the old one is moved aside first. -->
     <MakeDir Directories="$(SptDir)\BepInEx\plugins\GetReady" />
     <Copy SourceFiles="$(SptDir)\BepInEx\plugins\GetReady\$(TargetFileName)" DestinationFiles="$(SptDir)\BepInEx\plugins\GetReady\$(TargetFileName).orig" Condition="Exists('$(SptDir)\BepInEx\plugins\GetReady\$(TargetFileName)') And !Exists('$(SptDir)\BepInEx\plugins\GetReady\$(TargetFileName).orig')" />

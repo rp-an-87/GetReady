@@ -1,12 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Comfort.Common;
-using EFT.Communications;
-using EFT.UI;
 using EFT.InventoryLogic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 namespace GetReady
 {
@@ -66,7 +62,7 @@ namespace GetReady
 			if (controller == null)
 			{
 				_status = "No stash here: open this in the hideout or the main menu.";
-				ReadyButtonPatch.SetBadge(0, 0);
+				StashBadge.Set(0, 0);
 				return;
 			}
 
@@ -104,7 +100,7 @@ namespace GetReady
 		{
 			int toBring, withProblems;
 			Tally(out toBring, out withProblems);
-			ReadyButtonPatch.SetBadge(withProblems, toBring);
+			StashBadge.Set(withProblems, toBring);
 		}
 
 		// How many groups (a supply, a template: a card of the Ready page) have something to bring, and how many have a problem.
@@ -164,7 +160,7 @@ namespace GetReady
 
 			if (moves > 0)
 			{
-				text.Append($"\n\n{moves} to bring from the stash");
+				text.Append(moves == 1 ? "\n\n1 thing to fulfil" : $"\n\n{moves} things to fulfil");
 			}
 
 			foreach (var problem in problems.Take(6))

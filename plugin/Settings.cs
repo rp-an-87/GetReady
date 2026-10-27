@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using BepInEx;
 using Newtonsoft.Json;
 
 namespace GetReady
@@ -52,6 +51,15 @@ namespace GetReady
 		// The group's items by template, best first (empty = the default order), and the ones switched off
 		public List<string> Order = new List<string>();
 		public List<string> Off = new List<string>();
+
+		// Adds the place to the end of the list, or takes it out (the last one stays)
+		public void ToggleDestination(string place)
+		{
+			if (!Destinations.Remove(place) || Destinations.Count == 0)
+			{
+				Destinations.Add(place);
+			}
+		}
 	}
 
 	internal class SuppliesSettings
