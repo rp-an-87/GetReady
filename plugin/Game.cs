@@ -136,6 +136,22 @@ namespace GetReady
 			return slots.Select(slot => EquippedContainer(inventory, slot)).Where(container => container != null).ToList();
 		}
 
+		// Waits up to a second for the item to show up on you (in a pocket, the vest, the backpack or the pouch)
+		internal static async Task<bool> WaitUntilCarried(InventoryController controller, Item item)
+		{
+			for (int i = 0; i < 20; i++)
+			{
+				if (CarriedAndSecured(controller.Inventory).Contains(item))
+				{
+					return true;
+				}
+
+				await Task.Delay(50);
+			}
+
+			return false;
+		}
+
 		// Inside an injector case, which the injector case template looks after
 		internal static bool InsideInjectorCase(Item item)
 		{

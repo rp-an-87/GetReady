@@ -364,10 +364,18 @@ namespace GetReady
 			foreach (var move in moves)
 			{
 				var error = await Game.MoveTo(controller, move.Key, places, move.Value);
+
+				// The game can accept a move and apply it a moment later: wait for it, and call it failed if it never shows up
+				if (error == null && move.Value == 0 && !await Game.WaitUntilCarried(controller, move.Key))
+				{
+					error = "the game accepted the move but the item is still in the stash";
+				}
+
 				if (error != null)
 				{
 					failed++;
 					last = error;
+					Plugin.Log.LogWarning($"Could not move {Game.NameOf(move.Key)} ({move.Key.Id}): {error}");
 				}
 			}
 
