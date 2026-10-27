@@ -128,6 +128,8 @@ namespace GetReady
 			}
 		}
 
+		private static bool _loggedFirst;
+
 		private static void Refresh()
 		{
 			Plan.Clear();
@@ -141,9 +143,19 @@ namespace GetReady
 			}
 
 			Steps.NewPass();
+			if (!_loggedFirst)
+			{
+				Plugin.Log.LogInfo("Indexing the inventory");
+			}
+
 			Icons.Index(controller);
 			foreach (var step in Steps.All.Where(step => step.Enabled))
 			{
+				if (!_loggedFirst)
+				{
+					Plugin.Log.LogInfo($"Planning {step.Name}");
+				}
+
 				try
 				{
 					Plan.Add(new KeyValuePair<IStep, List<PlanLine>>(step, step.Plan(controller)));
@@ -154,6 +166,8 @@ namespace GetReady
 					Plan.Add(new KeyValuePair<IStep, List<PlanLine>>(step, new List<PlanLine> { Steps.Problem("Could not read the inventory, see the log.") }));
 				}
 			}
+
+			_loggedFirst = true;
 		}
 
 		// Redraw with a fresh plan on the next frame (never in the middle of drawing)

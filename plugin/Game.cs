@@ -139,7 +139,8 @@ namespace GetReady
 		// Inside an injector case, which the injector case template looks after
 		internal static bool InsideInjectorCase(Item item)
 		{
-			for (var parent = item.Parent?.Container?.ParentItem; parent != null; parent = parent.Parent?.Container?.ParentItem)
+			var parent = item.Parent?.Container?.ParentItem;
+			for (int depth = 0; parent != null && depth < 12; depth++, parent = parent.Parent?.Container?.ParentItem)
 			{
 				if (parent.TemplateId.ToString() == InjectorCase)
 				{

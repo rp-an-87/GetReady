@@ -21,12 +21,14 @@ namespace GetReady
 		private static readonly Dictionary<string, ItemIcon> Loaded = new Dictionary<string, ItemIcon>();
 
 		private static InventoryController _controller;
+		private static float _lastGenerated;
 		private static readonly Dictionary<string, bool> Examined = new Dictionary<string, bool>();
 
 		// Whether the template is in the item tree below the parent
 		internal static bool IsUnder(ItemTemplate template, string parent)
 		{
-			for (var node = template; node != null; node = node.Parent)
+			var node = template;
+			for (int depth = 0; node != null && depth < 24; depth++, node = node.Parent)
 			{
 				if (node._id.ToString() == parent)
 				{
@@ -42,7 +44,7 @@ namespace GetReady
 		internal static Item ItemFor(string template)
 		{
 			Item item;
-			if (Known.TryGetValue(template, out item))
+			if (Known.TryGetValue(template, out item) || Made.TryGetValue(template, out item))
 			{
 				return item;
 			}
@@ -105,6 +107,17 @@ namespace GetReady
 				if (item == null)
 				{
 					return null;
+				}
+
+				// Icons of items you don't own are generated from the game's models: a few at a time, not all in one frame
+				if (!Known.ContainsKey(template))
+				{
+					if (Time.unscaledTime - _lastGenerated < 0.2f)
+					{
+						return null;
+					}
+
+					_lastGenerated = Time.unscaledTime;
 				}
 
 				try

@@ -63,6 +63,7 @@ namespace GetReady
 			}
 
 			_discovered = true;
+			var timer = System.Diagnostics.Stopwatch.StartNew();
 			try
 			{
 				var found = new List<string>();
@@ -88,6 +89,8 @@ namespace GetReady
 				var preferred = _entries.Select(entry => entry.Template).ToList();
 				var ordered = preferred.Where(found.Contains).Concat(found.Where(id => !preferred.Contains(id)).OrderBy(id => (id + " ShortName").Localized()));
 				_entries = ordered.Select(Entry.Auto).ToArray();
+
+				Plugin.Log.LogInfo($"{Id}: {_entries.Length} items found in {timer.ElapsedMilliseconds} ms");
 
 				// Two items with the same short name ("Bandage") are told apart by their full names
 				foreach (var group in _entries.GroupBy(entry => (entry.Template + " ShortName").Localized()).Where(group => group.Count() > 1))
