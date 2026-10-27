@@ -190,7 +190,7 @@ namespace GetReady
 
 				if (!planned || operation.Failed)
 				{
-					last = planned ? operation.Error.ToString() : "no room";
+					last = planned ? operation.Error.ToString() : $"no free spot in {container.ShortName.Localized()} ({container.Grids.Count()} grids)";
 					continue;
 				}
 
@@ -273,6 +273,12 @@ namespace GetReady
 					}
 
 					error = split ? await SplitToContainers(controller, item, count, containers) : await MoveToContainers(controller, item, containers);
+					if (error != null)
+					{
+						// The game's own "find a place" gave up on this container: look for a free spot in its grids ourselves
+						var direct = await MoveIntoCases(controller, item, split ? count : item.StackObjectsCount, containers);
+						error = direct == null ? null : $"{error}; looking in the grids: {direct}";
+					}
 				}
 
 				if (error == null)
