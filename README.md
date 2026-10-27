@@ -36,5 +36,6 @@ Magazine top-up and repair move here completely from CustomRpTweaks.Client (`Mag
 
 - **Magazine top-up**: top up magazines, reload equipped weapons, top up removed magazines. More configurable than now (which ammo, how full, where).
 - **Repair**: repair everything equipped, with a choice of repair kit or trader.
+- **Hotkey hints**: the tooltip block that lists the hotkeys of the hovered item lives in CustomRpTweaks.Client (`HotkeyHints`), which also shows UI Fixes' shortcuts through a soft dependency (`UiFixesHints`: it finds the plugin by GUID and reads its settings). Do the same for GetReady: Tweaks finds `RPAN87.GetReady` when it is loaded and shows its top-up and repair keys, read from GetReady's own settings, applying the same rules as the action (an item that can be topped up or repaired). Tweaks stays optional for GetReady and GetReady for Tweaks.
 - Don't remove anything from CustomRpTweaks.Client until GetReady does the same in raid, including the hotkey hints.
 - Later: emptying loot into the stash, MergeConsumables support (combine stacks instead of swapping), buying what is missing from the flea market.
