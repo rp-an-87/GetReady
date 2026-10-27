@@ -24,7 +24,7 @@ namespace GetReady
 		private static bool _running;
 
 		// What a quick run found wrong, shown in the middle of the screen until it is dismissed
-		private static readonly List<string> Alerts = new List<string>();
+		private static readonly List<KeyValuePair<string, PlanLine>> Alerts = new List<KeyValuePair<string, PlanLine>>();
 		private static Rect _alertRect;
 
 		// The plan is read again shortly after the inventory changes (an item moved in the stash, say)
@@ -73,8 +73,29 @@ namespace GetReady
 			}
 		}
 
+		private static void Close()
+		{
+			_open = false;
+			Watch(null);
+		}
+
 		internal static void Tick()
 		{
+			// Esc closes it (and the alert), and so does leaving the stash screen
+			if (Input.GetKeyDown(KeyCode.Escape))
+			{
+				Alerts.Clear();
+				if (_open)
+				{
+					Close();
+				}
+			}
+
+			if (_open && !ReadyButtonPatch.StashShown)
+			{
+				Close();
+			}
+
 			BlockGameInput();
 			if (_open && _dirty && !_running && Time.unscaledTime - _dirtyAt > 0.3f)
 			{
@@ -183,8 +204,8 @@ namespace GetReady
 		}
 
 		// What is wrong right now, one line each: the problems of every step in the plan
-		private static List<string> Problems() =>
-			Plan.SelectMany(entry => entry.Value.Where(line => line.Problem).Select(line => entry.Key is MissingResourceWarning ? line.Text : $"{entry.Key.Name}: {line.Text}")).ToList();
+		private static List<KeyValuePair<string, PlanLine>> Problems() =>
+			Plan.SelectMany(entry => entry.Value.Where(line => line.Problem).Select(line => new KeyValuePair<string, PlanLine>(entry.Key.Name, line))).ToList();
 
 		// The button's plain click: look at the gear, bring what is missing and say what happened, without the window
 		internal static async void QuickRun()
@@ -252,9 +273,30 @@ namespace GetReady
 		{
 			GUILayout.Label("Check this before you leave", Ui.AlertTitle);
 			GUILayout.Space(8);
-			foreach (var text in Alerts)
+			// Grouped by step, each problem with its item's icon, what it is about and what is wrong
+			foreach (var step in Alerts.GroupBy(pair => pair.Key))
 			{
-				GUILayout.Label("•  " + text, Ui.AlertText);
+				GUILayout.Label(step.Key, Ui.Name);
+				foreach (var pair in step)
+				{
+					GUILayout.BeginHorizontal();
+					if (!string.IsNullOrEmpty(pair.Value.Template))
+					{
+						Icons.Slot(pair.Value.Template, pair.Value.Subject ?? "", 46);
+					}
+
+					GUILayout.BeginVertical();
+					GUILayout.Label(pair.Value.Subject ?? pair.Value.Text, Ui.AlertText);
+					if (pair.Value.Detail != null)
+					{
+						GUILayout.Label(pair.Value.Detail, Ui.AlertDetail);
+					}
+
+					GUILayout.EndVertical();
+					GUILayout.EndHorizontal();
+					GUILayout.Space(6);
+				}
+
 				GUILayout.Space(4);
 			}
 
@@ -356,7 +398,7 @@ namespace GetReady
 			{
 				GUILayout.Space(2);
 				GUILayout.BeginHorizontal();
-				GUILayout.Label("Goes to", Ui.Muted, GUILayout.Width(52));
+				GUILayout.Label(new GUIContent("Goes to", "The places you click are tried in order. If they are all full, the pockets, vest and backpack are tried after them."), Ui.Muted, GUILayout.Width(52));
 				foreach (var place in SuppliesStep.Locations)
 				{
 					if ((place == "Pouch" || place == "Special slots") && !def.AllowPouch)
@@ -430,12 +472,31 @@ namespace GetReady
 				if (line.Problem)
 				{
 					GUILayout.BeginHorizontal(Ui.ProblemBox);
-					GUILayout.Label("!  " + line.Text, Ui.Problem);
+					if (!string.IsNullOrEmpty(line.Template))
+					{
+						Icons.Slot(line.Template, line.Subject ?? "", 34);
+					}
+
+					GUILayout.BeginVertical();
+					GUILayout.Label(line.Subject ?? line.Text, Ui.Problem);
+					if (line.Detail != null)
+					{
+						GUILayout.Label(line.Detail, Ui.Body);
+					}
+
+					GUILayout.EndVertical();
 					GUILayout.EndHorizontal();
 				}
 				else if (line.Run != null)
 				{
-					GUILayout.Label("+  " + line.Text, Ui.Move);
+					GUILayout.BeginHorizontal();
+					if (!string.IsNullOrEmpty(line.Template))
+					{
+						Icons.Slot(line.Template, "", 28);
+					}
+
+					GUILayout.Label(line.Text, Ui.Move);
+					GUILayout.EndHorizontal();
 				}
 				else
 				{

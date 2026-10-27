@@ -17,7 +17,7 @@ namespace GetReady
 
 		internal static GUIStyle Window, Section, Group, Inner, Divider, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
 			Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, Centered,
-			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, Alert;
+			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert;
 
 		internal static Font Font;
 		private static bool _ready;
@@ -144,6 +144,7 @@ namespace GetReady
 			Centered = Label(14, Text, FontStyle.Normal, TextAnchor.MiddleCenter);
 			AlertTitle = Label(26, Bad, FontStyle.Bold);
 			AlertText = Label(19, Color.white, FontStyle.Bold);
+			AlertDetail = Label(16, Text);
 
 			var fill = new Color(0.2f, 0.21f, 0.21f);
 			var hover = new Color(0.27f, 0.28f, 0.27f);
@@ -165,7 +166,7 @@ namespace GetReady
 
 			if (Font != null)
 			{
-				foreach (var style in new[] { Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, Alert, AlertCard,
+				foreach (var style in new[] { Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard,
 					Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
 				{
 					style.font = Font;

@@ -14,6 +14,10 @@ namespace GetReady
 	internal class ReadyButtonPatch : ModulePatch
 	{
 		private const string ButtonName = "GetReady Button";
+
+		// The stash button: it is only active while the stash screen is up, so it tells whether the window still has a stash
+		internal static GameObject Button;
+		internal static bool StashShown => Button != null && Button.activeInHierarchy;
 		private const int MedsTabIndex = 4; // order of FilterPanel's filter rules: All, Weapon, Magazine, Ammo, Meds
 
 		protected override MethodBase GetTargetMethod() => typeof(SimpleStashPanel).GetMethod(nameof(SimpleStashPanel.Show), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
@@ -40,6 +44,7 @@ namespace GetReady
 
 				if (existing != null)
 				{
+					Button = existing.gameObject;
 					existing.gameObject.SetActive(show);
 					return;
 				}
@@ -52,6 +57,7 @@ namespace GetReady
 
 				var clone = UnityEngine.Object.Instantiate(tabs[MedsTabIndex].gameObject, pin.transform.parent, false);
 				clone.name = ButtonName;
+				Button = clone;
 				clone.GetComponent<Tab>().SetInteractable(true);
 				var icon = clone.GetComponent<FilterTab>()._filterIcon;
 				icon.sprite = Icons.Button();

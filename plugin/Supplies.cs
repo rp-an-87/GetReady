@@ -153,6 +153,11 @@ namespace GetReady
 			return setting;
 		}
 
+		// The places picked, in the order given, then the usual ones as a fallback when those are full (the pouch and the special
+		// slots only when picked)
+		private static List<string> WithFallback(IEnumerable<string> picked) =>
+			picked.Concat(new[] { "Pockets", "Vest", "Backpack" }).Distinct().ToList();
+
 		// Adds the place to the end of the group's list, or takes it out (the last one stays)
 		internal static void ToggleDestination(GroupSetting setting, string place)
 		{
@@ -228,7 +233,7 @@ namespace GetReady
 					continue;
 				}
 
-				var places = setting.Destinations.ToList();
+				var places = WithFallback(setting.Destinations);
 				float alreadyBringing = Steps.Bringing.Sum(item => WeightOf(def, item));
 				float leavingWeight = leaving.Sum(item => WeightOf(def, item));
 				float fixedWeight = owned.Sum(item => WeightOf(def, item)) - leavingWeight;
@@ -242,6 +247,7 @@ namespace GetReady
 						var better = swap.Value;
 						lines.Add(new PlanLine
 						{
+							Template = better.TemplateId.ToString(),
 							Text = $"Replace {Describe(worse)} with {Describe(better)}",
 							Run = () => Swap(controller, worse, better, places)
 						});
@@ -274,6 +280,7 @@ namespace GetReady
 					var moves = group.ToList();
 					lines.Add(new PlanLine
 					{
+						Template = moves[0].Key.TemplateId.ToString(),
 						Text = $"Bring {moves.Sum(pair => pair.Value > 0 ? pair.Value : 1)}x {group.Key}",
 						Run = () => MoveAll(controller, moves, places)
 					});
@@ -281,7 +288,7 @@ namespace GetReady
 
 				if (need > 0)
 				{
-					lines.Add(Steps.Problem($"{def.Name}: {need:0} {def.Unit} short, the stash has no more."));
+					lines.Add(Steps.Problem(def.Name, $"Missing {need:0} {def.Unit}: none left in the stash", ActiveEntries(def).FirstOrDefault()?.Template));
 				}
 			}
 
@@ -336,31 +343,35 @@ namespace GetReady
 				need--;
 			}
 
-			var places = setting.Destinations.ToList();
+			var places = WithFallback(setting.Destinations);
 			foreach (var group in picked.GroupBy(item => Game.NameOf(item)))
 			{
 				var items = group.ToList();
-				lines.Add(new PlanLine { Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items.Select(item => new KeyValuePair<Item, int>(item, 0)).ToList(), places) });
+				lines.Add(new PlanLine { Template = items[0].TemplateId.ToString(), Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items.Select(item => new KeyValuePair<Item, int>(item, 0)).ToList(), places) });
 			}
 
 			if (need > 0)
 			{
-				lines.Add(Steps.Problem($"{quotaDef.Name}: {need} short, the stash has no more."));
+				lines.Add(Steps.Problem(quotaDef.Name, $"Missing {need}: no other grenade left in the stash"));
 			}
 		}
 
 		private static async Task<string> MoveAll(InventoryController controller, List<KeyValuePair<Item, int>> moves, List<string> places)
 		{
+			// A full place doesn't stop the rest: every item is tried
+			int failed = 0;
+			string last = null;
 			foreach (var move in moves)
 			{
 				var error = await Game.MoveTo(controller, move.Key, places, move.Value);
 				if (error != null)
 				{
-					return error;
+					failed++;
+					last = error;
 				}
 			}
 
-			return null;
+			return failed == 0 ? null : $"{failed} of {moves.Count} not moved ({last})";
 		}
 
 		// The carried one goes to the stash first, and goes back if the better one can't be brought
@@ -591,18 +602,12 @@ namespace GetReady
 			Grenade("impact", "Impact RGN/RGO", true, "617fd91e5539a84ec44ce155", "618a431df1eb8e24b8741deb"),
 			new GroupDef
 			{
-				Id = "flares", Name = "Signal flares", Unit = "flares", Stack = true, DefaultTarget = 0, Max = 60,
+				Id = "flares", Name = "Signal cartridges", Unit = "cartridges", DefaultTarget = 0, Max = 10,
 				DefaultDestinations = new[] { "Special slots", "Pockets" },
-				DefaultOff = new[] { "624c09cfbc2e27219346d955", "624c09da2cec124eb67c1046", "624c09e49b98e019a3315b66", "66d97834d2985e11480d5c1e", "66d9f3047b82b9a9aa055d81", "675ea4891b2579e8fe0250aa" },
 				Entries = new[]
 				{
-					Entry.Stack("624c0570c9b794431568f5d5"), // green
-					Entry.Stack("624c09cfbc2e27219346d955"), // red
-					Entry.Stack("624c09da2cec124eb67c1046"), // white
-					Entry.Stack("624c09e49b98e019a3315b66"), // yellow
-					Entry.Stack("66d97834d2985e11480d5c1e"), // blue
-					Entry.Stack("66d9f3047b82b9a9aa055d81"), // special yellow
-					Entry.Stack("675ea4891b2579e8fe0250aa")  // new year
+					Entry.Count("6217726288ed9f0845317459"), // RSP-30 reactive signal cartridge (Green)
+					Entry.Count("62178c4d4ecf221597654e3d")  // RSP-30 reactive signal cartridge (Red)
 				}
 			},
 			new GroupDef { Id = "grenadequota", Name = "Any grenades (random)", Unit = "grenades in total", IsQuota = true, AllowPouch = false, DefaultTarget = 2 }

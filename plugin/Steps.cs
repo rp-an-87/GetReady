@@ -13,6 +13,11 @@ namespace GetReady
 		public string Text;
 		public bool Problem;
 		public Func<Task<string>> Run; // null, or why it failed
+
+		// For the window: what it is about (bold), what is wrong or what happens (plain) and an item whose icon goes with it
+		public string Subject;
+		public string Detail;
+		public string Template;
 	}
 
 	// One item a template wants and the gear lacks: what it is, where it goes, and how to bring it (null when the stash has none)
@@ -20,6 +25,7 @@ namespace GetReady
 	{
 		public string Name;
 		public string Where;
+		public string Template;
 		public Func<Task<string>> Run;
 	}
 
@@ -43,9 +49,9 @@ namespace GetReady
 			// Found by what the item treats, so modded splints count too: anything that fixes a fracture without doing surgery
 			// (Surv12 does both and counts as surgery only); Grizzly fixes fractures and counts as a splint
 			new MissingResourceWarning("Splint warning", "splint", s => s.Splint, (s, on) => s.Splint = on,
-				Game.IsSplint),
+				Game.IsSplint, "5af0454c86f7746bf20992e8"),
 			new MissingResourceWarning("Surgery warning", "surgery kit", s => s.Surgery, (s, on) => s.Surgery = on,
-				Game.IsSurgeryKit)
+				Game.IsSurgeryKit, "5d02778e86f774203e7dedbe")
 		};
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
@@ -71,6 +77,9 @@ namespace GetReady
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
 
+		internal static PlanLine Problem(string subject, string detail, string template = null) =>
+			new PlanLine { Text = $"{subject}: {detail}", Problem = true, Subject = subject, Detail = detail, Template = template };
+
 		// " (slot 4, slot 5)", or nothing when the items have no place worth naming
 		private static string WhereOf(IEnumerable<Need> needs)
 		{
@@ -87,6 +96,7 @@ namespace GetReady
 				var runs = group.Select(need => need.Run).ToList();
 				lines.Add(new PlanLine
 				{
+					Template = group.First().Template,
 					Text = $"Bring {group.Count()}x {group.Key}{WhereOf(group)}",
 					Run = async () =>
 					{
@@ -106,7 +116,7 @@ namespace GetReady
 
 			foreach (var group in needs.Where(need => need.Run == null).GroupBy(need => need.Name))
 			{
-				lines.Add(Problem($"Not in the stash: {group.Count()}x {group.Key}{WhereOf(group)}"));
+				lines.Add(Problem(group.Key, $"Missing {group.Count()}: none left in the stash{WhereOf(group)}", group.First().Template));
 			}
 
 			lines.AddRange(others);
@@ -121,14 +131,16 @@ namespace GetReady
 		private readonly Func<WarningSettings, bool> _get;
 		private readonly Action<WarningSettings, bool> _set;
 		private readonly Func<Item, bool> _matches;
+		private readonly string _icon;
 
-		public MissingResourceWarning(string name, string kind, Func<WarningSettings, bool> get, Action<WarningSettings, bool> set, Func<Item, bool> matches)
+		public MissingResourceWarning(string name, string kind, Func<WarningSettings, bool> get, Action<WarningSettings, bool> set, Func<Item, bool> matches, string icon)
 		{
 			Name = name;
 			_kind = kind;
 			_get = get;
 			_set = set;
 			_matches = matches;
+			_icon = icon;
 		}
 
 		public string Name { get; }
@@ -141,7 +153,7 @@ namespace GetReady
 			int count = Game.CarriedAndSecured(controller.Inventory).Concat(Steps.Claimed).Count(_matches);
 			return new List<PlanLine>
 			{
-				count > 0 ? Steps.Info($"{count} {_kind}(s) on you") : Steps.Problem($"Missing {_kind} resources: you carry none.")
+				count > 0 ? Steps.Info($"{count} {_kind}(s) on you") : Steps.Problem($"No {_kind} on you", "You carry none. Bring one, or switch this warning off in Setup.", _icon)
 			};
 		}
 	}
@@ -207,7 +219,7 @@ namespace GetReady
 				string wanted = string.Join(" / ", entry.Templates.Select(t => t.Name).ToArray());
 				if (slot == null)
 				{
-					others.Add(Steps.Problem($"{slotName}: this slot doesn't exist on your pockets."));
+					others.Add(Steps.Problem(slotName, "this slot doesn't exist on your pockets", entry.Templates[0].Template));
 					continue;
 				}
 
@@ -221,11 +233,11 @@ namespace GetReady
 
 					if (!entry.Templates.Any(t => t.Template == held.TemplateId.ToString()))
 					{
-						others.Add(Steps.Problem($"{slotName}: holds {Game.NameOf(held)}, expected {wanted}."));
+						others.Add(Steps.Problem(slotName, $"holds {Game.NameOf(held)}, expected {wanted}", entry.Templates[0].Template));
 					}
 					else if (held.StackObjectsCount < entry.Count)
 					{
-						others.Add(Steps.Problem($"{slotName}: holds {held.StackObjectsCount}x {Game.NameOf(held)}, expected {entry.Count} (topping up a stack isn't supported yet)."));
+						others.Add(Steps.Problem(slotName, $"holds {held.StackObjectsCount}x {Game.NameOf(held)}, expected {entry.Count} (topping up a stack isn't supported yet)", entry.Templates[0].Template));
 					}
 					else if (Game.MaxResourceOf(held) > 1f && Game.ResourceOf(held) < Game.MaxResourceOf(held))
 					{
@@ -236,7 +248,7 @@ namespace GetReady
 						string usage = $"{Game.NameOf(held)} {Game.ResourceOf(held):0}/{Game.MaxResourceOf(held):0}";
 						if (fuller == null)
 						{
-							others.Add(Steps.Problem($"{slotName}: {usage}, the stash has no fuller one."));
+							others.Add(Steps.Problem(slotName, $"{usage}: no fuller one left in the stash", entry.Templates[0].Template));
 							inPlace++;
 						}
 						else
@@ -288,7 +300,7 @@ namespace GetReady
 					}
 				}
 
-				var need = new Need { Name = found != null ? Game.NameOf(found) : entry.Templates[0].Name, Where = slotName };
+				var need = new Need { Name = found != null ? Game.NameOf(found) : entry.Templates[0].Name, Where = slotName, Template = entry.Templates[0].Template };
 				if (found != null)
 				{
 					taken.Add(found);
@@ -382,14 +394,14 @@ namespace GetReady
 					}
 					else
 					{
-						others.Add(Steps.Problem($"Cell {cell.X},{cell.Y}: holds {Game.NameOf(held)}, expected {cell.Name}."));
+						others.Add(Steps.Problem($"Cell {cell.X},{cell.Y}", $"holds {Game.NameOf(held)}, expected {cell.Name}", cell.Template));
 					}
 
 					continue;
 				}
 
 				var found = Game.Candidates(stash.Where(item => !taken.Contains(item) && !Steps.Claimed.Contains(item)), cell.Template).FirstOrDefault();
-				var need = new Need { Name = cell.Name };
+				var need = new Need { Name = cell.Name, Template = cell.Template };
 				if (found != null)
 				{
 					taken.Add(found);
