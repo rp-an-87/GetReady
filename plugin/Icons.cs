@@ -1,14 +1,107 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using EFT.InventoryLogic;
+using EFT.UI.DragAndDrop;
 using UnityEngine;
 
 namespace GetReady
 {
-	// The stash button's icon, drawn in code (a clipboard with a checklist) so the plugin needs no image file. White on
-	// transparent, tinted by the button.
+	// Icons: the game's own (item icons for the window, a type icon for the stash button), and a checklist drawn in code as
+	// the button's fallback. White on transparent, tinted by the button.
 	internal static class Icons
 	{
 		private const int Size = 64;
 		private static Sprite _ready;
+
+		// One item of each template found in the stash or on you, to take the icon from, and the icons asked for so far
+		private static readonly Dictionary<string, Item> Known = new Dictionary<string, Item>();
+		private static readonly Dictionary<string, ItemIcon> Loaded = new Dictionary<string, ItemIcon>();
+
+		// Remembers an item of every template in the inventory (the game builds icons from items, not templates)
+		internal static void Index(Inventory inventory)
+		{
+			Known.Clear();
+			foreach (var item in Game.Stash(inventory).Concat(Game.CarriedAndSecured(inventory)))
+			{
+				var template = item.TemplateId.ToString();
+				if (!Known.ContainsKey(template))
+				{
+					Known[template] = item;
+				}
+			}
+		}
+
+		internal static Sprite Of(string template)
+		{
+			ItemIcon icon;
+			if (!Loaded.TryGetValue(template, out icon))
+			{
+				Item item;
+				if (!Known.TryGetValue(template, out item))
+				{
+					return null;
+				}
+
+				try
+				{
+					icon = ItemViewFactory.LoadItemIcon(item, 1, false);
+				}
+				catch (Exception e)
+				{
+					Plugin.Log.LogWarning($"No icon for {template}: {e.Message}");
+					icon = null;
+				}
+
+				Loaded[template] = icon;
+			}
+
+			return icon?.Sprite;
+		}
+
+		// The item's icon fitted into the rect (an empty frame while it is loading or when you have none of it); the item's
+		// name is the tooltip
+		internal static void Draw(Rect rect, string template, string name)
+		{
+			GUI.Box(rect, GUIContent.none, Ui.Inner);
+			var sprite = Of(template);
+			if (sprite != null && sprite.texture != null)
+			{
+				var source = sprite.textureRect;
+				float scale = Math.Min((rect.width - 4) / source.width, (rect.height - 4) / source.height);
+				var size = new Vector2(source.width * scale, source.height * scale);
+				var target = new Rect(rect.x + (rect.width - size.x) / 2f, rect.y + (rect.height - size.y) / 2f, size.x, size.y);
+				var texture = sprite.texture;
+				GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
+			}
+
+			GUI.Label(rect, new GUIContent("", name));
+		}
+
+		// A square of the given size in the layout with the item's icon
+		internal static void Slot(string template, string name, float size)
+		{
+			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), template, name);
+		}
+
+		// The stash button's icon: the game's backpack icon, or the drawn checklist when the game has none
+		internal static Sprite Button()
+		{
+			try
+			{
+				var sprite = EFTHardSettings.Instance?.StaticIcons?.GetItemTypeIcon(EItemType.Backpack);
+				if (sprite != null)
+				{
+					return sprite;
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Game icon not available: {e.Message}");
+			}
+
+			return Ready();
+		}
 
 		internal static Sprite Ready()
 		{

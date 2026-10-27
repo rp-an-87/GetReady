@@ -1,19 +1,25 @@
+using System.Linq;
+using TMPro;
 using UnityEngine;
 
 namespace GetReady
 {
-	// Dark look for the IMGUI window: styles built once from flat-colour textures (no assets). Call Init from OnGUI.
+	// The look of the window: the game's dark panels, its warm grey text and its font (when it can be found), built once from
+	// flat-colour textures (no assets). Call Init from OnGUI.
 	internal static class Ui
 	{
-		internal static readonly Color Good = new Color(0.42f, 0.78f, 0.5f);
+		internal static readonly Color Heading = new Color(0.88f, 0.85f, 0.74f);
+		internal static readonly Color Text = new Color(0.79f, 0.79f, 0.75f);
+		internal static readonly Color Dim = new Color(0.5f, 0.51f, 0.49f);
+		internal static readonly Color Sand = new Color(0.72f, 0.65f, 0.42f);
 		internal static readonly Color Warn = new Color(1f, 0.64f, 0.28f);
-		internal static readonly Color Bad = new Color(1f, 0.38f, 0.34f);
-		internal static readonly Color Text = new Color(0.9f, 0.9f, 0.88f);
-		internal static readonly Color Dim = new Color(0.62f, 0.64f, 0.64f);
+		internal static readonly Color Bad = new Color(1f, 0.4f, 0.36f);
 
-		internal static GUIStyle Window, Card, Title, Muted, Body, Plain, Move, Problem, Toggle, Button, Small, Primary,
-			Pick, PickOn, ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, Alert;
+		internal static GUIStyle Window, Section, Group, Inner, Divider, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
+			Button, Small, Primary, Pick, PickOn, SwitchOn, SwitchOff, Centered,
+			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, Alert;
 
+		internal static Font Font;
 		private static bool _ready;
 
 		private static Texture2D Box(Color fill, Color edge, int edgeWidth)
@@ -60,31 +66,48 @@ namespace GetReady
 			style.onFocused.textColor = color;
 		}
 
-		private static GUIStyle Label(int size, Color color, FontStyle fontStyle = FontStyle.Normal)
+		private static GUIStyle Label(int size, Color color, FontStyle fontStyle = FontStyle.Normal, TextAnchor anchor = TextAnchor.MiddleLeft)
 		{
-			var style = new GUIStyle(GUI.skin.label) { fontSize = size, fontStyle = fontStyle, wordWrap = true, richText = false };
+			var style = new GUIStyle(GUI.skin.label) { fontSize = size, fontStyle = fontStyle, wordWrap = true, richText = false, alignment = anchor, padding = new RectOffset(0, 0, 1, 1) };
 			TextColor(style, color);
 			return style;
 		}
 
+		private static GUIStyle Panel(Color fill, Color edge, int edgeWidth, RectOffset padding, RectOffset margin) =>
+			Back(new GUIStyle(GUI.skin.box) { padding = padding, margin = margin }, fill, edge, edgeWidth);
+
 		private static GUIStyle Chip(Color fill)
 		{
-			var style = Back(new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, stretchWidth = false, padding = new RectOffset(10, 10, 3, 3) }, fill, fill, 1);
+			var style = Back(new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, stretchWidth = false, padding = new RectOffset(10, 10, 3, 3) }, fill, fill, 1);
 			TextColor(style, Color.white);
 			return style;
 		}
 
-		private static GUIStyle Press(GUIStyle style, Color fill, Color hover, Color down)
+		private static GUIStyle Press(GUIStyle style, Color fill, Color hover, Color down, Color edge, Color text)
 		{
-			Back(style, fill, fill, 1);
-			style.hover.background = Box(hover, hover, 1);
-			style.active.background = Box(down, down, 1);
+			Back(style, fill, edge, 1);
+			style.hover.background = Box(hover, edge, 1);
+			style.active.background = Box(down, edge, 1);
 			style.onNormal.background = style.normal.background;
 			style.onHover.background = style.hover.background;
 			style.onActive.background = style.active.background;
-			TextColor(style, Color.white);
+			TextColor(style, text);
 			style.alignment = TextAnchor.MiddleCenter;
 			return style;
+		}
+
+		// The game's own font: its TextMeshPro font assets keep the plain font they were made from
+		private static Font FindFont()
+		{
+			try
+			{
+				var asset = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault(candidate => candidate.name.ToLowerInvariant().Contains("bender") && candidate.sourceFontFile != null);
+				return asset?.sourceFontFile;
+			}
+			catch
+			{
+				return null;
+			}
 		}
 
 		internal static void Init()
@@ -95,34 +118,54 @@ namespace GetReady
 			}
 
 			_ready = true;
-			Window = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(16, 16, 14, 14) }, new Color(0.11f, 0.12f, 0.13f, 0.98f), new Color(0.32f, 0.35f, 0.37f), 1);
-			Card = Back(new GUIStyle(GUI.skin.box) { padding = new RectOffset(12, 12, 10, 10), margin = new RectOffset(0, 0, 0, 8) }, new Color(0.16f, 0.17f, 0.18f), new Color(0.24f, 0.26f, 0.27f), 1);
-			AlertCard = Back(new GUIStyle(GUI.skin.box) { padding = new RectOffset(12, 12, 10, 10), margin = new RectOffset(0, 0, 4, 10) }, new Color(0.3f, 0.1f, 0.1f), Bad, 2);
-			Alert = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(24, 24, 20, 20) }, new Color(0.17f, 0.06f, 0.06f, 0.99f), Bad, 3);
+			Font = FindFont();
+			Plugin.Log.LogInfo(Font != null ? $"Using the game font {Font.name}" : "The game font was not found, using the default one");
 
-			Title = Label(21, Color.white, FontStyle.Bold);
-			Muted = Label(13, Dim);
+			var edge = new Color(0.27f, 0.28f, 0.27f);
+			Window = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(16, 16, 14, 14) }, new Color(0.085f, 0.09f, 0.09f, 0.985f), new Color(0.36f, 0.37f, 0.35f), 2);
+			Section = Panel(new Color(0.12f, 0.125f, 0.125f), new Color(0.33f, 0.34f, 0.32f), 1, new RectOffset(12, 12, 10, 12), new RectOffset(0, 0, 0, 12));
+			Group = Panel(new Color(0.16f, 0.165f, 0.16f), edge, 1, new RectOffset(10, 10, 8, 8), new RectOffset(0, 0, 3, 3));
+			Inner = Panel(new Color(0.105f, 0.11f, 0.11f), new Color(0.22f, 0.23f, 0.22f), 1, new RectOffset(8, 8, 6, 6), new RectOffset(0, 0, 4, 2));
+			Divider = Back(new GUIStyle(GUI.skin.box) { fixedHeight = 1, margin = new RectOffset(0, 0, 6, 6), padding = new RectOffset(0, 0, 0, 0) }, new Color(0.33f, 0.34f, 0.32f), new Color(0.33f, 0.34f, 0.32f), 0);
+			AlertCard = Panel(new Color(0.27f, 0.09f, 0.09f), Bad, 2, new RectOffset(12, 12, 10, 10), new RectOffset(0, 0, 4, 10));
+			Alert = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(24, 24, 20, 20) }, new Color(0.15f, 0.05f, 0.05f, 0.99f), Bad, 3);
+			ProblemBox = Panel(new Color(0.25f, 0.15f, 0.07f), new Color(0.55f, 0.33f, 0.12f), 1, new RectOffset(8, 8, 4, 4), new RectOffset(0, 0, 2, 2));
+
+			Title = Label(21, Heading, FontStyle.Bold);
+			SectionTitle = Label(16, Heading, FontStyle.Bold);
+			Name = Label(15, Heading, FontStyle.Bold);
 			Body = Label(14, Text);
-			Plain = Label(14, Dim);
+			Muted = Label(12, Dim);
 			Move = Label(14, Color.white);
 			Problem = Label(14, Warn, FontStyle.Bold);
+			Centered = Label(14, Text, FontStyle.Normal, TextAnchor.MiddleCenter);
 			AlertTitle = Label(26, Bad, FontStyle.Bold);
 			AlertText = Label(19, Color.white, FontStyle.Bold);
 
-			Toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 16, fontStyle = FontStyle.Bold, padding = new RectOffset(24, 0, 2, 2) };
-			TextColor(Toggle, Color.white);
+			var fill = new Color(0.2f, 0.21f, 0.21f);
+			var hover = new Color(0.27f, 0.28f, 0.27f);
+			var down = new Color(0.14f, 0.15f, 0.15f);
+			Button = Press(new GUIStyle(GUI.skin.button) { fontSize = 14, padding = new RectOffset(12, 12, 6, 6), margin = new RectOffset(2, 2, 3, 3) }, fill, hover, down, new Color(0.38f, 0.39f, 0.37f), Text);
+			Small = Press(new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 2, 3), fixedWidth = 28, fixedHeight = 26, margin = new RectOffset(2, 2, 2, 2) }, fill, hover, down, new Color(0.38f, 0.39f, 0.37f), Heading);
+			Primary = Press(new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold, padding = new RectOffset(26, 26, 9, 9), margin = new RectOffset(2, 2, 3, 3) }, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), new Color(0.18f, 0.28f, 0.14f), new Color(0.5f, 0.62f, 0.38f), Color.white);
+			Pick = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, padding = new RectOffset(8, 8, 3, 4), margin = new RectOffset(2, 2, 2, 2), fixedHeight = 26 }, new Color(0.15f, 0.155f, 0.155f), hover, down, new Color(0.3f, 0.31f, 0.3f), Dim);
+			PickOn = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, fontStyle = FontStyle.Bold, padding = new RectOffset(8, 8, 3, 4), margin = new RectOffset(2, 2, 2, 2), fixedHeight = 26 }, new Color(0.25f, 0.23f, 0.15f), new Color(0.31f, 0.29f, 0.19f), new Color(0.2f, 0.18f, 0.11f), Sand, new Color(0.95f, 0.9f, 0.72f));
+			SwitchOn = Press(new GUIStyle(GUI.skin.button) { fontSize = 12, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 3, 4), fixedWidth = 46, fixedHeight = 24, margin = new RectOffset(0, 8, 2, 2) }, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), new Color(0.18f, 0.28f, 0.14f), new Color(0.5f, 0.62f, 0.38f), Color.white);
+			SwitchOff = Press(new GUIStyle(GUI.skin.button) { fontSize = 12, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 3, 4), fixedWidth = 46, fixedHeight = 24, margin = new RectOffset(0, 8, 2, 2) }, new Color(0.16f, 0.165f, 0.165f), hover, down, new Color(0.3f, 0.31f, 0.3f), Dim);
 
-			Button = Press(new GUIStyle(GUI.skin.button) { fontSize = 14, padding = new RectOffset(12, 12, 7, 7), margin = new RectOffset(2, 2, 3, 3) }, new Color(0.25f, 0.27f, 0.29f), new Color(0.33f, 0.36f, 0.38f), new Color(0.19f, 0.2f, 0.22f));
-			Small = Press(new GUIStyle(GUI.skin.button) { fontSize = 15, fontStyle = FontStyle.Bold, padding = new RectOffset(0, 0, 2, 2), fixedWidth = 30 }, new Color(0.25f, 0.27f, 0.29f), new Color(0.33f, 0.36f, 0.38f), new Color(0.19f, 0.2f, 0.22f));
-			Pick = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, padding = new RectOffset(10, 10, 4, 4), margin = new RectOffset(2, 2, 2, 2) }, new Color(0.22f, 0.24f, 0.25f), new Color(0.3f, 0.33f, 0.35f), new Color(0.17f, 0.18f, 0.2f));
-			TextColor(Pick, Dim);
-			PickOn = Press(new GUIStyle(GUI.skin.button) { fontSize = 13, fontStyle = FontStyle.Bold, padding = new RectOffset(10, 10, 4, 4), margin = new RectOffset(2, 2, 2, 2) }, new Color(0.2f, 0.36f, 0.58f), new Color(0.26f, 0.44f, 0.68f), new Color(0.15f, 0.28f, 0.46f));
-			Primary = Press(new GUIStyle(GUI.skin.button) { fontSize = 17, fontStyle = FontStyle.Bold, padding = new RectOffset(18, 18, 9, 9), margin = new RectOffset(2, 2, 3, 3) }, new Color(0.2f, 0.5f, 0.3f), new Color(0.26f, 0.6f, 0.37f), new Color(0.15f, 0.4f, 0.24f));
+			ChipOk = Chip(new Color(0.2f, 0.38f, 0.22f));
+			ChipTodo = Chip(new Color(0.42f, 0.36f, 0.16f));
+			ChipBad = Chip(new Color(0.6f, 0.2f, 0.18f));
+			ChipOff = Chip(new Color(0.26f, 0.27f, 0.27f));
 
-			ChipOk = Chip(new Color(0.18f, 0.42f, 0.25f));
-			ChipTodo = Chip(new Color(0.2f, 0.36f, 0.58f));
-			ChipBad = Chip(new Color(0.62f, 0.2f, 0.18f));
-			ChipOff = Chip(new Color(0.3f, 0.32f, 0.33f));
+			if (Font != null)
+			{
+				foreach (var style in new[] { Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, Alert, AlertCard,
+					Button, Small, Primary, Pick, PickOn, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
+				{
+					style.font = Font;
+				}
+			}
 		}
 	}
 }

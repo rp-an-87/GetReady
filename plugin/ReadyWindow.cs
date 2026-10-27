@@ -17,7 +17,7 @@ namespace GetReady
 
 		private static bool _open;
 		private static bool _closeRequested;
-		private static Rect _rect = new Rect(80, 60, 700, 760);
+		private static Rect _rect = new Rect(80, 40, 740, 800);
 		private static Vector2 _scroll;
 		private static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
 		private static string _status = "";
@@ -141,6 +141,7 @@ namespace GetReady
 			}
 
 			Steps.NewPass();
+			Icons.Index(controller.Inventory);
 			foreach (var step in Steps.All.Where(step => step.Enabled))
 			{
 				try
@@ -252,7 +253,7 @@ namespace GetReady
 			GUI.DragWindow(new Rect(0, 0, 10000, 60));
 		}
 
-		// A small coloured tag on a card: what the step will do
+		// A small coloured tag on a section: what the step will do
 		private static void Chip(IStep step, List<PlanLine> lines)
 		{
 			if (!step.Enabled || lines == null)
@@ -280,32 +281,49 @@ namespace GetReady
 		// Groups whose item list is open
 		private static readonly HashSet<string> Expanded = new HashSet<string>();
 
-		// A supply group: its name and amount with - and +, where it goes (click the places in the order you want them tried)
-		// and, opened with "Items", which items count and in what order
+		private static string PlaceLabel(string place) => place == "Special slots" ? "Special" : place;
+
+		// A supply group as a card: the item's icon, the name, the amount with - and +, where it goes (click the places in the
+		// order you want them tried) and, opened with "Items", which items count and in what order
 		private static bool GroupRow(GroupDef def)
 		{
 			var setting = SuppliesStep.Setting(def);
+			var active = SuppliesStep.ActiveEntries(def);
 			bool changed = false;
+			bool on = setting.Target > 0;
+
+			GUILayout.BeginVertical(Ui.Group);
 			GUILayout.BeginHorizontal();
-			GUILayout.Label(def.Name, setting.Target == 0 ? Ui.Plain : Ui.Body, GUILayout.Width(170));
+			if (def.Entries.Length > 0)
+			{
+				var shown = active.FirstOrDefault() ?? def.Entries[0];
+				Icons.Slot(shown.Template, shown.Name, 44);
+			}
+
+			GUILayout.BeginVertical();
+			GUILayout.Label(def.Name, on ? Ui.Name : Ui.Muted);
+			GUILayout.BeginHorizontal();
 			if (GUILayout.Button("-", Ui.Small) && setting.Target > 0)
 			{
 				setting.Target = Math.Max(0, setting.Target - def.Step);
 				changed = true;
 			}
 
-			GUILayout.Label(setting.Target == 0 ? "off" : $"{setting.Target} {def.Unit}", setting.Target == 0 ? Ui.Plain : Ui.Body, GUILayout.Width(140));
+			GUILayout.Label(on ? $"{setting.Target} {def.Unit}" : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(150));
 			if (GUILayout.Button("+", Ui.Small) && setting.Target < def.Max)
 			{
 				setting.Target = Math.Min(def.Max, setting.Target + def.Step);
 				changed = true;
 			}
 
+			GUILayout.EndHorizontal();
+			GUILayout.EndVertical();
+
+			GUILayout.FlexibleSpace();
 			if (def.Entries.Length > 1)
 			{
-				GUILayout.FlexibleSpace();
 				bool open = Expanded.Contains(def.Id);
-				if (GUILayout.Button(new GUIContent(open ? "Items ▲" : "Items ▼", "Which items count for this and in what order they are used"), open ? Ui.PickOn : Ui.Pick))
+				if (GUILayout.Button(new GUIContent(open ? "Items  ▲" : "Items  ▼", "Which items count for this and in what order they are used"), open ? Ui.PickOn : Ui.Pick, GUILayout.Width(86)))
 				{
 					if (open)
 					{
@@ -320,21 +338,21 @@ namespace GetReady
 
 			GUILayout.EndHorizontal();
 
-			if (setting.Target > 0 && !def.IsQuota)
+			if (on && !def.IsQuota)
 			{
+				GUILayout.Space(2);
 				GUILayout.BeginHorizontal();
-				GUILayout.Space(16);
-				GUILayout.Label("Goes to", Ui.Plain, GUILayout.Width(60));
+				GUILayout.Label("Goes to", Ui.Muted, GUILayout.Width(52));
 				foreach (var place in SuppliesStep.Locations)
 				{
-					if (place == "Pouch" && !def.AllowPouch)
+					if ((place == "Pouch" || place == "Special slots") && !def.AllowPouch)
 					{
 						continue;
 					}
 
 					int rank = setting.Destinations.IndexOf(place);
-					string label = rank >= 0 ? $"{rank + 1}. {place}" : place;
-					if (GUILayout.Button(new GUIContent(label, "Click to use this place. They are tried in the order you click them; click again to drop one."), rank >= 0 ? Ui.PickOn : Ui.Pick))
+					string label = rank >= 0 ? $"{rank + 1}. {PlaceLabel(place)}" : PlaceLabel(place);
+					if (GUILayout.Button(new GUIContent(label, "Click to use this place. They are tried in the order you click them; click again to drop one."), rank >= 0 ? Ui.PickOn : Ui.Pick, GUILayout.Width(90)))
 					{
 						SuppliesStep.ToggleDestination(setting, place);
 						changed = true;
@@ -346,13 +364,15 @@ namespace GetReady
 
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))
 			{
+				GUILayout.BeginVertical(Ui.Inner);
+				GUILayout.Label(def.Random ? "Used, in any order" : "Used, best first", Ui.Muted);
 				var entries = SuppliesStep.OrderedEntries(def);
 				for (int i = 0; i < entries.Count; i++)
 				{
 					var entry = entries[i];
 					bool off = setting.Off.Contains(entry.Template);
 					GUILayout.BeginHorizontal();
-					GUILayout.Space(16);
+					Icons.Slot(entry.Template, entry.Name, 30);
 					if (!def.Random)
 					{
 						GUI.enabled = i > 0;
@@ -372,8 +392,8 @@ namespace GetReady
 						GUI.enabled = true;
 					}
 
-					GUILayout.Label(def.Random ? entry.Name : $"{i + 1}. {entry.Name}", off ? Ui.Plain : Ui.Body, GUILayout.Width(200));
-					if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn))
+					GUILayout.Label(def.Random ? entry.Name : $"{i + 1}. {entry.Name}", off ? Ui.Muted : Ui.Body);
+					if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(90)))
 					{
 						SuppliesStep.ToggleItem(def, entry.Template);
 						changed = true;
@@ -381,19 +401,25 @@ namespace GetReady
 
 					GUILayout.EndHorizontal();
 				}
+
+				GUILayout.EndVertical();
 			}
 
-			GUILayout.Space(2);
+			GUILayout.EndVertical();
 			return changed;
 		}
 
 		private static void PlanLines(List<PlanLine> lines)
 		{
+			GUILayout.Space(4);
+			GUILayout.Label("What will happen", Ui.Muted);
 			foreach (var line in lines)
 			{
 				if (line.Problem)
 				{
+					GUILayout.BeginHorizontal(Ui.ProblemBox);
 					GUILayout.Label("!  " + line.Text, Ui.Problem);
+					GUILayout.EndHorizontal();
 				}
 				else if (line.Run != null)
 				{
@@ -401,59 +427,91 @@ namespace GetReady
 				}
 				else
 				{
-					GUILayout.Label(line.Text, Ui.Plain);
+					GUILayout.Label(line.Text, Ui.Muted);
 				}
 			}
 		}
 
-		// A step as a card: switch and status tag, what is saved, its settings, then what it is about to do
-		private static bool StepCard(IStep step, InventoryController controller)
+		// The saved template as a row of item icons (hover for the name)
+		private static void TemplateStrip(IEnumerable<KeyValuePair<string, string>> items, string empty)
+		{
+			var list = items.ToList();
+			if (list.Count == 0)
+			{
+				GUILayout.Label(empty, Ui.Muted);
+				return;
+			}
+
+			GUILayout.BeginHorizontal();
+			foreach (var item in list)
+			{
+				Icons.Slot(item.Key, item.Value, 40);
+			}
+
+			GUILayout.FlexibleSpace();
+			GUILayout.EndHorizontal();
+		}
+
+		// A step as a section: its switch and status tag, then its template or settings, then what it is about to do
+		private static bool StepSection(IStep step, InventoryController controller)
 		{
 			bool changed = false;
 			var lines = Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
-			GUILayout.BeginVertical(Ui.Card);
+			GUILayout.BeginVertical(Ui.Section);
 			GUILayout.BeginHorizontal();
-			bool enabled = GUILayout.Toggle(step.Enabled, step.Name, Ui.Toggle);
-			GUILayout.FlexibleSpace();
-			Chip(step, lines);
-			GUILayout.EndHorizontal();
-			if (enabled != step.Enabled)
+			if (GUILayout.Button(step.Enabled ? "ON" : "OFF", step.Enabled ? Ui.SwitchOn : Ui.SwitchOff))
 			{
-				step.Enabled = enabled;
+				step.Enabled = !step.Enabled;
 				changed = true;
 			}
 
+			GUILayout.Label(step.Name, Ui.SectionTitle);
+			GUILayout.FlexibleSpace();
+			Chip(step, lines);
+			GUILayout.EndHorizontal();
+
 			if (step.Enabled)
 			{
-				GUILayout.Label(step.Saved(), Ui.Muted);
-				if (step is SpecialSlotsStep && controller != null)
+				GUILayout.Box(GUIContent.none, Ui.Divider);
+				if (step is SpecialSlotsStep)
 				{
-					if (GUILayout.Button(new GUIContent("Save my current special slots as the template", "Remembers what is in each special slot of your pockets right now"), Ui.Button))
+					var slots = SettingsStore.Current.SpecialSlots.Slots;
+					TemplateStrip(slots.Select(entry => new KeyValuePair<string, string>(entry.Templates[0].Template, $"{entry.SlotId.Replace("SpecialSlot", "Slot ")}: {entry.Templates[0].Name}" + (entry.Count > 1 ? $" x{entry.Count}" : ""))), "Nothing saved yet. Put what you want in the special slots, then save them.");
+					if (controller != null && GUILayout.Button(new GUIContent("Save my current special slots as the template", "Remembers what is in each special slot of your pockets right now"), Ui.Button))
 					{
 						_status = $"Saved {SpecialSlotsStep.Capture(controller)} special slot(s).";
 						RefreshSoon();
 					}
 				}
-				else if (step is InjectorCaseStep && controller != null)
+				else if (step is InjectorCaseStep)
 				{
-					var cases = InjectorCaseStep.FindCases(controller.Inventory);
-					if (cases.Count == 0)
+					var cells = SettingsStore.Current.InjectorCase.Cells;
+					TemplateStrip(cells.OrderBy(cell => cell.Y).ThenBy(cell => cell.X).Select(cell => new KeyValuePair<string, string>(cell.Template, cell.Name)), "Nothing saved yet. Fill the case the way you like it, then save it.");
+					if (controller != null)
 					{
-						GUILayout.Label("No injector case on you (pockets, vest, backpack or pouch).", Ui.Plain);
-					}
-
-					for (int i = 0; i < cases.Count; i++)
-					{
-						var injectorCase = cases[i];
-						bool bound = injectorCase.Id.ToString() == SettingsStore.Current.InjectorCase.CaseId;
-						string name = cases.Count == 1 ? "my injector case" : $"injector case {i + 1} ({injectorCase.Grids[0].Items.Count()} injectors inside)";
-						string label = $"Save {name} as the template" + (bound ? " (this is the saved one)" : "");
-						if (GUILayout.Button(new GUIContent(label, "Remembers which injector is in each cell. Only this case is filled later; other injector cases are left alone."), Ui.Button))
+						var cases = InjectorCaseStep.FindCases(controller.Inventory);
+						if (cases.Count == 0)
 						{
-							_status = $"Saved {InjectorCaseStep.Capture(injectorCase)} injector(s) from {name}.";
-							RefreshSoon();
+							GUILayout.Label("No injector case on you (pockets, vest, backpack or pouch).", Ui.Muted);
+						}
+
+						for (int i = 0; i < cases.Count; i++)
+						{
+							var injectorCase = cases[i];
+							bool bound = injectorCase.Id.ToString() == SettingsStore.Current.InjectorCase.CaseId;
+							string name = cases.Count == 1 ? "my injector case" : $"injector case {i + 1} ({injectorCase.Grids[0].Items.Count()} injectors inside)";
+							string label = $"Save {name} as the template" + (bound ? " (this is the saved one)" : "");
+							if (GUILayout.Button(new GUIContent(label, "Remembers which injector is in each cell. Only this case is filled later; other injector cases are left alone."), Ui.Button))
+							{
+								_status = $"Saved {InjectorCaseStep.Capture(injectorCase)} injector(s) from {name}.";
+								RefreshSoon();
+							}
 						}
 					}
+				}
+				else if (step.Groups.Count == 0)
+				{
+					GUILayout.Label(step.Saved(), Ui.Muted);
 				}
 
 				foreach (var def in step.Groups)
@@ -463,13 +521,22 @@ namespace GetReady
 
 				if (lines != null && lines.Count > 0)
 				{
-					GUILayout.Space(4);
 					PlanLines(lines);
 				}
 			}
 
 			GUILayout.EndVertical();
 			return changed;
+		}
+
+		// A switch with its explanation on one row
+		private static bool OptionRow(bool value, string text, string tooltip)
+		{
+			GUILayout.BeginHorizontal();
+			bool flip = GUILayout.Button(value ? "ON" : "OFF", value ? Ui.SwitchOn : Ui.SwitchOff);
+			GUILayout.Label(new GUIContent(text, tooltip), Ui.Body);
+			GUILayout.EndHorizontal();
+			return flip ? !value : value;
 		}
 
 		private static void Contents(int id)
@@ -488,7 +555,7 @@ namespace GetReady
 
 			GUILayout.EndHorizontal();
 			GUILayout.Label("Clicking the stash button does everything below at once. Ctrl+click opens this window.", Ui.Muted);
-			GUILayout.Space(6);
+			GUILayout.Box(GUIContent.none, Ui.Divider);
 
 			var problems = Problems();
 			if (problems.Count > 0)
@@ -506,13 +573,14 @@ namespace GetReady
 			_scroll = GUILayout.BeginScrollView(_scroll);
 			foreach (var step in Steps.All)
 			{
-				changed |= StepCard(step, controller);
+				changed |= StepSection(step, controller);
 			}
 
-			GUILayout.BeginVertical(Ui.Card);
-			GUILayout.Label("Options", Ui.Toggle);
-			bool swap = GUILayout.Toggle(supplies.SwapWorse, new GUIContent("Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one"));
-			bool overshoot = GUILayout.Toggle(supplies.AllowOvershoot, new GUIContent("Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway"));
+			GUILayout.BeginVertical(Ui.Section);
+			GUILayout.Label("Options", Ui.SectionTitle);
+			GUILayout.Box(GUIContent.none, Ui.Divider);
+			bool swap = OptionRow(supplies.SwapWorse, "Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one");
+			bool overshoot = OptionRow(supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway");
 			GUILayout.EndVertical();
 			if (swap != supplies.SwapWorse || overshoot != supplies.AllowOvershoot)
 			{
@@ -523,6 +591,7 @@ namespace GetReady
 
 			GUILayout.EndScrollView();
 
+			GUILayout.Box(GUIContent.none, Ui.Divider);
 			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip, Ui.Muted);
 			GUILayout.BeginHorizontal();
 			if (GUILayout.Button(new GUIContent("Check again", "Looks at your gear and stash again"), Ui.Button))

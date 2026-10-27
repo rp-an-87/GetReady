@@ -29,7 +29,7 @@ namespace GetReady
 		public bool Random; // the entries are equal: whichever the stash has, picked at random
 		public bool Impact; // left out of the grenade quota's random picks
 		public bool IsQuota; // total grenades: topped up with random ones after the groups
-		public bool AllowPouch = true; // the secured container can hold it (not grenades)
+		public bool AllowPouch = true; // the secured container and the special slots can hold it (not grenades)
 		public int DefaultTarget;
 		public int Max = 10;
 		public int Step = 1;
@@ -56,7 +56,7 @@ namespace GetReady
 
 		// Where a group can go, in the order they are clicked: the first with room wins. "Vest" is the tactical vest or an armored
 		// rig, "Pouch" the secured container.
-		internal static readonly string[] Locations = { "Pockets", "Vest", "Backpack", "Pouch" };
+		internal static readonly string[] Locations = { "Special slots", "Pockets", "Vest", "Backpack", "Pouch" };
 
 		internal static GroupSetting Setting(GroupDef def)
 		{
@@ -127,29 +127,6 @@ namespace GetReady
 			}
 		}
 
-		private static List<CompoundItem> Containers(Inventory inventory, IEnumerable<string> names)
-		{
-			var slots = new List<EquipmentSlot>();
-			foreach (var name in names)
-			{
-				if (name == "Vest")
-				{
-					slots.Add(EquipmentSlot.TacticalVest);
-					slots.Add(EquipmentSlot.ArmorVest);
-				}
-				else if (name == "Pouch")
-				{
-					slots.Add(EquipmentSlot.SecuredContainer);
-				}
-				else
-				{
-					slots.Add((EquipmentSlot)Enum.Parse(typeof(EquipmentSlot), name));
-				}
-			}
-
-			return slots.Select(slot => Game.EquippedContainer(inventory, slot)).Where(container => container != null).Distinct().ToList();
-		}
-
 		public List<PlanLine> Plan(InventoryController controller)
 		{
 			var inventory = controller.Inventory;
@@ -169,7 +146,7 @@ namespace GetReady
 					continue;
 				}
 
-				var targets = Containers(inventory, setting.Destinations);
+				var places = setting.Destinations.ToList();
 				float alreadyBringing = claimed.Sum(item => WeightOf(def, item));
 				float leavingWeight = leaving.Sum(item => WeightOf(def, item));
 				float fixedWeight = owned.Sum(item => WeightOf(def, item)) - leavingWeight;
@@ -184,7 +161,7 @@ namespace GetReady
 						lines.Add(new PlanLine
 						{
 							Text = $"Replace {Describe(worse)} with {Describe(better)}",
-							Run = () => Swap(controller, worse, better, targets)
+							Run = () => Swap(controller, worse, better, places)
 						});
 					}
 				}
@@ -214,7 +191,7 @@ namespace GetReady
 					lines.Add(new PlanLine
 					{
 						Text = $"Bring {items.Count}x {group.Key}",
-						Run = () => MoveAll(controller, items, targets)
+						Run = () => MoveAll(controller, items, places)
 					});
 				}
 
@@ -275,11 +252,11 @@ namespace GetReady
 				need--;
 			}
 
-			var targets = Containers(controller.Inventory, setting.Destinations);
+			var places = setting.Destinations.ToList();
 			foreach (var group in picked.GroupBy(item => Game.NameOf(item)))
 			{
 				var items = group.ToList();
-				lines.Add(new PlanLine { Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items, targets) });
+				lines.Add(new PlanLine { Text = $"Bring {items.Count}x {group.Key}", Run = () => MoveAll(controller, items, places) });
 			}
 
 			if (need > 0)
@@ -288,11 +265,11 @@ namespace GetReady
 			}
 		}
 
-		private static async Task<string> MoveAll(InventoryController controller, List<Item> items, List<CompoundItem> targets)
+		private static async Task<string> MoveAll(InventoryController controller, List<Item> items, List<string> places)
 		{
 			foreach (var item in items)
 			{
-				var error = await Game.MoveToContainers(controller, item, targets);
+				var error = await Game.MoveTo(controller, item, places);
 				if (error != null)
 				{
 					return error;
@@ -303,7 +280,7 @@ namespace GetReady
 		}
 
 		// The carried one goes to the stash first, and goes back if the better one can't be brought
-		private static async Task<string> Swap(InventoryController controller, Item worse, Item better, List<CompoundItem> targets)
+		private static async Task<string> Swap(InventoryController controller, Item worse, Item better, List<string> places)
 		{
 			var error = await Game.MoveToContainers(controller, worse, new List<CompoundItem> { controller.Inventory.Stash });
 			if (error != null)
@@ -311,10 +288,10 @@ namespace GetReady
 				return error;
 			}
 
-			error = await Game.MoveToContainers(controller, better, targets);
+			error = await Game.MoveTo(controller, better, places);
 			if (error != null)
 			{
-				await Game.MoveToContainers(controller, worse, targets);
+				await Game.MoveTo(controller, worse, places);
 			}
 
 			return error;

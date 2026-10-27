@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -85,6 +86,86 @@ namespace GetReady
 
 			var outcome = await controller.TryRunNetworkTransaction(operation);
 			return outcome.Failed ? outcome.Error.ToString() : null;
+		}
+
+		// "Vest" is the tactical vest or an armored rig, "Pouch" the secured container
+		internal static List<CompoundItem> ContainersOf(Inventory inventory, string place)
+		{
+			var slots = new List<EquipmentSlot>();
+			switch (place)
+			{
+				case "Vest":
+					slots.Add(EquipmentSlot.TacticalVest);
+					slots.Add(EquipmentSlot.ArmorVest);
+					break;
+				case "Pouch":
+					slots.Add(EquipmentSlot.SecuredContainer);
+					break;
+				default:
+					slots.Add((EquipmentSlot)Enum.Parse(typeof(EquipmentSlot), place));
+					break;
+			}
+
+			return slots.Select(slot => EquippedContainer(inventory, slot)).Where(container => container != null).ToList();
+		}
+
+		// Moves the item to the first of the places (Special slots, Pockets, Vest, Backpack, Pouch) that takes it.
+		// Returns null, or why the last one refused.
+		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places)
+		{
+			string last = "no place to put it";
+			foreach (var place in places)
+			{
+				string error;
+				if (place == "Special slots")
+				{
+					error = await MoveToSpecialSlots(controller, item);
+				}
+				else
+				{
+					var containers = ContainersOf(controller.Inventory, place);
+					if (containers.Count == 0)
+					{
+						last = $"no {place} equipped";
+						continue;
+					}
+
+					error = await MoveToContainers(controller, item, containers);
+				}
+
+				if (error == null)
+				{
+					return null;
+				}
+
+				last = error;
+			}
+
+			return last;
+		}
+
+		// The first empty special slot of the pockets that accepts the item
+		private static async Task<string> MoveToSpecialSlots(InventoryController controller, Item item)
+		{
+			string last = "no free special slot";
+			var pockets = EquippedContainer(controller.Inventory, EquipmentSlot.Pockets);
+			foreach (var slot in pockets?.Slots ?? new Slot[0])
+			{
+				if (slot.ContainedItem != null)
+				{
+					continue;
+				}
+
+				var error = await PlaceAt(controller, item, item.StackObjectsCount, slot.CreateItemAddress());
+				if (error == null)
+				{
+					return null;
+				}
+
+				last = error;
+			}
+
+			return last;
 		}
 
 		// Moves the item to the first of the containers with room

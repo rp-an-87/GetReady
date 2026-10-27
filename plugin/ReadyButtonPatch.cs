@@ -54,7 +54,7 @@ namespace GetReady
 				clone.name = ButtonName;
 				clone.GetComponent<Tab>().SetInteractable(true);
 				var icon = clone.GetComponent<FilterTab>()._filterIcon;
-				icon.sprite = Icons.Ready();
+				icon.sprite = Icons.Button();
 				icon.color = new Color(0.45f, 0.7f, 0.95f, icon.color.a);
 				Place(clone.transform, pin.transform);
 
