@@ -18,6 +18,51 @@ namespace GetReady
 		// The stash button: it is only active while the stash screen is up, so it tells whether the window still has a stash
 		internal static GameObject Button;
 		internal static bool StashShown => Button != null && Button.activeInHierarchy;
+
+		private static GameObject _badge;
+		private static Image _badgeImage;
+		private static Text _badgeText;
+
+		// A small count on the button: red with the number of problems, else gold with the number of things to bring
+		internal static void SetBadge(int problems, int todo)
+		{
+			if (_badge == null)
+			{
+				return;
+			}
+
+			int count = problems > 0 ? problems : todo;
+			_badge.SetActive(count > 0);
+			_badgeImage.color = problems > 0 ? new Color(0.78f, 0.2f, 0.17f) : new Color(0.62f, 0.52f, 0.2f);
+			_badgeText.text = count.ToString();
+		}
+
+		private static void AddBadge(Transform button)
+		{
+			_badge = new GameObject("Badge", typeof(RectTransform), typeof(Image));
+			_badge.transform.SetParent(button, false);
+			var rect = (RectTransform)_badge.transform;
+			rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 1f);
+			rect.sizeDelta = new Vector2(20f, 20f);
+			rect.anchoredPosition = new Vector2(3f, 3f);
+			_badgeImage = _badge.GetComponent<Image>();
+			_badgeImage.raycastTarget = false;
+
+			var label = new GameObject("Count", typeof(RectTransform), typeof(Text));
+			label.transform.SetParent(_badge.transform, false);
+			var labelRect = (RectTransform)label.transform;
+			labelRect.anchorMin = Vector2.zero;
+			labelRect.anchorMax = Vector2.one;
+			labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
+			_badgeText = label.GetComponent<Text>();
+			_badgeText.raycastTarget = false;
+			_badgeText.alignment = TextAnchor.MiddleCenter;
+			_badgeText.fontSize = 13;
+			_badgeText.fontStyle = FontStyle.Bold;
+			_badgeText.color = Color.white;
+			_badgeText.font = Font.CreateDynamicFontFromOSFont("Arial", 13);
+			_badge.SetActive(false);
+		}
 		private const int MedsTabIndex = 4; // order of FilterPanel's filter rules: All, Weapon, Magazine, Ammo, Meds
 
 		protected override MethodBase GetTargetMethod() => typeof(SimpleStashPanel).GetMethod(nameof(SimpleStashPanel.Show), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
@@ -58,6 +103,7 @@ namespace GetReady
 				var clone = UnityEngine.Object.Instantiate(tabs[MedsTabIndex].gameObject, pin.transform.parent, false);
 				clone.name = ButtonName;
 				Button = clone;
+				AddBadge(clone.transform);
 				clone.GetComponent<Tab>().SetInteractable(true);
 				var icon = clone.GetComponent<FilterTab>()._filterIcon;
 				icon.sprite = Icons.Button();
@@ -78,7 +124,7 @@ namespace GetReady
 				};
 
 				var hover = clone.GetComponent<HoverTrigger>() ?? clone.AddComponent<HoverTrigger>();
-				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show("Get ready for raid: click to bring what is missing from the stash into your gear. Ctrl+click opens the window to set it up.", null, 0.25f, null);
+				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show(ReadyWindow.Summary(), null, 0.25f, null);
 				hover.OnHoverEnd += _ => ItemUiContext.Instance.Tooltip.Close();
 			}
 			catch (Exception e)

@@ -125,7 +125,7 @@ namespace GetReady
 			var edge = new Color(0.27f, 0.28f, 0.27f);
 			Window = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(16, 16, 14, 14) }, new Color(0.085f, 0.09f, 0.09f, 0.985f), new Color(0.36f, 0.37f, 0.35f), 2);
 			Section = Panel(new Color(0.12f, 0.125f, 0.125f), new Color(0.33f, 0.34f, 0.32f), 1, new RectOffset(12, 12, 10, 12), new RectOffset(0, 0, 0, 12));
-			Group = Panel(new Color(0.16f, 0.165f, 0.16f), edge, 1, new RectOffset(10, 10, 8, 8), new RectOffset(0, 0, 3, 3));
+			Group = Panel(new Color(0.16f, 0.165f, 0.16f), edge, 1, new RectOffset(10, 10, 8, 8), new RectOffset(0, 0, 4, 4));
 			Inner = Panel(new Color(0.105f, 0.11f, 0.11f), new Color(0.22f, 0.23f, 0.22f), 1, new RectOffset(8, 8, 6, 6), new RectOffset(0, 0, 4, 2));
 			Divider = Back(new GUIStyle(GUI.skin.box) { fixedHeight = 1, margin = new RectOffset(0, 0, 6, 6), padding = new RectOffset(0, 0, 0, 0) }, new Color(0.33f, 0.34f, 0.32f), new Color(0.33f, 0.34f, 0.32f), 0);
 			AlertCard = Panel(new Color(0.27f, 0.09f, 0.09f), Bad, 2, new RectOffset(12, 12, 10, 10), new RectOffset(0, 0, 4, 10));

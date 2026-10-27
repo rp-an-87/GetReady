@@ -41,10 +41,6 @@ namespace GetReady
 			{
 				Refresh();
 			}
-			else
-			{
-				Watch(null);
-			}
 		}
 
 		private static EventSystem _blocked;
@@ -75,10 +71,11 @@ namespace GetReady
 			}
 		}
 
+		private static bool _wasShown;
+
 		private static void Close()
 		{
 			_open = false;
-			Watch(null);
 		}
 
 		internal static void Tick()
@@ -93,13 +90,26 @@ namespace GetReady
 				}
 			}
 
-			if (_open && !ReadyButtonPatch.StashShown)
+			bool shown = ReadyButtonPatch.StashShown;
+			if (_open && !shown)
 			{
 				Close();
 			}
 
+			// The status is kept up to date while the stash is up, window or not (the button shows it)
+			if (shown && !_wasShown)
+			{
+				MarkDirty();
+			}
+
+			_wasShown = shown;
+			if (!shown && _watched != null)
+			{
+				Watch(null);
+			}
+
 			BlockGameInput();
-			if (_open && _dirty && !_running && Time.unscaledTime - _dirtyAt > 0.3f)
+			if (ReadyButtonPatch.StashShown && _dirty && !_running && Time.unscaledTime - _dirtyAt > 0.3f)
 			{
 				Refresh();
 			}
@@ -162,6 +172,7 @@ namespace GetReady
 			if (controller == null)
 			{
 				_status = "No stash here: open this in the hideout or the main menu.";
+				ReadyButtonPatch.SetBadge(0, 0);
 				return;
 			}
 
@@ -191,6 +202,33 @@ namespace GetReady
 			}
 
 			_loggedFirst = true;
+			UpdateBadge();
+		}
+
+		// The count on the stash button, and the text of its tooltip
+		private static void UpdateBadge() => ReadyButtonPatch.SetBadge(Problems().Count, Plan.Sum(entry => entry.Value.Count(line => line.Run != null)));
+
+		internal static string Summary()
+		{
+			int moves = Plan.Sum(entry => entry.Value.Count(line => line.Run != null));
+			var problems = Problems();
+			var text = new System.Text.StringBuilder("Get ready for raid\nClick: bring what is missing. Ctrl+click: open the window.");
+			if (moves == 0 && problems.Count == 0)
+			{
+				text.Append("\n\nYou are all set.");
+			}
+
+			if (moves > 0)
+			{
+				text.Append($"\n\n{moves} to bring from the stash");
+			}
+
+			foreach (var problem in problems.Take(6))
+			{
+				text.Append($"\n! {problem.Value.Subject ?? problem.Value.Text}" + (problem.Value.Detail != null ? ": " + problem.Value.Detail : ""));
+			}
+
+			return text.ToString();
 		}
 
 		// Redraw with a fresh plan on the next frame (never in the middle of drawing)
@@ -512,50 +550,71 @@ namespace GetReady
 			GUI.color = previous;
 			GUILayout.EndVertical();
 			GUILayout.EndHorizontal();
-			GUILayout.Space(3);
 		}
 
+		// The lines of a step: each progress line opens a card, and what follows it (what will be brought, what is wrong) sits in it
 		private static void PlanLines(List<PlanLine> lines)
 		{
+			bool open = false;
 			foreach (var line in lines)
 			{
-				if (line.Problem)
+				if (line.IsProgress)
 				{
-					GUILayout.BeginHorizontal(Ui.ProblemBox);
-					if (!string.IsNullOrEmpty(line.Template))
+					if (open)
 					{
-						Icons.Slot(line.Template, line.Subject ?? "", 34);
+						GUILayout.EndVertical();
 					}
 
-					GUILayout.BeginVertical();
-					GUILayout.Label(line.Subject ?? line.Text, Ui.Problem);
-					if (line.Detail != null)
-					{
-						GUILayout.Label(line.Detail, Ui.Body);
-					}
-
-					GUILayout.EndVertical();
-					GUILayout.EndHorizontal();
-				}
-				else if (line.IsProgress)
-				{
+					GUILayout.BeginVertical(Ui.Group);
+					open = true;
 					ProgressRow(line);
+					continue;
 				}
-				else if (line.Run != null)
-				{
-					GUILayout.BeginHorizontal();
-					if (!string.IsNullOrEmpty(line.Template))
-					{
-						Icons.Slot(line.Template, "", 28);
-					}
 
-					GUILayout.Label(line.Text, Ui.Move);
-					GUILayout.EndHorizontal();
-				}
-				else
+				DetailLine(line, open);
+			}
+
+			if (open)
+			{
+				GUILayout.EndVertical();
+			}
+		}
+
+		private static void DetailLine(PlanLine line, bool indent)
+		{
+			if (line.Problem)
+			{
+				GUILayout.BeginHorizontal(Ui.ProblemBox);
+				if (!string.IsNullOrEmpty(line.Template))
 				{
-					GUILayout.Label(line.Text, Ui.Muted);
+					Icons.Slot(line.Template, line.Subject ?? "", 34);
 				}
+
+				GUILayout.BeginVertical();
+				GUILayout.Label(line.Subject ?? line.Text, Ui.Problem);
+				if (line.Detail != null)
+				{
+					GUILayout.Label(line.Detail, Ui.Body);
+				}
+
+				GUILayout.EndVertical();
+				GUILayout.EndHorizontal();
+			}
+			else if (line.Run != null)
+			{
+				GUILayout.BeginHorizontal();
+				if (indent)
+				{
+					GUILayout.Space(44);
+				}
+
+				GUILayout.Label("+", Ui.Move, GUILayout.Width(12));
+				GUILayout.Label(line.Text, Ui.Move);
+				GUILayout.EndHorizontal();
+			}
+			else
+			{
+				GUILayout.Label(line.Text, Ui.Muted);
 			}
 		}
 
@@ -807,7 +866,6 @@ namespace GetReady
 			{
 				_closeRequested = false;
 				_open = false;
-				Watch(null);
 			}
 
 			GUI.DragWindow(new Rect(0, 0, 10000, 44));

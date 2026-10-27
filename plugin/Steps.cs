@@ -51,13 +51,7 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(),
-			// Found by what the item treats, so modded splints count too: anything that fixes a fracture without doing surgery
-			// (Surv12 does both and counts as surgery only); Grizzly fixes fractures and counts as a splint
-			new MissingResourceWarning("Splint warning", "splint", s => s.Splint, (s, on) => s.Splint = on,
-				Game.IsSplint, "5af0454c86f7746bf20992e8"),
-			new MissingResourceWarning("Surgery warning", "surgery kit", s => s.Surgery, (s, on) => s.Surgery = on,
-				Game.IsSurgeryKit, "5d02778e86f774203e7dedbe")
+			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep()
 		};
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
@@ -130,40 +124,6 @@ namespace GetReady
 
 			lines.AddRange(others);
 			return lines;
-		}
-	}
-
-	// Warns when you carry none of a kind of item (splints, surgery kits), counting what the other steps are about to bring
-	internal class MissingResourceWarning : IStep
-	{
-		private readonly string _kind;
-		private readonly Func<WarningSettings, bool> _get;
-		private readonly Action<WarningSettings, bool> _set;
-		private readonly Func<Item, bool> _matches;
-		private readonly string _icon;
-
-		public MissingResourceWarning(string name, string kind, Func<WarningSettings, bool> get, Action<WarningSettings, bool> set, Func<Item, bool> matches, string icon)
-		{
-			Name = name;
-			_kind = kind;
-			_get = get;
-			_set = set;
-			_matches = matches;
-			_icon = icon;
-		}
-
-		public string Name { get; }
-		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
-		public bool Enabled { get => _get(SettingsStore.Current.Warnings); set => _set(SettingsStore.Current.Warnings, value); }
-		public string Saved() => "warns when you carry none";
-
-		public List<PlanLine> Plan(InventoryController controller)
-		{
-			int count = Game.CarriedAndSecured(controller.Inventory).Concat(Steps.Claimed).Count(_matches);
-			return new List<PlanLine>
-			{
-				count > 0 ? Steps.Info($"{count} {_kind}(s) on you") : Steps.Problem($"No {_kind} on you", "You carry none. Bring one, or switch this warning off in Setup.", _icon)
-			};
 		}
 	}
 
