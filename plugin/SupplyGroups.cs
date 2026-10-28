@@ -34,6 +34,7 @@ namespace GetReady
 		public int DefaultTarget;
 		public int Max = 10;
 		public int Step = 1;
+		public bool Typed; // the amount is typed in (besides - and +), for amounts the steps do not fit
 		public bool Money; // shown with thousands separators and as "Bring 25,000 RUB"
 		public bool Bindable = true; // can go on a quick-slot key
 		public string DefaultHotkey = "";

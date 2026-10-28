@@ -55,7 +55,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsSurgeryKit, Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 3,
+				Under = Game.UnderMedicalItem, Match = Game.IsSurgeryKit, Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 1, Typed = true,
 				Entries = new[]
 				{
 					Entry.Resource("5d02778e86f774203e7dedbe"), // CMS: 3 uses
