@@ -268,6 +268,11 @@ namespace GetReady
 						}
 					}
 				}
+				else if (step is RepairStep && controller != null)
+				{
+					changed |= RepairSetup(controller);
+				}
+
 				foreach (var def in step.Groups)
 				{
 					changed |= GroupRow(def);

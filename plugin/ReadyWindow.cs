@@ -157,7 +157,9 @@ namespace GetReady
 			}
 
 			GUILayout.Box(GUIContent.none, Ui.Divider);
-			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip, Ui.Muted);
+			// A fixed height of three lines: the hover text changes between the layout pass and the draw pass, and a label whose height
+			// follows its text breaks the layout as soon as a hint wraps onto a second line
+			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip, Ui.Muted, GUILayout.Height(50));
 			GUILayout.BeginHorizontal();
 			GUILayout.FlexibleSpace();
 			GUI.enabled = !_running && Plan.Any(entry => entry.Value.Any(line => line.Run != null));

@@ -88,8 +88,29 @@ namespace GetReady
 		public int BestOnTopPercent;
 	}
 
+	// An armor piece left damaged on purpose: that very item (its id), with its name kept so it can be shown
+	internal class KeptItem
+	{
+		public string Id;
+		public string Template;
+		public string Name;
+	}
+
+	internal class RepairSettings
+	{
+		public bool Enabled;
+		// Also repair the weapons you carry in the weapon slots (with weapon repair kits)
+		public bool Weapons = true;
+		// A piece with no usable kit is repaired by a trader instead (for roubles), the first of TraderOrder that can repair it. A kit that
+		// is there but too small is an error, not a reason to go to a trader.
+		public bool UseTraders = true;
+		public List<string> TraderOrder = new List<string>();
+		public List<KeptItem> KeepDamaged = new List<KeptItem>();
+	}
+
 	internal class Settings
 	{
+		public RepairSettings Repair = new RepairSettings();
 		public AmmoSettings Ammo = new AmmoSettings();
 		public SuppliesSettings Supplies = new SuppliesSettings();
 		public InjectorCaseTemplate InjectorCase = new InjectorCaseTemplate();

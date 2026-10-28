@@ -14,6 +14,7 @@ namespace GetReady
 		private static bool _running;
 
 		private static int _moved;
+		private static int _repaired;
 		private static int _keys;
 
 		// The window's button: close the window and do it like the stash button does (alert and sound included)
@@ -54,8 +55,9 @@ namespace GetReady
 			if (problems.Count == 0)
 			{
 				var brought = _moved > 0 ? $"{_moved} item(s) brought" : "";
+				var repaired = _repaired > 0 ? $"{_repaired} piece(s) of gear repaired" : "";
 				var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
-				var report = string.Join(", ", new[] { brought, keys }.Where(part => part != "").ToArray());
+				var report = string.Join(", ", new[] { brought, repaired, keys }.Where(part => part != "").ToArray());
 				NotificationManager.DisplayMessageNotification("Ready for raid: " + (report == "" ? "you already have everything" : report) + ".");
 			}
 
@@ -64,7 +66,7 @@ namespace GetReady
 			{
 				Play(EUISoundType.ErrorMessage);
 			}
-			else if (_moved > 0 || _keys > 0)
+			else if (_moved > 0 || _keys > 0 || _repaired > 0)
 			{
 				Play(EUISoundType.QuestStarted);
 				ReadyFlash.Show();
@@ -87,7 +89,7 @@ namespace GetReady
 			_running = true;
 			try
 			{
-				int done = 0, failed = 0;
+				int done = 0, failed = 0, repaired = 0;
 				Failures.Clear();
 				foreach (var entry in Plan.ToList())
 				{
@@ -97,6 +99,7 @@ namespace GetReady
 						if (error == null)
 						{
 							done += line.Items;
+							repaired += line.Repair ? 1 : 0;
 						}
 						else
 						{
@@ -112,6 +115,7 @@ namespace GetReady
 				_keys = controller == null ? 0 : await Hotkeys.Apply(controller);
 
 				_moved = done;
+				_repaired = repaired;
 				_status = failed == 0 ? $"Done: {done} moved." : $"{done} moved, {failed} failed (see the log).";
 			}
 			catch (Exception e)

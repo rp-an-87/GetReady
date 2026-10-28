@@ -21,6 +21,9 @@ namespace GetReady
 		// How many items the line moves (the notification adds them up)
 		public int Items = 1;
 
+		// The line repairs a piece of gear rather than moving items (counted apart in the notification)
+		public bool Repair;
+
 		// A progress line: how much of what is wanted is there (drawn as a bar)
 		public bool IsProgress;
 		public float Have;
@@ -51,7 +54,7 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep()
+			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep()
 		};
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time

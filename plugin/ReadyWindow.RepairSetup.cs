@@ -1,0 +1,134 @@
+using System.Linq;
+using EFT.InventoryLogic;
+using UnityEngine;
+
+namespace GetReady
+{
+	// The Setup card of the Repair step: what to repair, the traders, and the pieces left damaged on purpose, each in its own section.
+	internal static partial class ReadyWindow
+	{
+		// The "leave damaged" list is out of the way until it is asked for (it is something you rarely want); it always shows while
+		// at least one piece is on it
+		private static bool _showKeepList;
+
+		private static bool RepairSetup(InventoryController controller)
+		{
+			bool changed = false;
+			var repair = SettingsStore.Current.Repair;
+
+			// What to repair
+			GUILayout.BeginVertical(Ui.Group);
+			GUILayout.Label("What to repair", Ui.Name);
+			GUILayout.Label("Armor you wear is always checked.", Ui.Muted);
+			bool weapons = OptionRow(repair.Weapons, "Also repair my weapons", "The weapons in your weapon slots are repaired with weapon repair kits, the way the R key does it");
+			if (weapons != repair.Weapons)
+			{
+				repair.Weapons = weapons;
+				changed = true;
+			}
+
+			GUILayout.EndVertical();
+
+			// Traders
+			GUILayout.BeginVertical(Ui.Group);
+			GUILayout.Label("Traders", Ui.Name);
+			bool traders = OptionRow(repair.UseTraders, "Use a trader when I have no repair kit", "A worn piece with no kit that can repair it is repaired by a trader for roubles (all or nothing: not enough roubles is an error). A kit that is there but too small is an error too, not a reason to go to a trader.");
+			if (traders != repair.UseTraders)
+			{
+				repair.UseTraders = traders;
+				changed = true;
+			}
+
+			var repairController = RepairWithKit.Controller();
+			if (repair.UseTraders && repairController != null)
+			{
+				GUILayout.Label("The first trader in this order that can repair the piece is used:", Ui.Muted);
+				foreach (var trader in RepairStep.OrderedTraders(repairController))
+				{
+					GUILayout.BeginHorizontal();
+					TraderAvatars.Slot(trader, 40);
+					GUILayout.Label(trader.LocalizedName, Ui.Body);
+					GUILayout.FlexibleSpace();
+					if (GUILayout.Button("Up", Ui.Pick, GUILayout.Width(50)))
+					{
+						RepairStep.MoveTrader(repairController, trader.Id, -1);
+						changed = true;
+					}
+
+					if (GUILayout.Button("Down", Ui.Pick, GUILayout.Width(60)))
+					{
+						RepairStep.MoveTrader(repairController, trader.Id, 1);
+						changed = true;
+					}
+
+					GUILayout.EndHorizontal();
+				}
+			}
+
+			GUILayout.EndVertical();
+
+			// Pieces left damaged on purpose
+			var gear = RepairStep.EquippedGear(controller.Inventory);
+			var kept = repair.KeepDamaged;
+			if (kept.Count == 0 && !_showKeepList)
+			{
+				if (GUILayout.Button(new GUIContent("Leave a piece damaged on purpose...", "For gear you want to hand in damaged, for a quest for instance"), Ui.Pick))
+				{
+					_showKeepList = true;
+				}
+
+				return changed;
+			}
+
+			GUILayout.BeginVertical(Ui.Group);
+			GUILayout.BeginHorizontal();
+			GUILayout.Label("Left damaged on purpose", Ui.Name);
+			GUILayout.FlexibleSpace();
+			if (kept.Count == 0 && GUILayout.Button("Hide", Ui.Pick, GUILayout.Width(60)))
+			{
+				_showKeepList = false;
+			}
+
+			GUILayout.EndHorizontal();
+			GUILayout.Label("This very piece, not its type: a new armor of the same type is repaired normally.", Ui.Muted);
+			if (gear.Count == 0)
+			{
+				GUILayout.Label("No armor or weapon equipped.", Ui.Muted);
+			}
+
+			foreach (var item in gear)
+			{
+				bool keep = RepairStep.IsKept(item);
+				GUILayout.BeginHorizontal();
+				Icons.Slot(item.TemplateId.ToString(), Game.NameOf(item), 40);
+				GUILayout.Label(Game.NameOf(item) + (keep ? "  -  left damaged" : ""), keep ? Ui.Name : Ui.Body);
+				GUILayout.FlexibleSpace();
+				if (GUILayout.Button(keep ? "Repair it again" : "Leave it damaged", keep ? Ui.PickOn : Ui.Pick, GUILayout.Width(150)))
+				{
+					RepairStep.ToggleKept(item);
+					changed = true;
+				}
+
+				GUILayout.EndHorizontal();
+			}
+
+			foreach (var entry in kept.Where(entry => !gear.Any(item => item.Id.ToString() == entry.Id)).ToList())
+			{
+				GUILayout.BeginHorizontal();
+				Icons.Slot(entry.Template, entry.Name, 40);
+				GUILayout.Label(entry.Name + "  -  saved, not on you", Ui.Muted);
+				GUILayout.FlexibleSpace();
+				if (GUILayout.Button("Remove from the list", Ui.Pick, GUILayout.Width(150)))
+				{
+					kept.Remove(entry);
+					changed = true;
+				}
+
+				GUILayout.EndHorizontal();
+			}
+
+			GUILayout.EndVertical();
+			return changed;
+		}
+	}
+}

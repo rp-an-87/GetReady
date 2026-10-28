@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using Comfort.Common;
 using EFT;
 using EFT.Communications;
+using EFT.Trading;
 using EFT.InventoryLogic;
 using EFT.UI;
 using UnityEngine;
@@ -170,14 +172,44 @@ namespace GetReady
 			return low;
 		}
 
-		// Repairs the item with one kit after the other, the one with least left first, until it is whole or the kits are used up
-		private static async void Run(EFT.Repairing.RepairController repairController, Item item)
+		internal class RepairOutcome
 		{
+			public int Steps;
+			public bool Whole;
+			public float Durability;
+			public string Error; // set when a repair request failed
+		}
+
+		// The repair controller of the session: through the item screen when it is up, else straight from the session (the badge asks before
+		// the stash screen has set the item screen up)
+		internal static EFT.Repairing.RepairController Controller() =>
+			ItemUiContext.Instance?.Session?.RepairController ?? SPT.Reflection.Utils.ClientAppUtils.GetMainApp()?.GetClientBackEndSession()?.RepairController;
+
+		// Whether the item has anything to repair and some kit the game offers could do it: what the window and the key start from
+		internal static bool NeedsRepair(Item item, EFT.Repairing.RepairController repairController, out bool hasKit)
+		{
+			hasKit = false;
+			try
+			{
+				var strategy = NewStrategy(item, repairController);
+				hasKit = strategy.RepairKitsCollections.SelectMany(group => group._repairKits).Any(kit => kit.Resource > KitFloor);
+				return strategy.HowMuchRepairScoresCanAccept() >= 0.1f;
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not ask the game about the repair of {item.ShortName.Localized()}: {e.Message}");
+				return false;
+			}
+		}
+
+		// Repairs the item with one kit after the other, the one with least left first, until it is whole or the kits are used up
+		internal static async Task<RepairOutcome> RepairAll(EFT.Repairing.RepairController repairController, Item item)
+		{
+			var outcome = new RepairOutcome();
 			_running = true;
 			var name = item.ShortName.Localized();
 			try
 			{
-				int repairs = 0;
 				for (int round = 0; round < 12; round++)
 				{
 					var strategy = NewStrategy(item, repairController);
@@ -222,39 +254,164 @@ namespace GetReady
 					if (!result.Succeed)
 					{
 						Plugin.Log.LogWarning($"Repair with kit failed: {result.Error}");
-						NotificationManager.DisplayMessageNotification($"Repair of {name} failed: {result.Error}");
-						return;
+						outcome.Error = result.Error;
+						break;
 					}
 
-					repairs++;
+					outcome.Steps++;
 
 					// Let the kit's new resource (or its removal) reach the inventory before the next round looks at it
-					await System.Threading.Tasks.Task.Delay(150);
+					await Task.Delay(150);
 				}
 
 				var after = NewStrategy(item, repairController);
-				bool whole = after.HowMuchRepairScoresCanAccept() < 0.1f;
-				Plugin.Log.LogInfo($"Repair done: {repairs} step(s), {(whole ? "whole" : "not whole, the kits ran out")}");
-				if (repairs > 0)
-				{
-					Singleton<GUISounds>.Instance.PlayUISound(EUISoundType.RepairComplete);
-				}
-
-				if (repairs > 0 || !whole)
-				{
-					NotificationManager.DisplayMessageNotification(whole
-						? $"Repaired {name} to {after.Durability():F1}."
-						: $"Repair: {name} is at {after.Durability():F1}, your repair kits ran out.");
-				}
+				outcome.Whole = after.HowMuchRepairScoresCanAccept() < 0.1f;
+				outcome.Durability = after.Durability();
+				Plugin.Log.LogInfo($"Repair done: {outcome.Steps} step(s), {(outcome.Whole ? "whole" : "not whole, the kits ran out")}");
 			}
 			catch (Exception e)
 			{
 				Plugin.Log.LogError($"Repair with kit failed: {e}");
-				NotificationManager.DisplayMessageNotification($"Repair of {name} failed, see the log.");
+				outcome.Error = e.Message;
 			}
 			finally
 			{
 				_running = false;
+			}
+
+			return outcome;
+		}
+
+		internal class TraderQuote
+		{
+			public Trader Trader;
+			public int Price;
+			public int Money;
+		}
+
+		// Roubles in the stash (the repair window counts the same)
+		internal static int Roubles(InventoryController controller)
+		{
+			var sums = InventoryExtension.GetMoneySums(controller.Inventory.Stash.Grid.ContainedItems.Keys);
+			int roubles;
+			return sums.TryGetValue(ECurrencyType.RUB, out roubles) ? roubles : 0;
+		}
+
+		// The traders that can repair the item, in the order set in Setup (the ones not listed after them, in the game's order)
+		internal static List<Trader> TradersFor(Item item, EFT.Repairing.RepairController repairController)
+		{
+			var order = SettingsStore.Current.Repair.TraderOrder;
+			return NewStrategy(item, repairController).Repairers.OfType<Trader>()
+				.Select((trader, index) => new { trader, key = order.IndexOf(trader.Id) >= 0 ? order.IndexOf(trader.Id) : 1000 + index })
+				.OrderBy(pair => pair.key)
+				.Select(pair => pair.trader)
+				.ToList();
+		}
+
+		// What the first trader that can repair the item would charge for the whole repair, and the roubles you have
+		internal static TraderQuote QuoteTrader(Item item, EFT.Repairing.RepairController repairController, InventoryController controller)
+		{
+			var trader = TradersFor(item, repairController).FirstOrDefault();
+			if (trader == null)
+			{
+				return null;
+			}
+
+			var strategy = NewStrategy(item, repairController);
+			strategy.CurrentRepairer = strategy.Repairers.OfType<Trader>().First(candidate => candidate.Id == trader.Id);
+			return new TraderQuote { Trader = trader, Price = strategy.GetCurrencyPrice(strategy.HowMuchRepairScoresCanAccept()), Money = Roubles(controller) };
+		}
+
+		// Repairs the whole item at the trader, or says why not (all or nothing: not enough roubles is an error)
+		internal static async Task<RepairOutcome> RepairAtTrader(EFT.Repairing.RepairController repairController, InventoryController controller, Item item, string traderId)
+		{
+			var outcome = new RepairOutcome();
+			_running = true;
+			try
+			{
+				var strategy = NewStrategy(item, repairController);
+				var trader = strategy.Repairers.OfType<Trader>().FirstOrDefault(candidate => candidate.Id == traderId);
+				if (trader == null)
+				{
+					outcome.Error = "the trader can not repair it any more";
+					return outcome;
+				}
+
+				strategy.CurrentRepairer = trader;
+				float amount = strategy.HowMuchRepairScoresCanAccept();
+				if (amount < 0.1f)
+				{
+					outcome.Whole = true;
+					return outcome;
+				}
+
+				int price = strategy.GetCurrencyPrice(amount);
+				int money = Roubles(controller);
+				if (price > money)
+				{
+					outcome.Error = $"{trader.LocalizedName} wants {price:N0} roubles, you have {money:N0}";
+					return outcome;
+				}
+
+				Plugin.Log.LogInfo($"Repair: {item.ShortName.Localized()} {item.Id} at {trader.LocalizedName}, {amount:F1} points for {price:N0} roubles");
+				repairController.OnSuccessfulRepairChangedEvent += NoListener;
+				IResult result;
+				try
+				{
+					result = await strategy.RepairItem(amount, null);
+				}
+				finally
+				{
+					repairController.OnSuccessfulRepairChangedEvent -= NoListener;
+				}
+
+				if (!result.Succeed)
+				{
+					Plugin.Log.LogWarning($"Repair at the trader failed: {result.Error}");
+					outcome.Error = result.Error;
+					return outcome;
+				}
+
+				outcome.Steps = 1;
+				await Task.Delay(150);
+				var after = NewStrategy(item, repairController);
+				outcome.Whole = after.HowMuchRepairScoresCanAccept() < 0.1f;
+				outcome.Durability = after.Durability();
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogError($"Repair at the trader failed: {e}");
+				outcome.Error = e.Message;
+			}
+			finally
+			{
+				_running = false;
+			}
+
+			return outcome;
+		}
+
+		// The hotkey: repairs and tells what happened
+		private static async void Run(EFT.Repairing.RepairController repairController, Item item)
+		{
+			var name = item.ShortName.Localized();
+			var outcome = await RepairAll(repairController, item);
+			if (outcome.Error != null)
+			{
+				NotificationManager.DisplayMessageNotification($"Repair of {name} failed: {outcome.Error}");
+				return;
+			}
+
+			if (outcome.Steps > 0)
+			{
+				Singleton<GUISounds>.Instance.PlayUISound(EUISoundType.RepairComplete);
+			}
+
+			if (outcome.Steps > 0 || !outcome.Whole)
+			{
+				NotificationManager.DisplayMessageNotification(outcome.Whole
+					? $"Repaired {name} to {outcome.Durability:F1}."
+					: $"Repair: {name} is at {outcome.Durability:F1}, your repair kits ran out.");
 			}
 		}
 	}
