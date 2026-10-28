@@ -20,6 +20,8 @@ namespace GetReady
 		{
 			public HashSet<Item> Stash = new HashSet<Item>();
 			public HashSet<Item> Carried = new HashSet<Item>();
+			public HashSet<Item> Pouch = new HashSet<Item>();
+			public bool InStash;
 			public readonly Dictionary<Ammo, int> Used = new Dictionary<Ammo, int>();
 
 			public static AmmoStock Build(InventoryController controller)
@@ -30,6 +32,8 @@ namespace GetReady
 					stock.Stash = new HashSet<Item>(controller.Inventory.GetPlayerItems(EPlayerItems.Stash));
 				}
 
+				stock.InStash = controller.Inventory.Stash != null;
+				stock.Pouch = new HashSet<Item>(Game.Secured(controller.Inventory));
 				stock.Carried = new HashSet<Item>(Game.Carried(controller.Inventory));
 				return stock;
 			}
@@ -93,7 +97,8 @@ namespace GetReady
 		// the magazine set the caliber: a magazine that takes two calibers is never mixed.
 		internal static List<Ammo> FindAmmo(InventoryController controller, Magazine magazine)
 		{
-			var mask = controller.Inventory.Stash != null ? EPlayerItems.Stash | EPlayerItems.Equipment : EPlayerItems.Equipment;
+			var inStash = controller.Inventory.Stash != null;
+			var mask = inStash ? EPlayerItems.Stash | EPlayerItems.Equipment : EPlayerItems.Equipment;
 			return controller.Inventory.GetPlayerItems(mask)
 				.OfType<Ammo>()
 				.Where(ammo => ammo.Parent?.Container is Grid && controller.Examined(ammo) && ammo.PinLockState != EItemPinLockState.Locked && magazine.CheckCompatibility(ammo))
@@ -248,6 +253,53 @@ namespace GetReady
 		private static string Sources(AmmoStock stock, IEnumerable<Ammo> used) =>
 			string.Join(" and ", new[] { used.Any(stack => !stock.Stash.Contains(stack)) ? "your gear" : null, used.Any(stack => stock.Stash.Contains(stack)) ? "the stash" : null }.Where(part => part != null).ToArray());
 
+		// How many containers deep the item lies: 0 = directly in a vest, pocket, backpack or the pouch, 1 = in a case inside one of those...
+		private static int Depth(Item item)
+		{
+			int depth = 0;
+			var holder = item.Parent?.Container?.ParentItem;
+			while (holder != null && holder.Parent?.Container is Grid && depth < 16)
+			{
+				depth++;
+				holder = holder.Parent.Container.ParentItem;
+			}
+
+			return depth;
+		}
+
+		// Where a stack is taken from, lowest first. In the stash screen: the stash first, then what you carry (the container the magazine
+		// lies in, any other container, then inside a case in them), and the pouch last of all. In a raid: the container the magazine
+		// lies in, then the pouch, then any other container you wear, then what lies inside a case in them.
+		private static int Rank(AmmoStock stock, Magazine magazine, Ammo stack)
+		{
+			if (stock.Stash.Contains(stack))
+			{
+				return 0;
+			}
+
+			if (stock.InStash && stock.Pouch.Contains(stack))
+			{
+				return 4;
+			}
+
+			int rank;
+			var home = magazine.Parent?.Container is Grid ? magazine.Parent.Container.ParentItem : null;
+			if (home != null && stack.Parent?.Container?.ParentItem == home)
+			{
+				rank = 0;
+			}
+			else if (Depth(stack) > 0)
+			{
+				rank = 3;
+			}
+			else
+			{
+				rank = stock.Pouch.Contains(stack) ? 1 : 2;
+			}
+
+			return stock.InStash ? rank + 1 : rank;
+		}
+
 		// Decides what goes into the magazine and takes the rounds from the stock (so the next magazine sees what is left). A magazine
 		// in a weapon, or one that is about to go into forWeapon, only gets ammo that fits that weapon's chamber.
 		internal static FillPlan PlanFill(InventoryController controller, AmmoStock stock, Magazine magazine, Weapon forWeapon = null)
@@ -274,9 +326,9 @@ namespace GetReady
 			plan.Type = follow.Value.Key;
 			plan.Reason = follow.Value.Value;
 
-			// Your gear before the stash, the smallest stack first
+			// Where the rounds come from, see Rank; the smallest stack first within the same rank
 			var ordered = stacks.Where(stack => stack.TemplateId == plan.Type.Value)
-				.OrderBy(stack => stock.Stash.Contains(stack) ? 1 : 0)
+				.OrderBy(stack => Rank(stock, magazine, stack))
 				.ThenBy(stack => stack.StackObjectsCount)
 				.ToList();
 			plan.TypeName = ordered[0].LocalizedShortName();
@@ -310,7 +362,7 @@ namespace GetReady
 		{
 			var stack = FindAmmo(controller, magazine)
 				.Where(ammo => ammo.TemplateId == type && stock.Left(ammo) > 0 && ammo.Caliber == weapon.AmmoCaliber && chamber.CheckCompatibility(ammo))
-				.OrderBy(ammo => stock.Stash.Contains(ammo) ? 1 : 0)
+				.OrderBy(ammo => Rank(stock, magazine, ammo))
 				.ThenBy(ammo => ammo.StackObjectsCount)
 				.FirstOrDefault();
 			if (stack != null)
