@@ -21,21 +21,25 @@ Settings and templates are kept in `BepInEx\config\GetReady\settings.json` and e
 - **Grenades and flares**: an amount per grenade type, a total topped up with random ones (what is about to be brought counts too), and red and green signal cartridges.
 - **Cash**: roubles, euros and dollars, typed in, with the case they go into: Wallet, WZ wallet, Docs case or SICC case (carried or in the pouch), or loose. Added to a stack in the case when there is room, otherwise a part of the stack is split off.
 
+- **Repair**: the armor you wear and, with its own switch, your weapons. Repair kits first (the game's own list of usable kits, least resource first, one after the other until the piece is whole; a kit is never run dry between two parts, which the server cannot take); a piece with no usable kit goes to a trader for roubles (the order of the traders is set in Setup, all or nothing). A kit that is there but too small is an error, so is not having the money. Pieces can be left damaged on purpose (a quest hand-in): that list holds the very pieces, not their type.
+- **Ammo**: fills the magazine in each equipped weapon (taken out, filled and put back, since the game does not load a magazine that sits in a weapon), puts one of your magazines into a weapon that has none, fills your spare magazines, chambers a round in a weapon with an empty chamber, and tops up the loose stacks of ammo you carry from the stash. It follows, it does not choose: the ammo a magazine already holds, else what the things around it hold (loose ammo in the same container, the nearest magazine, an equipped weapon that takes it; the order is set in Setup), never "the best". When there is nothing to follow, or the weapons that take a magazine disagree, it fills nothing and says so. Every line says what goes where, how much, why and from where.
+
 Each supply can also go on a **quick-slot key** (4 to 9, 0 or G): after getting ready the best one you carry is bound to it (pockets and tactical vest only, the game's rule). Under "Items" each item has a **Max**: with 700 HP wanted and a max of 1 AFAK, the rest is made up with other kits, and only if nothing else can, a second AFAK is brought (the plan line says so).
 
 Every row has a "Goes to" list: click the places in the order you want them tried (Special slots, Pockets, Vest, Backpack, Pouch, and the cases for cash). Supplies fall back to pockets, vest and backpack when those are full; cash only goes where you pick.
+
+## Quick actions
+
+Hotkeys on a hovered item (F12 > GetReady > 2. Quick actions); their hints show in the item tooltip through CustomRpTweaks.Client:
+
+- **T**, magazine top-up (stash and raid): fills the magazine by the same rules as the Ammo step.
+- **R**, repair with a kit (stash): the same repair loop as the Repair step, kits only.
 
 ## Notes
 
 - Moves are placed by looking for a free spot in the container's grids when the game's quick placement fails, and each move is checked to have left the stash.
 - Needs the SPT 4.1.x client (Assembly-CSharp, BepInEx 5). MIT license.
 
-## Next
+## Not built yet
 
-Magazine top-up and repair move here completely from CustomRpTweaks.Client (`MagazineTopUp`, `RepairWithKit` and their hotkey hints), and then they are removed from there. Both keep working in raid, where they are used most: the hotkey on the item under the cursor, as now. What GetReady adds is the same actions as steps of Get ready (in the stash), with settings in the window.
-
-- **Magazine top-up**: top up magazines, reload equipped weapons, top up removed magazines. More configurable than now (which ammo, how full, where).
-- **Repair**: repair everything equipped, with a choice of repair kit or trader.
-- **Hotkey hints**: the tooltip block that lists the hotkeys of the hovered item lives in CustomRpTweaks.Client (`HotkeyHints`), which also shows UI Fixes' shortcuts through a soft dependency (`UiFixesHints`: it finds the plugin by GUID and reads its settings). Do the same for GetReady: Tweaks finds `RPAN87.GetReady` when it is loaded and shows its top-up and repair keys, read from GetReady's own settings, applying the same rules as the action (an item that can be topped up or repaired). Tweaks stays optional for GetReady and GetReady for Tweaks.
-- Don't remove anything from CustomRpTweaks.Client until GetReady does the same in raid, including the hotkey hints.
-- Later: emptying loot into the stash, MergeConsumables support (combine stacks instead of swapping), buying what is missing from the flea market.
+- Emptying loot into the stash, MergeConsumables support (combine stacks instead of swapping), buying what is missing from the flea market.

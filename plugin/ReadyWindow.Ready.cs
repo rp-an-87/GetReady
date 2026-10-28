@@ -36,17 +36,28 @@ namespace GetReady
 		private static void ProgressRow(PlanLine line)
 		{
 			bool done = line.Have >= line.Want;
-			var color = done ? Ui.Ok : line.Have > 0 ? Ui.Warn : Ui.Bad;
+			var color = line.Skipped ? Ui.Dim : done ? Ui.Ok : line.Have > 0 ? Ui.Warn : Ui.Bad;
 			GUILayout.BeginHorizontal();
-			if (!string.IsNullOrEmpty(line.Template))
+			if (line.Item != null)
+			{
+				Icons.Slot(line.Item, line.Subject, 34);
+			}
+			else if (!string.IsNullOrEmpty(line.Template))
 			{
 				Icons.Slot(line.Template, line.Subject, 34);
 			}
 
 			GUILayout.BeginVertical();
 			GUILayout.BeginHorizontal();
-			GUILayout.Label(line.Subject, Ui.Body);
-			GUILayout.Label($"{line.Have:N0}/{line.Want:N0} {line.Unit}", done ? Ui.ValueOk : line.Have > 0 ? Ui.ValueWarn : Ui.ValueBad);
+			GUILayout.Label(line.Subject, line.Skipped ? Ui.Muted : Ui.Body);
+			if (line.Skipped)
+			{
+				GUILayout.Label($"{line.Note}  ({line.Have:N0}/{line.Want:N0} {line.Unit})", Ui.ValueMuted);
+			}
+			else
+			{
+				GUILayout.Label($"{line.Have:N0}/{line.Want:N0} {line.Unit}", done ? Ui.ValueOk : line.Have > 0 ? Ui.ValueWarn : Ui.ValueBad);
+			}
 			GUILayout.EndHorizontal();
 			var bar = GUILayoutUtility.GetRect(10, 6, GUILayout.ExpandWidth(true), GUILayout.Height(6));
 			var previous = GUI.color;
@@ -92,7 +103,15 @@ namespace GetReady
 			if (line.Problem)
 			{
 				GUILayout.BeginHorizontal(Ui.ProblemBox);
-				if (!string.IsNullOrEmpty(line.Template))
+				if (line.AlertIconOnly)
+				{
+					// no icon here
+				}
+				else if (line.Item != null)
+				{
+					Icons.Slot(line.Item, line.Subject ?? "", 34);
+				}
+				else if (!string.IsNullOrEmpty(line.Template))
 				{
 					Icons.Slot(line.Template, line.Subject ?? "", 34);
 				}
@@ -146,10 +165,12 @@ namespace GetReady
 			else
 			{
 				GUILayout.BeginVertical(problemGroups > 0 && moves == 0 ? Ui.AlertCard : Ui.TodoCard);
-				GUILayout.Label(moves > 0 ? (moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil") : "Nothing to bring", Ui.SectionTitle);
+				GUILayout.Label(moves > 0 ? (moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil") : "Needs your attention", Ui.SectionTitle);
 				if (problemGroups > 0)
 				{
-					GUILayout.Label(problemGroups == 1 ? "1 thing needs your attention" : $"{problemGroups} things need your attention", Ui.Problem);
+					GUILayout.Label(moves > 0
+						? (problemGroups == 1 ? "1 thing needs your attention" : $"{problemGroups} things need your attention")
+						: (problemGroups == 1 ? "1 thing can't be done as set up" : $"{problemGroups} things can't be done as set up"), Ui.Problem);
 				}
 
 				GUILayout.EndVertical();

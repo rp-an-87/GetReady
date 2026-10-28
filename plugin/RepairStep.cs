@@ -19,8 +19,9 @@ namespace GetReady
 		// What you wear that is armor (vest, helmet, armored rig, masks with armor) and, when switched on, the weapons in your weapon slots
 		internal static List<Item> EquippedGear(Inventory inventory)
 		{
+			bool armor = SettingsStore.Current.Repair.Armor;
 			bool weapons = SettingsStore.Current.Repair.Weapons;
-			return inventory.Equipment.Slots.Select(slot => slot.ContainedItem).Where(item => item != null && (IsArmor(item) || (weapons && item is Weapon))).ToList();
+			return inventory.Equipment.Slots.Select(slot => slot.ContainedItem).Where(item => item != null && ((armor && IsArmor(item)) || (weapons && item is Weapon))).ToList();
 		}
 
 		// The traders that repair, in the order set in Setup (new ones at the end)
@@ -66,6 +67,11 @@ namespace GetReady
 			if (repairController == null)
 			{
 				return new List<PlanLine> { Steps.Info("Repair isn't available on this screen.") };
+			}
+
+			if (!SettingsStore.Current.Repair.Armor && !SettingsStore.Current.Repair.Weapons)
+			{
+				return new List<PlanLine> { Steps.Info("Armor and weapons are both switched off.") };
 			}
 
 			var armor = EquippedGear(controller.Inventory);
@@ -143,6 +149,11 @@ namespace GetReady
 			}
 
 			lines.Insert(0, Steps.Progress("Gear", inShape, armor.Count, "in shape"));
+			foreach (var line in lines.Where(line => line.Item == null && line.Template != null))
+			{
+				// The icon of the very piece (plates and mods on it), found again from the template among what is worn
+				line.Item = armor.FirstOrDefault(piece => piece.TemplateId.ToString() == line.Template);
+			}
 			return lines;
 		}
 	}

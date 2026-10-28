@@ -18,11 +18,35 @@ namespace GetReady
 		public string Detail;
 		public string Template;
 
+		// The very item the line is about, when there is one: its icon shows what is on it (a weapon with its mods)
+		public Item Item;
+		public PlanLine WithItem(Item item)
+		{
+			Item = item;
+			return this;
+		}
+
 		// How many items the line moves (the notification adds them up)
 		public int Items = 1;
 
 		// The line repairs a piece of gear rather than moving items (counted apart in the notification)
 		public bool Repair;
+
+		// The icon shows in the alert box only (the Ready page already has the card's icon right above)
+		public bool AlertIconOnly;
+
+		// A progress line that is left out on purpose: drawn grey with the note instead of the numbers (not a failure)
+		public bool Skipped;
+		public string Note;
+
+		// The line fills a magazine (counted apart in the notification)
+		public bool Fill;
+
+		// The line chambers a round (counted apart in the notification)
+		public bool Chamber;
+
+		// The line tops up a loose stack of ammo (counted apart in the notification)
+		public bool Topped;
 
 		// A progress line: how much of what is wanted is there (drawn as a bar)
 		public bool IsProgress;
@@ -54,7 +78,7 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep()
+			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep()
 		};
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
@@ -78,6 +102,12 @@ namespace GetReady
 		}
 
 		internal static PlanLine Info(string text) => new PlanLine { Text = text };
+		internal static PlanLine For(PlanLine line, Item item)
+		{
+			line.Item = item;
+			return line;
+		}
+
 		internal static PlanLine Progress(string subject, float have, float want, string unit, string template = null) =>
 			new PlanLine { Text = $"{subject}: {have:0}/{want:0} {unit}", Subject = subject, Have = have, Want = want, Unit = unit, Template = template, IsProgress = true };
 

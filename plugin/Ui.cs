@@ -16,7 +16,7 @@ namespace GetReady
 		internal static readonly Color Warn = new Color(1f, 0.64f, 0.28f);
 		internal static readonly Color Bad = new Color(1f, 0.4f, 0.36f);
 
-		internal static GUIStyle Window, Section, Group, Inner, Divider, Field, ValueOk, ValueWarn, ValueBad, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
+		internal static GUIStyle Window, Section, Group, Inner, Divider, Field, ValueOk, ValueWarn, ValueBad, ValueMuted, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
 			Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, Centered,
 			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert;
 
@@ -130,7 +130,7 @@ namespace GetReady
 			Divider = Back(new GUIStyle(GUI.skin.box) { fixedHeight = 1, margin = new RectOffset(0, 0, 6, 6), padding = new RectOffset(0, 0, 0, 0) }, new Color(0.33f, 0.34f, 0.32f), new Color(0.33f, 0.34f, 0.32f), 0);
 			AlertCard = Panel(new Color(0.27f, 0.09f, 0.09f), Bad, 2, new RectOffset(12, 12, 10, 10), new RectOffset(0, 0, 4, 10));
 			Alert = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(24, 24, 20, 20) }, new Color(0.15f, 0.05f, 0.05f, 0.99f), Bad, 3);
-			ProblemBox = Panel(new Color(0.25f, 0.15f, 0.07f), new Color(0.55f, 0.33f, 0.12f), 1, new RectOffset(8, 8, 4, 4), new RectOffset(0, 0, 2, 2));
+			ProblemBox = Panel(new Color(0.25f, 0.15f, 0.07f), new Color(0.55f, 0.33f, 0.12f), 1, new RectOffset(8, 8, 4, 4), new RectOffset(0, 0, 8, 2));
 
 			OkCard = Panel(new Color(0.12f, 0.22f, 0.13f), new Color(0.35f, 0.6f, 0.38f), 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
 			TodoCard = Panel(new Color(0.22f, 0.2f, 0.12f), Sand, 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
@@ -140,6 +140,7 @@ namespace GetReady
 			ValueOk = Label(14, Ok, FontStyle.Bold, TextAnchor.MiddleRight);
 			ValueWarn = Label(14, Warn, FontStyle.Bold, TextAnchor.MiddleRight);
 			ValueBad = Label(14, Bad, FontStyle.Bold, TextAnchor.MiddleRight);
+			ValueMuted = Label(14, Dim, FontStyle.Bold, TextAnchor.MiddleRight);
 
 			Title = Label(21, Heading, FontStyle.Bold);
 			SectionTitle = Label(16, Heading, FontStyle.Bold);
@@ -173,7 +174,7 @@ namespace GetReady
 
 			if (Font != null)
 			{
-				foreach (var style in new[] { Field, ValueOk, ValueWarn, ValueBad, Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard,
+				foreach (var style in new[] { Field, ValueOk, ValueWarn, ValueBad, ValueMuted, Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard,
 					Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
 				{
 					style.font = Font;

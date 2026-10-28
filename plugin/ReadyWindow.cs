@@ -29,12 +29,24 @@ namespace GetReady
 
 		private static EventSystem _blocked;
 
+		// Whether the mouse button that is down now went down on our window (a click or a drag that is ours), else it belongs to the game
+		private static bool _pressedOnUs;
+
 		// The game's own UI (stash scrolling, clicks) listens to the EventSystem and knows nothing of this IMGUI window, so
-		// it is switched off while the mouse is over the window, and back on when the mouse leaves
+		// it is switched off while the mouse is over the window, and back on when the mouse leaves. A drag that started in the game
+		// (an item dragged across this window) is left alone: switching the game's input off in the middle of it would break the drag.
 		private static void BlockGameInput()
 		{
 			var mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
-			bool over = (_open && _rect.Contains(mouse)) || (Alerts.Count > 0 && _alertRect.Contains(mouse));
+			bool inside = (_open && _rect.Contains(mouse)) || (Alerts.Count > 0 && _alertRect.Contains(mouse));
+			bool down = Input.GetMouseButton(0) || Input.GetMouseButton(1);
+			if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+			{
+				_pressedOnUs = inside;
+			}
+
+			// While a button is held, whoever it went down on keeps the mouse; with none held, whoever the mouse is over has it
+			bool over = down ? _pressedOnUs : inside;
 			if (over == (_blocked != null))
 			{
 				return;
@@ -56,6 +68,29 @@ namespace GetReady
 		}
 
 		private static bool _wasShown;
+		private static bool _escapePending;
+		private static int _escapeFrame = -1;
+
+		// Esc pressed: closes the alert box if it is up, else the window. Returns whether there was something to close (the key is then
+		// taken, so the game's screen does not also react to it).
+		internal static bool ConsumeEscape()
+		{
+			_escapePending = false;
+			_escapeFrame = Time.frameCount;
+			if (Alerts.Count > 0)
+			{
+				Alerts.Clear();
+				return true;
+			}
+
+			if (_open)
+			{
+				Close();
+				return true;
+			}
+
+			return false;
+		}
 
 		private static void Close()
 		{
@@ -64,14 +99,17 @@ namespace GetReady
 
 		internal static void Tick()
 		{
-			// Esc closes it (and the alert), and so does leaving the stash screen
+			// Esc is taken by the game's stash screens through EscapePatches (ConsumeEscape), so only this window closes. Should a screen
+			// not ask first, the window still closes a frame later, as it always did.
 			if (Input.GetKeyDown(KeyCode.Escape))
 			{
-				Alerts.Clear();
-				if (_open)
-				{
-					Close();
-				}
+				// Not when a game screen already handed the key to us this frame
+				_escapePending = _escapeFrame != Time.frameCount;
+			}
+			else if (_escapePending)
+			{
+				_escapePending = false;
+				ConsumeEscape();
 			}
 
 			bool shown = ReadyButtonPatch.StashShown;

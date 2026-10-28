@@ -72,6 +72,21 @@ namespace GetReady
 			return outcome.Failed ? outcome.Error.ToString() : null;
 		}
 
+		// Adds count of the source stack to the target stack, checked but not run. The one place that does it, for the cash going into
+		// a wallet and the ammo topping up a stack. The game's "transfer exactly" never moves a whole stack (it caps the amount one
+		// below the stack's count, "you can only transfer 10" for 11), so a whole stack is merged.
+		private static OperationResult MergeOperation(InventoryController controller, Item source, int count, Item target) =>
+			count >= source.StackObjectsCount
+				? (OperationResult)ItemManipulator.Merge(source, target, controller, true)
+				: ItemManipulator.TransferExact(source, count, target, controller, true);
+
+		// Adds count of the source stack to the target stack. Returns null, or why it failed.
+		internal static async Task<string> MergeInto(InventoryController controller, Item source, int count, Item target)
+		{
+			var operation = MergeOperation(controller, source, count, target);
+			return operation.Failed ? operation.Error.ToString() : await Run(controller, operation);
+		}
+
 		// To an exact address (a cell of the injector case, a special slot). Returns null, or why it failed.
 		internal static async Task<string> PlaceAt(InventoryController controller, Item item, int count, ItemAddress address)
 		{
@@ -100,7 +115,7 @@ namespace GetReady
 					: null;
 				if (existing != null)
 				{
-					operation = ItemManipulator.TransferExact(item, count, existing, controller, true);
+					operation = MergeOperation(controller, item, count, existing);
 					planned = true;
 				}
 
@@ -165,6 +180,39 @@ namespace GetReady
 			return last;
 		}
 
+		internal const string Roubles = "5449016a4bdc2d6f028b456f";
+		internal const string Euros = "569668774bdc2da2298b4568";
+		internal const string Dollars = "5696686a4bdc2da3298b456a";
+
+		internal static string CurrencyOf(string template) =>
+			template == Roubles ? "RUB" : template == Euros ? "EUR" : template == Dollars ? "USD" : null;
+
+		// The money of this template is kept out of this very case (the cash exclusions of the Setup page)
+		internal static bool IsCashExcluded(string template, CompoundItem container)
+		{
+			var currency = CurrencyOf(template);
+			var id = container.Id.ToString();
+			return currency != null && SettingsStore.Current.Supplies.CashExclusions.Any(excluded => excluded.CaseId == id && excluded.Currency == currency);
+		}
+
+		// The first of the places that exists on you decides: if every container of it is kept out for this money, it is not brought at
+		// all, and the other places are not tried. Returns that place's name, or null when the money may go there.
+		internal static string CashLeftOut(string template, IEnumerable<string> places, Inventory inventory)
+		{
+			foreach (var place in places)
+			{
+				var targets = TargetsOf(inventory, place);
+				if (targets.Count == 0)
+				{
+					continue;
+				}
+
+				return targets.All(target => IsCashExcluded(template, target.Container)) ? place : null;
+			}
+
+			return null;
+		}
+
 		// Moves the item (count of it, or all) to the first of the places that takes it. Returns null, or why the last one refused.
 		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places, int count = 0)
 		{
@@ -183,7 +231,14 @@ namespace GetReady
 					continue;
 				}
 
-				var error = await PlaceInto(controller, item, count, targets);
+				// Cases this money is kept out of are not used; when that leaves none, it stops there (no other place is tried)
+				var allowed = targets.Where(target => !IsCashExcluded(item.TemplateId.ToString(), target.Container)).ToList();
+				if (allowed.Count == 0)
+				{
+					return $"{place} is on your cash exclusion list";
+				}
+
+				var error = await PlaceInto(controller, item, count, allowed);
 				if (error == null)
 				{
 					return null;

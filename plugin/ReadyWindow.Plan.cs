@@ -96,11 +96,21 @@ namespace GetReady
 		}
 
 		// The count on the stash button, and the text of its tooltip
+		private static string _lastBadge = "";
+
 		private static void UpdateBadge()
 		{
 			int toBring, withProblems;
 			Tally(out toBring, out withProblems);
 			StashBadge.Set(withProblems, toBring);
+
+			// What the badge shows and why (logged when it changes): the lines that can be run and the problems, per step
+			var why = $"red {withProblems}, gold {toBring}: " + string.Join("; ", Plan.Select(entry => $"{entry.Key.Name} {entry.Value.Count(line => line.Run != null)} to do, {entry.Value.Count(line => line.Problem)} problem(s)").ToArray());
+			if (why != _lastBadge)
+			{
+				_lastBadge = why;
+				Plugin.Log.LogInfo($"Badge {why}");
+			}
 		}
 
 		// How many groups (a supply, a template: a card of the Ready page) have something to bring, and how many have a problem.
@@ -147,27 +157,60 @@ namespace GetReady
 			}
 		}
 
+		// The colours of the tooltip: the window's own (green when fine, amber when there is something to do, red for a problem)
+		private const string Green = "#73C77F";
+		private const string Amber = "#FFA347";
+		private const string Red = "#FF665C";
+		private const string SoftRed = "#D98B84";
+		private const string Grey = "#8A8A8A";
+		private const string Key = "#B8B8B8";
+
+		private static string Separator => "<size=7><color=#555555>" + new string('—', 40) + "</color></size>";
+
+		private static string Short(string text, int length) => text.Length <= length ? text : text.Substring(0, length - 1).TrimEnd() + "…";
+
+		// The tooltip of the stash button: the title, how it stands, what is wrong (red, a few lines), and what the clicks do
 		internal static string Summary()
 		{
 			int moves, problemGroups;
 			Tally(out moves, out problemGroups);
 			var problems = Problems();
-			var text = new System.Text.StringBuilder("Get ready for raid\nClick: bring what is missing. Ctrl+click: open the window.");
-			if (moves == 0 && problemGroups == 0)
+			var text = new System.Text.StringBuilder("<b>Get ready for raid</b>\n");
+			if (Plan.Count == 0)
 			{
-				text.Append("\n\nYou are all set.");
+				text.Append($"<color={Grey}>Nothing is switched on</color>");
+			}
+			else if (moves > 0)
+			{
+				text.Append($"<color={Amber}>{(moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil")}</color>");
+			}
+			else if (problems.Count == 0)
+			{
+				text.Append($"<color={Green}>You are all set</color>");
+			}
+			else
+			{
+				text.Append($"<color={Red}>Needs your attention</color>");
 			}
 
-			if (moves > 0)
+			if (problems.Count > 0)
 			{
-				text.Append(moves == 1 ? "\n\n1 thing to fulfil" : $"\n\n{moves} things to fulfil");
+				text.Append("\n" + Separator + $"\n<color={Red}><b>{(problems.Count == 1 ? "1 problem" : $"{problems.Count} problems")}</b></color>");
+				foreach (var problem in problems.Take(5))
+				{
+					var line = problem.Value;
+					var subject = Short(line.Subject ?? line.Text, 34);
+					var detail = line.Detail != null && line.Subject != null ? Short(line.Detail, 46) : null;
+					text.Append($"\n<color={Red}>• {subject}</color>" + (detail != null ? $"\n<size=11><color={SoftRed}>    {detail}</color></size>" : ""));
+				}
+
+				if (problems.Count > 5)
+				{
+					text.Append($"\n<color={SoftRed}>… and {problems.Count - 5} more</color>");
+				}
 			}
 
-			foreach (var problem in problems.Take(6))
-			{
-				text.Append($"\n! {problem.Value.Subject ?? problem.Value.Text}" + (problem.Value.Detail != null ? ": " + problem.Value.Detail : ""));
-			}
-
+			text.Append("\n" + Separator + $"\n<size=11><color={Key}>[Click]</color> <color={Grey}>get ready</color>   <color={Key}>[Ctrl+Click]</color> <color={Grey}>open the window</color></size>");
 			return text.ToString();
 		}
 

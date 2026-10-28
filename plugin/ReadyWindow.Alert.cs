@@ -25,7 +25,11 @@ namespace GetReady
 				foreach (var pair in step)
 				{
 					GUILayout.BeginHorizontal();
-					if (!string.IsNullOrEmpty(pair.Value.Template))
+					if (pair.Value.Item != null)
+					{
+						Icons.Slot(pair.Value.Item, pair.Value.Subject ?? "", 46);
+					}
+					else if (!string.IsNullOrEmpty(pair.Value.Template))
 					{
 						Icons.Slot(pair.Value.Template, pair.Value.Subject ?? "", 46);
 					}

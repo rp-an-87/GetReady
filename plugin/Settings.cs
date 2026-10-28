@@ -71,6 +71,7 @@ namespace GetReady
 		public bool HealingEnabled = true;
 		public bool GrenadesEnabled = true;
 		public bool CashEnabled = true;
+		public List<CashExclusion> CashExclusions = new List<CashExclusion>();
 		// Replace carried items by better ones from the stash (more resource, higher priority, non-FiR)
 		public bool SwapWorse = true;
 		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
@@ -81,11 +82,17 @@ namespace GetReady
 		public Dictionary<string, GroupSetting> Groups = new Dictionary<string, GroupSetting>();
 	}
 
-	// The rules for loading ammo into magazines, shared by the T key and the Get ready ammo step
+	// The Ammo step (the rules for loading ammo are fixed and shared with the T key, see AmmoRules)
 	internal class AmmoSettings
 	{
-		// The share of a magazine (of its capacity, rounded up) that is the highest-penetration ammo, loaded last so it is fired first (0: off)
-		public int BestOnTopPercent;
+		public bool Enabled;
+		// A weapon with an empty chamber gets a round of the ammo in its magazine
+		public bool Chamber = true;
+		// The loose stacks of ammo you carry are filled up (from the stash) to a full stack
+		public bool TopUpLoose = true;
+		// Who decides, first match wins, for an empty spare magazine: loose ammo in the same container, the nearest magazine, an
+		// equipped weapon that takes it
+		public List<string> Pointers = new List<string> { "loose", "nearest", "weapon" };
 	}
 
 	// An armor piece left damaged on purpose: that very item (its id), with its name kept so it can be shown
@@ -96,10 +103,23 @@ namespace GetReady
 		public string Name;
 	}
 
+	// A currency kept out of one very case or wallet you carry (that case, by item id, not its type)
+	internal class CashExclusion
+	{
+		public string CaseId;
+		public string CaseTemplate;
+		public string CaseName;
+		public string Tag;      // the tag on the case when it was saved, and its colour (for the list)
+		public int TagColor;
+		public string Currency; // RUB, EUR or USD
+	}
+
 	internal class RepairSettings
 	{
 		public bool Enabled;
-		// Also repair the weapons you carry in the weapon slots (with weapon repair kits)
+		// Repair the armor you wear (vest, helmet, armored rig, masks with armor)
+		public bool Armor = true;
+		// Repair the weapons you carry in the weapon slots (with weapon repair kits)
 		public bool Weapons = true;
 		// A piece with no usable kit is repaired by a trader instead (for roubles), the first of TraderOrder that can repair it. A kit that
 		// is there but too small is an error, not a reason to go to a trader.

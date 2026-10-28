@@ -82,6 +82,7 @@ namespace GetReady
 		internal static void Index(InventoryController controller)
 		{
 			_controller = controller;
+			LoadedItems.Clear();
 			Examined.Clear();
 			Known.Clear();
 			foreach (var item in Game.Stash(controller.Inventory).Concat(Game.CarriedAndSecured(controller.Inventory)))
@@ -137,6 +138,30 @@ namespace GetReady
 			return icon?.Sprite;
 		}
 
+		// The icon of this very item, as the stash draws it: a weapon shows its mods, an armor its plates (cached by item id)
+		private static readonly Dictionary<string, ItemIcon> LoadedItems = new Dictionary<string, ItemIcon>();
+
+		internal static Sprite OfItem(Item item)
+		{
+			ItemIcon icon;
+			if (!LoadedItems.TryGetValue(item.Id, out icon))
+			{
+				try
+				{
+					icon = ItemViewFactory.LoadItemIcon(item, 1, false);
+				}
+				catch (Exception e)
+				{
+					Plugin.Log.LogWarning($"No icon for {item.ShortName}: {e.Message}");
+					icon = null;
+				}
+
+				LoadedItems[item.Id] = icon;
+			}
+
+			return icon?.Sprite;
+		}
+
 		// The item's icon fitted into the rect (an empty frame while it is loading or when you have none of it); the item's
 		// name is the tooltip
 		internal static void Draw(Rect rect, string template, string name)
@@ -147,6 +172,18 @@ namespace GetReady
 			{
 				GUI.Label(rect, "?", Ui.Centered);
 			}
+
+			DrawSprite(rect, sprite, name);
+		}
+
+		internal static void Draw(Rect rect, Item item, string name)
+		{
+			GUI.Box(rect, GUIContent.none, Ui.Inner);
+			DrawSprite(rect, OfItem(item), name);
+		}
+
+		private static void DrawSprite(Rect rect, Sprite sprite, string name)
+		{
 
 			if (sprite != null && sprite.texture != null)
 			{
@@ -159,6 +196,12 @@ namespace GetReady
 			}
 
 			GUI.Label(rect, new GUIContent("", name));
+		}
+
+		// A square of the given size in the layout with this very item's icon
+		internal static void Slot(Item item, string name, float size)
+		{
+			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), item, name);
 		}
 
 		// A square of the given size in the layout with the item's icon

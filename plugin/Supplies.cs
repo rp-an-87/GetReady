@@ -68,7 +68,19 @@ namespace GetReady
 			var places = def.PlacesToTry();
 			float bringing = Steps.Bringing.Sum(def.WeightOf);
 			float leaving = context.Leaving.Sum(def.WeightOf);
-			lines.Add(Steps.Progress(def.Name, context.Carried.Sum(def.WeightOf) - leaving + bringing, setting.Target, def.Unit, def.ActiveEntries().FirstOrDefault()?.Template));
+			var progress = Steps.Progress(def.Name, context.Carried.Sum(def.WeightOf) - leaving + bringing, setting.Target, def.Unit, def.ActiveEntries().FirstOrDefault()?.Template);
+			lines.Add(progress);
+
+			if (def.Money)
+			{
+				var leftOut = Game.CashLeftOut(def.Entries[0].Template, places, context.Controller.Inventory);
+				if (leftOut != null)
+				{
+					progress.Skipped = true;
+					progress.Note = $"kept out of {leftOut}";
+					return;
+				}
+			}
 
 			if (context.Settings.SwapWorse && !def.Stack)
 			{

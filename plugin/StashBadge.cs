@@ -1,29 +1,45 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 namespace GetReady
 {
 	// The count on the corner of the stash button: red with the number of problems, else gold with the number of things to fulfil.
+	// There is one button per stash panel (the main menu and the hideout each have one), so every badge is kept and all of them are
+	// updated; destroyed ones are dropped, and a new one shows the current count at once.
 	internal static class StashBadge
 	{
-		private static GameObject _badge;
+		private class Badge
+		{
+			public GameObject Object;
+			public Image Image;
+			public Text Text;
+		}
 
-		private static Image _badgeImage;
+		private static readonly List<Badge> Badges = new List<Badge>();
 
-		private static Text _badgeText;
+		private static int _problems;
+
+		private static int _todo;
 
 		// A small count on the button: red with the number of problems, else gold with the number of things to bring
 		internal static void Set(int problems, int todo)
 		{
-			if (_badge == null)
+			_problems = problems;
+			_todo = todo;
+			Badges.RemoveAll(badge => badge.Object == null);
+			foreach (var badge in Badges)
 			{
-				return;
+				Apply(badge);
 			}
+		}
 
-			int count = problems > 0 ? problems : todo;
-			_badge.SetActive(count > 0);
-			_badgeImage.color = problems > 0 ? new Color(0.78f, 0.2f, 0.17f) : new Color(0.62f, 0.52f, 0.2f);
-			_badgeText.text = count.ToString();
+		private static void Apply(Badge badge)
+		{
+			int count = _problems > 0 ? _problems : _todo;
+			badge.Object.SetActive(count > 0);
+			badge.Image.color = _problems > 0 ? new Color(0.78f, 0.2f, 0.17f) : new Color(0.62f, 0.52f, 0.2f);
+			badge.Text.text = count.ToString();
 		}
 
 		private static Sprite _dot;
@@ -55,31 +71,35 @@ namespace GetReady
 		// The count sits on the top right corner of the icon, small enough to leave the icon visible
 		internal static void Add(Transform icon)
 		{
-			_badge = new GameObject("Badge", typeof(RectTransform), typeof(Image));
-			_badge.transform.SetParent(icon, false);
-			var rect = (RectTransform)_badge.transform;
+			var made = new GameObject("Badge", typeof(RectTransform), typeof(Image));
+			made.transform.SetParent(icon, false);
+			var rect = (RectTransform)made.transform;
 			rect.anchorMin = rect.anchorMax = new Vector2(1f, 1f);
 			rect.pivot = new Vector2(0.5f, 0.5f);
 			rect.sizeDelta = new Vector2(15f, 15f);
 			rect.anchoredPosition = new Vector2(-1f, -1f);
-			_badgeImage = _badge.GetComponent<Image>();
-			_badgeImage.sprite = Dot();
-			_badgeImage.raycastTarget = false;
+			var image = made.GetComponent<Image>();
+			image.sprite = Dot();
+			image.raycastTarget = false;
 
 			var label = new GameObject("Count", typeof(RectTransform), typeof(Text));
-			label.transform.SetParent(_badge.transform, false);
+			label.transform.SetParent(made.transform, false);
 			var labelRect = (RectTransform)label.transform;
 			labelRect.anchorMin = Vector2.zero;
 			labelRect.anchorMax = Vector2.one;
 			labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
-			_badgeText = label.GetComponent<Text>();
-			_badgeText.raycastTarget = false;
-			_badgeText.alignment = TextAnchor.MiddleCenter;
-			_badgeText.fontSize = 10;
-			_badgeText.fontStyle = FontStyle.Bold;
-			_badgeText.color = Color.white;
-			_badgeText.font = Font.CreateDynamicFontFromOSFont("Arial", 10);
-			_badge.SetActive(false);
+			var text = label.GetComponent<Text>();
+			text.raycastTarget = false;
+			text.alignment = TextAnchor.MiddleCenter;
+			text.fontSize = 10;
+			text.fontStyle = FontStyle.Bold;
+			text.color = Color.white;
+			text.font = Font.CreateDynamicFontFromOSFont("Arial", 10);
+
+			var badge = new Badge { Object = made, Image = image, Text = text };
+			Badges.RemoveAll(other => other.Object == null);
+			Badges.Add(badge);
+			Apply(badge);
 		}
 	}
 }

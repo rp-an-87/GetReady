@@ -15,6 +15,9 @@ namespace GetReady
 
 		private static int _moved;
 		private static int _repaired;
+		private static int _filled;
+		private static int _chambered;
+		private static int _topped;
 		private static int _keys;
 
 		// The window's button: close the window and do it like the stash button does (alert and sound included)
@@ -56,8 +59,11 @@ namespace GetReady
 			{
 				var brought = _moved > 0 ? $"{_moved} item(s) brought" : "";
 				var repaired = _repaired > 0 ? $"{_repaired} piece(s) of gear repaired" : "";
+				var filled = _filled > 0 ? $"{_filled} magazine(s) filled" : "";
+				var chambered = _chambered > 0 ? $"{_chambered} round(s) chambered" : "";
+				var topped = _topped > 0 ? $"{_topped} ammo stack(s) topped up" : "";
 				var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
-				var report = string.Join(", ", new[] { brought, repaired, keys }.Where(part => part != "").ToArray());
+				var report = string.Join(", ", new[] { brought, repaired, filled, chambered, topped, keys }.Where(part => part != "").ToArray());
 				NotificationManager.DisplayMessageNotification("Ready for raid: " + (report == "" ? "you already have everything" : report) + ".");
 			}
 
@@ -66,7 +72,7 @@ namespace GetReady
 			{
 				Play(EUISoundType.ErrorMessage);
 			}
-			else if (_moved > 0 || _keys > 0 || _repaired > 0)
+			else if (_moved > 0 || _keys > 0 || _repaired > 0 || _filled > 0 || _chambered > 0 || _topped > 0)
 			{
 				Play(EUISoundType.QuestStarted);
 				ReadyFlash.Show();
@@ -89,7 +95,7 @@ namespace GetReady
 			_running = true;
 			try
 			{
-				int done = 0, failed = 0, repaired = 0;
+				int done = 0, failed = 0, repaired = 0, filled = 0, chambered = 0, topped = 0;
 				Failures.Clear();
 				foreach (var entry in Plan.ToList())
 				{
@@ -100,6 +106,9 @@ namespace GetReady
 						{
 							done += line.Items;
 							repaired += line.Repair ? 1 : 0;
+							filled += line.Fill ? 1 : 0;
+							chambered += line.Chamber ? 1 : 0;
+							topped += line.Topped ? 1 : 0;
 						}
 						else
 						{
@@ -116,6 +125,9 @@ namespace GetReady
 
 				_moved = done;
 				_repaired = repaired;
+				_filled = filled;
+				_chambered = chambered;
+				_topped = topped;
 				_status = failed == 0 ? $"Done: {done} moved." : $"{done} moved, {failed} failed (see the log).";
 			}
 			catch (Exception e)

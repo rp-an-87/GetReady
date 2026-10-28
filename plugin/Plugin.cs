@@ -35,6 +35,8 @@ namespace GetReady
 				"Hover an item in the stash and press this to repair it fully with one of your repair kits, without opening the repair window (the same repair as the window's button, as far as the kits can pay for). It uses the kit with the least resource left that can repair the item. Does nothing if you have no suitable kit, or outside the hideout/menu stash. Unassign the key to turn the feature off.");
 			SettingsStore.Load();
 			new ReadyButtonPatch().Enable();
+			new InventoryScreenEscapePatch().Enable();
+			new HideoutOverlayEscapePatch().Enable();
 			Log.LogInfo($"GetReady {PluginVersion} loaded");
 		}
 

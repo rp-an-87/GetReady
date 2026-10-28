@@ -19,8 +19,14 @@ namespace GetReady
 			// What to repair
 			GUILayout.BeginVertical(Ui.Group);
 			GUILayout.Label("What to repair", Ui.Name);
-			GUILayout.Label("Armor you wear is always checked.", Ui.Muted);
-			bool weapons = OptionRow(repair.Weapons, "Also repair my weapons", "The weapons in your weapon slots are repaired with weapon repair kits, the way the R key does it");
+			bool armor = OptionRow(repair.Armor, "Repair my armor", "The armor you wear (vest, helmet, armored rig, masks with armor), with armor repair kits or a trader");
+			if (armor != repair.Armor)
+			{
+				repair.Armor = armor;
+				changed = true;
+			}
+
+			bool weapons = OptionRow(repair.Weapons, "Repair my weapons", "The weapons in your weapon slots, with weapon repair kits or a trader, the way the R key does it");
 			if (weapons != repair.Weapons)
 			{
 				repair.Weapons = weapons;
@@ -42,27 +48,8 @@ namespace GetReady
 			var repairController = RepairWithKit.Controller();
 			if (repair.UseTraders && repairController != null)
 			{
-				GUILayout.Label("The first trader in this order that can repair the piece is used:", Ui.Muted);
-				foreach (var trader in RepairStep.OrderedTraders(repairController))
-				{
-					GUILayout.BeginHorizontal();
-					TraderAvatars.Slot(trader, 40);
-					GUILayout.Label(trader.LocalizedName, Ui.Body);
-					GUILayout.FlexibleSpace();
-					if (GUILayout.Button("Up", Ui.Pick, GUILayout.Width(50)))
-					{
-						RepairStep.MoveTrader(repairController, trader.Id, -1);
-						changed = true;
-					}
-
-					if (GUILayout.Button("Down", Ui.Pick, GUILayout.Width(60)))
-					{
-						RepairStep.MoveTrader(repairController, trader.Id, 1);
-						changed = true;
-					}
-
-					GUILayout.EndHorizontal();
-				}
+				changed |= PriorityList("The first trader in this order that can repair the piece is used:", RepairStep.OrderedTraders(repairController),
+					trader => trader.LocalizedName, trader => TraderAvatars.Slot(trader, 34), (trader, step) => RepairStep.MoveTrader(repairController, trader.Id, step));
 			}
 
 			GUILayout.EndVertical();
@@ -100,7 +87,7 @@ namespace GetReady
 			{
 				bool keep = RepairStep.IsKept(item);
 				GUILayout.BeginHorizontal();
-				Icons.Slot(item.TemplateId.ToString(), Game.NameOf(item), 40);
+				Icons.Slot(item, Game.NameOf(item), 40);
 				GUILayout.Label(Game.NameOf(item) + (keep ? "  -  left damaged" : ""), keep ? Ui.Name : Ui.Body);
 				GUILayout.FlexibleSpace();
 				if (GUILayout.Button(keep ? "Repair it again" : "Leave it damaged", keep ? Ui.PickOn : Ui.Pick, GUILayout.Width(150)))

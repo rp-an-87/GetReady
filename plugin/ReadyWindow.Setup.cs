@@ -239,6 +239,27 @@ namespace GetReady
 						RefreshSoon();
 					}
 				}
+				else if (step is AmmoStep)
+				{
+					var ammo = SettingsStore.Current.Ammo;
+					GUILayout.Label("Follows what your magazines and containers already hold. Nothing moves until you press Get ready.", Ui.Muted);
+					bool chamber = OptionRow(ammo.Chamber, "Chamber a round in weapons with an empty chamber", "The round is the same ammo as the weapon's magazine, taken from your gear first, then the stash");
+					if (chamber != ammo.Chamber)
+					{
+						ammo.Chamber = chamber;
+						changed = true;
+					}
+
+					bool topUp = OptionRow(ammo.TopUpLoose, "Keep the loose ammo stacks I carry full", "The stacks of loose ammo in your vest, pockets, backpack and pouch are filled up to a full stack with the same ammo from the stash. No new kinds of ammo are added.");
+					if (topUp != ammo.TopUpLoose)
+					{
+						ammo.TopUpLoose = topUp;
+						changed = true;
+					}
+
+					changed |= PriorityList("What an empty spare magazine copies, the first that applies wins:", AmmoRules.PointerOrder(),
+						pointer => AmmoRules.PointerName(pointer), null, (pointer, step) => AmmoRules.MovePointer(pointer, step));
+				}
 				else if (step is InjectorCaseStep)
 				{
 					var cells = SettingsStore.Current.InjectorCase.Cells;
@@ -278,6 +299,11 @@ namespace GetReady
 					changed |= GroupRow(def);
 				}
 
+				if (step is CashStep && controller != null)
+				{
+					changed |= CashExclusionsUi(controller);
+				}
+
 			}
 
 			GUILayout.EndVertical();
@@ -313,29 +339,6 @@ namespace GetReady
 			bool nonFir = OptionRow(supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is");
 			GUILayout.EndVertical();
 
-			// The magazine rules, used by the T key and the ammo step alike
-			var ammo = SettingsStore.Current.Ammo;
-			GUILayout.BeginVertical(Ui.Section);
-			GUILayout.Label("Magazine top-up (the T key too)", Ui.SectionTitle);
-			GUILayout.Box(GUIContent.none, Ui.Divider);
-			GUILayout.BeginHorizontal();
-			GUILayout.Label(new GUIContent("Best ammo on top: share of the magazine that is the highest-penetration ammo, loaded last so it fires first", "0 is off. A share of the magazine's size, rounded up (20% of 30 rounds is 6, of 5 rounds is 1). Only fills free space: rounds already in a magazine are never swapped, and it isn't used when the magazine's own ammo is already the best."), Ui.Body);
-			GUILayout.FlexibleSpace();
-			if (GUILayout.Button("-", Ui.Small) && ammo.BestOnTopPercent > 0)
-			{
-				ammo.BestOnTopPercent = Math.Max(0, ammo.BestOnTopPercent - 5);
-				changed = true;
-			}
-
-			GUILayout.Label(ammo.BestOnTopPercent == 0 ? "off" : ammo.BestOnTopPercent + "%", ammo.BestOnTopPercent == 0 ? Ui.Muted : Ui.Centered, GUILayout.Width(50));
-			if (GUILayout.Button("+", Ui.Small) && ammo.BestOnTopPercent < 100)
-			{
-				ammo.BestOnTopPercent = Math.Min(100, ammo.BestOnTopPercent + 5);
-				changed = true;
-			}
-
-			GUILayout.EndHorizontal();
-			GUILayout.EndVertical();
 			if (swap != supplies.SwapWorse || overshoot != supplies.AllowOvershoot || nonFir != supplies.NonFiRBeforeLoose)
 			{
 				supplies.SwapWorse = swap;
