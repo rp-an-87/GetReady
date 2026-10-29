@@ -1,10 +1,49 @@
+using System;
+using System.Linq;
+using System.Reflection;
+using EFT;
+using EFT.HealthSystem;
 using EFT.InventoryLogic;
+using EFT.UI;
 
 namespace GetReady
 {
 	// What medical items are: found by what they treat, so modded ones count too.
 	internal static partial class Game
 	{
+		private static readonly FieldInfo HealthField = typeof(ItemUiContext).GetField("_healthController", BindingFlags.Instance | BindingFlags.NonPublic);
+
+		// Your health, as the stash screen's own item menu uses it (null when it isn't there)
+		internal static IHealthController HealthController()
+		{
+			var uiContext = ItemUiContext.Instance;
+			return uiContext == null ? null : HealthField.GetValue(uiContext) as IHealthController;
+		}
+
+		// Something is hurt: a body part below its maximum, broken or destroyed, or bleeding or fractured
+		internal static bool NeedsHealing(IHealthController health)
+		{
+			foreach (EBodyPart part in Enum.GetValues(typeof(EBodyPart)))
+			{
+				if (part == EBodyPart.Common)
+				{
+					continue;
+				}
+
+				if (!health.GetBodyPartHealth(part).AtMaximum || health.IsBodyPartBroken(part) || health.IsBodyPartDestroyed(part))
+				{
+					return true;
+				}
+
+				if (health.GetAllActiveEffects(part).Any(effect => typeof(IBleeding).IsAssignableFrom(effect.Type) || typeof(IFracture).IsAssignableFrom(effect.Type)))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
 		// What an item treats (a bandage the light bleeding, a splint the fracture, a surgery kit a destroyed part)
 		internal static bool Treats(Item item, EDamageEffectType effect) =>
 			item.GetItemComponent<HealthEffectsComponent>()?.AffectsAny(effect) ?? false;

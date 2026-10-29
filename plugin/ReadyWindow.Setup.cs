@@ -40,9 +40,9 @@ namespace GetReady
 				changed = true;
 			}
 
-			if (def.Money || def.Typed)
+			if (def.Money)
 			{
-				// Typed in: the amounts are too big to click up to, or do not fit the steps
+				// Typed in: the amounts are too big to click up to
 				string typed = GUILayout.TextField(setting.Target.ToString(), 8, Ui.Field, GUILayout.Width(100));
 				int parsed;
 				if (typed != setting.Target.ToString() && int.TryParse(typed == "" ? "0" : typed, out parsed))
@@ -51,7 +51,7 @@ namespace GetReady
 					changed = true;
 				}
 
-				GUILayout.Label(def.Unit, Ui.Muted, GUILayout.Width(def.Money ? 40 : 100));
+				GUILayout.Label(def.Unit, Ui.Muted, GUILayout.Width(40));
 			}
 			else
 			{
@@ -288,6 +288,14 @@ namespace GetReady
 							GUILayout.EndHorizontal();
 						}
 					}
+				}
+				else if (step is HealMeStep)
+				{
+					changed |= HealMeSetup();
+				}
+				else if (step is FullAutoStep)
+				{
+					changed |= FullAutoSetup();
 				}
 				else if (step is RepairStep && controller != null)
 				{

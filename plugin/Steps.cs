@@ -39,6 +39,12 @@ namespace GetReady
 		public bool Skipped;
 		public string Note;
 
+		// The line heals you with medicine (counted apart in the notification)
+		public bool Heal;
+
+		// The line changes a weapon's fire mode (counted apart in the notification)
+		public bool Mode;
+
 		// The line fills a magazine (counted apart in the notification)
 		public bool Fill;
 
@@ -78,7 +84,7 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep()
+			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep(), new FullAutoStep(), new HealMeStep()
 		};
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time

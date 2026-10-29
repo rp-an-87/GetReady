@@ -192,7 +192,7 @@ namespace GetReady
 				return;
 			}
 
-			var groups = Defs.Where(def => !def.IsQuota && !def.Stack).ToList();
+			var groups = Defs.Where(def => !def.IsQuota && !def.Stack && !def.NotGrenade).ToList();
 			var grenades = new HashSet<string>(groups.SelectMany(def => def.Entries.Select(entry => entry.Template)));
 			int have = context.Carried.Concat(Steps.Bringing).Concat(context.Planned).Count(item => grenades.Contains(item.TemplateId.ToString()));
 			int need = setting.Target - have;

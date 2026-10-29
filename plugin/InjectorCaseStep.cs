@@ -71,7 +71,37 @@ namespace GetReady
 					}
 					else
 					{
-						others.Add(Steps.Problem($"Cell {cell.X},{cell.Y}", $"holds {Game.NameOf(held)}, expected {cell.Name}", cell.Template));
+						// Something else sits there: it goes back to the stash and the right injector takes its place
+						var replacement = Game.Candidates(stash.Where(item => !taken.Contains(item) && !Steps.Claimed.Contains(item)), cell.Template).FirstOrDefault();
+						if (replacement == null)
+						{
+							others.Add(Steps.Problem($"Cell {cell.X},{cell.Y}", $"holds {Game.NameOf(held)}, expected {cell.Name} and the stash has none", cell.Template));
+						}
+						else
+						{
+							taken.Add(replacement);
+							Steps.Claimed.Add(replacement);
+							var wrong = held;
+							var right = replacement;
+							var target = cell;
+							needs.Add(new Need
+							{
+								Name = cell.Name,
+								Template = cell.Template,
+								Where = $"replaces {Game.NameOf(held)}",
+								Run = async () =>
+								{
+									var slot = controller.Inventory.Stash.Grids[0].FindLocationForItem(wrong);
+									if (slot == null)
+									{
+										return $"no room in the stash for the {Game.NameOf(wrong)} to move out";
+									}
+
+									var error = await Game.PlaceAt(controller, wrong, wrong.StackObjectsCount, slot);
+									return error ?? await Game.PlaceAt(controller, right, 1, grid.CreateItemAddress(new LocationInGrid(target.X, target.Y, ItemRotation.Horizontal)));
+								}
+							});
+						}
 					}
 
 					continue;

@@ -128,8 +128,23 @@ namespace GetReady
 		public List<KeptItem> KeepDamaged = new List<KeptItem>();
 	}
 
+	// The Heal me step: the medicine allowed and its order are kept with the supplies' groups (group "healme")
+	internal class HealMeSettings
+	{
+		public bool Enabled;
+	}
+
+	// The Full auto step: the weapon slots (EquipmentSlot names) whose weapon is put on full auto
+	internal class FullAutoSettings
+	{
+		public bool Enabled;
+		public List<string> Slots = new List<string> { "FirstPrimaryWeapon", "SecondPrimaryWeapon" };
+	}
+
 	internal class Settings
 	{
+		public HealMeSettings HealMe = new HealMeSettings();
+		public FullAutoSettings FullAuto = new FullAutoSettings();
 		public RepairSettings Repair = new RepairSettings();
 		public AmmoSettings Ammo = new AmmoSettings();
 		public SuppliesSettings Supplies = new SuppliesSettings();

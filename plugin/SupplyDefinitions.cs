@@ -55,7 +55,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsSurgeryKit, Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 1, Typed = true,
+				Under = Game.UnderMedicalItem, Match = Game.IsSurgeryKit, Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 1,
 				Entries = new[]
 				{
 					Entry.Resource("5d02778e86f774203e7dedbe"), // CMS: 3 uses
@@ -86,7 +86,7 @@ namespace GetReady
 
 		private static GroupDef Cartridge(string id, string name, string template) => new GroupDef
 		{
-			Id = id, Name = name, Unit = "cartridges", DefaultTarget = 0, Max = 10, Bindable = false,
+			Id = id, Name = name, Unit = "cartridges", NotGrenade = true, DefaultTarget = 0, Max = 10, Bindable = false,
 			DefaultDestinations = new[] { "Special slots", "Pockets" },
 			Entries = new[] { Entry.Count(template) }
 		};

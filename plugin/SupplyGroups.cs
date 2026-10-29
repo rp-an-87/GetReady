@@ -34,7 +34,6 @@ namespace GetReady
 		public int DefaultTarget;
 		public int Max = 10;
 		public int Step = 1;
-		public bool Typed; // the amount is typed in (besides - and +), for amounts the steps do not fit
 		public bool Money; // shown with thousands separators and as "Bring 25,000 RUB"
 		public bool Bindable = true; // can go on a quick-slot key
 		public string DefaultHotkey = "";
@@ -48,6 +47,7 @@ namespace GetReady
 		// How its items behave
 		public bool Random; // the entries are equal: whichever the stash has, picked at random
 		public bool Impact; // left out of the grenade quota's random picks
+		public bool NotGrenade; // a group of the grenades step that is not a grenade (signal cartridges): the quota ignores it
 		public bool IsQuota; // total grenades: topped up with random ones after the groups
 		public bool Stack; // the items are stacks of which only the missing count is brought (money)
 		public string[] DefaultOff = new string[0]; // items that start switched off

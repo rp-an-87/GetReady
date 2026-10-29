@@ -19,6 +19,8 @@ namespace GetReady
 		private static int _chambered;
 		private static int _topped;
 		private static int _keys;
+		private static int _healed;
+		private static int _modes;
 
 		// The window's button: close the window and do it like the stash button does (alert and sound included)
 		private static void Go()
@@ -63,7 +65,9 @@ namespace GetReady
 				var chambered = _chambered > 0 ? $"{_chambered} round(s) chambered" : "";
 				var topped = _topped > 0 ? $"{_topped} ammo stack(s) topped up" : "";
 				var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
-				var report = string.Join(", ", new[] { brought, repaired, filled, chambered, topped, keys }.Where(part => part != "").ToArray());
+				var healed = _healed > 0 ? "healed" : "";
+				var modes = _modes > 0 ? $"{_modes} weapon(s) on full auto" : "";
+				var report = string.Join(", ", new[] { brought, repaired, filled, chambered, topped, keys, healed, modes }.Where(part => part != "").ToArray());
 				NotificationManager.DisplayMessageNotification("Ready for raid: " + (report == "" ? "you already have everything" : report) + ".");
 			}
 
@@ -72,7 +76,7 @@ namespace GetReady
 			{
 				Play(EUISoundType.ErrorMessage);
 			}
-			else if (_moved > 0 || _keys > 0 || _repaired > 0 || _filled > 0 || _chambered > 0 || _topped > 0)
+			else if (_moved > 0 || _keys > 0 || _repaired > 0 || _filled > 0 || _chambered > 0 || _topped > 0 || _healed > 0 || _modes > 0)
 			{
 				Play(EUISoundType.QuestStarted);
 				ReadyFlash.Show();
@@ -95,7 +99,7 @@ namespace GetReady
 			_running = true;
 			try
 			{
-				int done = 0, failed = 0, repaired = 0, filled = 0, chambered = 0, topped = 0;
+				int done = 0, failed = 0, repaired = 0, filled = 0, chambered = 0, topped = 0, healed = 0, modes = 0;
 				Failures.Clear();
 				foreach (var entry in Plan.ToList())
 				{
@@ -109,6 +113,8 @@ namespace GetReady
 							filled += line.Fill ? 1 : 0;
 							chambered += line.Chamber ? 1 : 0;
 							topped += line.Topped ? 1 : 0;
+							healed += line.Heal ? 1 : 0;
+							modes += line.Mode ? 1 : 0;
 						}
 						else
 						{
@@ -128,6 +134,8 @@ namespace GetReady
 				_filled = filled;
 				_chambered = chambered;
 				_topped = topped;
+				_healed = healed;
+				_modes = modes;
 				_status = failed == 0 ? $"Done: {done} moved." : $"{done} moved, {failed} failed (see the log).";
 			}
 			catch (Exception e)
