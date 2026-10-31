@@ -49,7 +49,7 @@ namespace GetReady
 			if (repair.UseTraders && repairController != null)
 			{
 				changed |= PriorityList("The first trader in this order that can repair the piece is used:", RepairStep.OrderedTraders(repairController),
-					trader => trader.LocalizedName, trader => TraderAvatars.Slot(trader, 34), (trader, step) => RepairStep.MoveTrader(repairController, trader.Id, step));
+					trader => trader.LocalizedName, (trader, rect) => TraderAvatars.Draw(rect, trader), (trader, step) => RepairStep.MoveTrader(repairController, trader.Id, step));
 			}
 
 			GUILayout.EndVertical();
@@ -69,7 +69,7 @@ namespace GetReady
 
 			GUILayout.BeginVertical(Ui.Group);
 			GUILayout.BeginHorizontal();
-			GUILayout.Label("Left damaged on purpose", Ui.Name);
+			HelpTitle("This very piece, not its type: a new armor of the same type is repaired normally.", "Left damaged on purpose", Ui.Name);
 			GUILayout.FlexibleSpace();
 			if (kept.Count == 0 && GUILayout.Button("Hide", Ui.Pick, GUILayout.Width(60)))
 			{
@@ -77,7 +77,6 @@ namespace GetReady
 			}
 
 			GUILayout.EndHorizontal();
-			GUILayout.Label("This very piece, not its type: a new armor of the same type is repaired normally.", Ui.Muted);
 			if (gear.Count == 0)
 			{
 				GUILayout.Label("No armor or weapon equipped.", Ui.Muted);
@@ -109,6 +108,11 @@ namespace GetReady
 				{
 					kept.Remove(entry);
 					changed = true;
+					// The last one gone: the section folds back into the small button
+					if (kept.Count == 0)
+					{
+						_showKeepList = false;
+					}
 				}
 
 				GUILayout.EndHorizontal();

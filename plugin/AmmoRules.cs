@@ -26,15 +26,16 @@ namespace GetReady
 
 			public static AmmoStock Build(InventoryController controller)
 			{
+				var view = AmmoView.Of(controller);
 				var stock = new AmmoStock();
-				if (controller.Inventory.Stash != null)
+				if (view.HasStash)
 				{
-					stock.Stash = new HashSet<Item>(controller.Inventory.GetPlayerItems(EPlayerItems.Stash));
+					stock.Stash = new HashSet<Item>(view.Stash());
 				}
 
-				stock.InStash = controller.Inventory.Stash != null;
-				stock.Pouch = new HashSet<Item>(Game.Secured(controller.Inventory));
-				stock.Carried = new HashSet<Item>(Game.Carried(controller.Inventory));
+				stock.InStash = view.HasStash;
+				stock.Pouch = new HashSet<Item>(view.Secured());
+				stock.Carried = new HashSet<Item>(view.Carried());
 				return stock;
 			}
 
@@ -62,7 +63,37 @@ namespace GetReady
 			public int Rounds => Allocation.Sum(pair => pair.Value);
 		}
 
-		internal static readonly string[] PointerKeys = { "loose", "nearest", "weapon" };
+		// What the rules need to know about your inventory, so the tests can give it without the game's inventory controller
+		internal class AmmoView
+		{
+			public bool HasStash;
+			public Func<IEnumerable<Item>> Stash, Equipment, Carried, Secured;
+			// Everything inside the containers of a place (Pouch, Pockets, Vest, Backpack...)
+			public Func<string, IEnumerable<Item>> InPlace = place => Enumerable.Empty<Item>();
+			public Func<List<Weapon>> Weapons;
+			public Func<Item, bool> Examined;
+
+			// The view of a controller; the tests put theirs here
+			internal static Func<InventoryController, AmmoView> Of = controller => From(controller);
+
+			private static AmmoView From(InventoryController controller)
+			{
+				var inventory = controller.Inventory;
+				return new AmmoView
+				{
+					HasStash = inventory.Stash != null,
+					Stash = () => inventory.GetPlayerItems(EPlayerItems.Stash),
+					Equipment = () => inventory.GetPlayerItems(EPlayerItems.Equipment),
+					Carried = () => Game.Carried(inventory),
+					Secured = () => Game.Secured(inventory),
+					InPlace = place => Game.ItemsInPlace(inventory, place),
+					Weapons = () => EquippedWeapons(inventory),
+					Examined = item => controller.Examined(item)
+				};
+			}
+		}
+
+		internal static readonly string[] PointerKeys = { "nearest", "others", "loose", "weapon" };
 
 		// The pointers in the owner's order (any that is missing from the saved list comes last)
 		internal static List<string> PointerOrder()
@@ -73,7 +104,10 @@ namespace GetReady
 		}
 
 		internal static string PointerName(string key) =>
-			key == "loose" ? "Loose ammo in the same container" : key == "nearest" ? "What the nearest magazine holds" : "What an equipped weapon that takes it holds";
+			key == "loose" ? "Loose ammo in the same container"
+				: key == "nearest" ? "What magazines in the same container hold"
+				: key == "others" ? "What magazines in other containers hold"
+				: "What an equipped weapon that takes it holds";
 
 		internal static void MovePointer(string key, int step)
 		{
@@ -97,11 +131,11 @@ namespace GetReady
 		// the magazine set the caliber: a magazine that takes two calibers is never mixed.
 		internal static List<Ammo> FindAmmo(InventoryController controller, Magazine magazine)
 		{
-			var inStash = controller.Inventory.Stash != null;
-			var mask = inStash ? EPlayerItems.Stash | EPlayerItems.Equipment : EPlayerItems.Equipment;
-			return controller.Inventory.GetPlayerItems(mask)
+			var view = AmmoView.Of(controller);
+			var items = view.HasStash ? view.Stash().Concat(view.Equipment()) : view.Equipment();
+			return items
 				.OfType<Ammo>()
-				.Where(ammo => ammo.Parent?.Container is Grid && controller.Examined(ammo) && ammo.PinLockState != EItemPinLockState.Locked && magazine.CheckCompatibility(ammo))
+				.Where(ammo => ammo.Parent?.Container is Grid && view.Examined(ammo) && ammo.PinLockState != EItemPinLockState.Locked && magazine.CheckCompatibility(ammo))
 				.Where(ammo => !magazine.Cartridges.Items.OfType<Ammo>().Any(held => held.Caliber != ammo.Caliber))
 				.ToList();
 		}
@@ -111,8 +145,9 @@ namespace GetReady
 		// The ammo to follow, in this order. Only ammo that is in stock counts. Null when there is nothing to follow.
 		//   1. what the magazine already holds
 		//   not equipped (stash): 2. an equipped weapon that takes the magazine and has ammo (in its magazine, or chambered)
-		//   a spare magazine on you: 2. loose ammo in the same container, 3. what the nearest magazine in that container holds,
-		//       4. an equipped weapon that takes it and has ammo, 5. the only compatible ammo you carry
+		//   a spare magazine on you, in the owner's order: what the nearest magazine in the same container holds, what a magazine in
+		//       another container holds, loose ammo in the same container, an equipped weapon that takes it and has ammo; then
+		//       the only compatible ammo you carry
 		//   a magazine in a weapon: 2. what a spare magazine for that weapon holds, 3. the round chambered, 4. the only compatible
 		//       ammo you carry
 		private static KeyValuePair<MongoID, string>? Follow(InventoryController controller, AmmoStock stock, List<Ammo> stacks, Magazine magazine)
@@ -129,8 +164,8 @@ namespace GetReady
 				return Found(held, "same as inside");
 			}
 
-			var inventory = controller.Inventory;
-			var weapons = EquippedWeapons(inventory);
+			var view = AmmoView.Of(controller);
+			var weapons = view.Weapons();
 
 			// The equipped weapons that take this magazine. With one, follow it if it has ammo. With more (a STANAG that fits both a .300
 			// and a 5.56 rifle) every one of them must have ammo and they must all hold the same: a weapon without ammo, or two that
@@ -209,9 +244,20 @@ namespace GetReady
 					return near != null ? Found(near, "same as the nearest magazine") : null;
 				}
 
+				KeyValuePair<MongoID, string>? Others()
+				{
+					// A magazine on you in another container; the ones in the same container are the other rule's business
+					var found = view.Carried().Concat(view.Secured()).OfType<Magazine>()
+						.Where(item => item != magazine && item.CurrentAddress is GridItemAddress && ((GridItemAddress)item.CurrentAddress).Grid.ParentItem != container)
+						.Select(item => new { Ammo = item.Cartridges.Items.FirstOrDefault(Available), Where = ((GridItemAddress)item.CurrentAddress).Grid.ParentItem })
+						.OrderBy(pair => ContainerName(pair.Where))
+						.FirstOrDefault(pair => pair.Ammo != null);
+					return found == null ? null : Found(found.Ammo, $"same as a magazine in your {ContainerName(found.Where)}");
+				}
+
 				foreach (var pointer in PointerOrder())
 				{
-					var answer = pointer == "loose" ? Loose() : pointer == "nearest" ? Nearest() : FromWeapons();
+					var answer = pointer == "loose" ? Loose() : pointer == "nearest" ? Nearest() : pointer == "others" ? Others() : FromWeapons();
 					if (answer != null)
 					{
 						return answer;
@@ -224,7 +270,7 @@ namespace GetReady
 				var slot = weapon?.GetMagazineSlot();
 				if (slot != null)
 				{
-					var spare = Game.Carried(inventory).OfType<Magazine>()
+					var spare = view.Carried().OfType<Magazine>()
 						.Where(other => other != magazine && other.Parent?.Container is Grid && slot.CheckCompatibility(other))
 						.Select(other => other.Cartridges.Items.FirstOrDefault(Available))
 						.FirstOrDefault(ammo => ammo != null);
@@ -374,6 +420,9 @@ namespace GetReady
 			return stack;
 		}
 
+		// The load itself (replaceable, so the tests don't need the game's controller to load rounds)
+		internal static Func<InventoryController, Ammo, Magazine, int, Task<Comfort.Common.IResult>> LoadRounds = (controller, ammo, magazine, count) => controller.LoadMagazine(ammo, magazine, count);
+
 		// Loads what the plan says, with the controller's own LoadMagazine (in a raid the timed load). Returns the rounds loaded.
 		internal static async Task<int> Load(InventoryController controller, FillPlan plan)
 		{
@@ -381,7 +430,7 @@ namespace GetReady
 			foreach (var pair in plan.Allocation)
 			{
 				int before = plan.Magazine.Count;
-				var result = await controller.LoadMagazine(pair.Key, plan.Magazine, pair.Value);
+				var result = await LoadRounds(controller, pair.Key, plan.Magazine, pair.Value);
 				loaded += plan.Magazine.Count - before;
 				if (result.Failed)
 				{

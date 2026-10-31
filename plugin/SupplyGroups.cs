@@ -90,7 +90,8 @@ namespace GetReady
 				var found = new List<string>();
 				foreach (var template in factory.ItemTemplates.Values)
 				{
-					if (!Under.Any(parent => Icons.IsUnder(template, parent)))
+					// The branches themselves ("Medikit", "Medical item") and items nobody can get are not items to carry
+					if (!Under.Any(parent => Icons.IsUnder(template, parent)) || Under.Contains(template._id.ToString()) || Game.NotAvailable.Contains(template._id.ToString()))
 					{
 						continue;
 					}
@@ -139,6 +140,7 @@ namespace GetReady
 				{
 					setting = new GroupSetting { Target = DefaultTarget, Destinations = DefaultDestinations.ToList(), Off = DefaultOff.ToList() };
 					groups[Id] = setting;
+					StartPlaces(setting, false);
 				}
 
 				return setting;
@@ -153,10 +155,95 @@ namespace GetReady
 			(Locations ?? new[] { "Special slots", "Pockets", "Vest", "Backpack", "Pouch" })
 				.Where(place => AllowPouch || (place != "Pouch" && place != "Special slots"));
 
-		// The places picked, in the order given, then the usual ones as a fallback when those are full (the pouch and the special
-		// slots only when picked)
-		public List<string> PlacesToTry() =>
-			NoFallback ? Setting.Destinations.ToList() : Setting.Destinations.Concat(new[] { "Pockets", "Vest", "Backpack" }).Distinct().ToList();
+		// Where the group can go: every place in the order the owner set (the first with room wins), the ones switched off skipped.
+		// A new group starts with the defaults first, then every other place, the pouch last, all on; a group with no fallback (cash)
+		// starts with the defaults only. A profile from before had only the places picked: those first and the pockets, vest and
+		// backpack on after them (as they were tried), the rest off.
+		public List<string> PlaceOrder()
+		{
+			var setting = Setting;
+			if (setting.Places == null)
+			{
+				StartPlaces(setting, true);
+			}
+
+			var pickable = PickablePlaces.ToList();
+			var order = setting.Places.Where(place => pickable.Contains(place)).Distinct().ToList();
+			order.AddRange(pickable.Where(place => !order.Contains(place))); // a place added later
+			return order.Where(place => !setting.PlacesOff.Contains(place)).Concat(order.Where(place => setting.PlacesOff.Contains(place))).ToList(); // the ones off last
+		}
+
+		private void StartPlaces(GroupSetting setting, bool carriedOver)
+		{
+			var pickable = PickablePlaces.ToList();
+			var picks = setting.Destinations.Where(place => pickable.Contains(place)).Distinct().ToList();
+			var order = picks.ToList();
+			order.AddRange(pickable.Where(place => !order.Contains(place) && place != "Pouch"));
+			if (pickable.Contains("Pouch") && !order.Contains("Pouch"))
+			{
+				order.Add("Pouch");
+			}
+
+			setting.Places = order;
+			var usual = new[] { "Pockets", "Vest", "Backpack" };
+			setting.PlacesOff = order.Where(place => !picks.Contains(place) && (NoFallback || (carriedOver && !usual.Contains(place)))).ToList();
+		}
+
+		public bool PlaceOn(string place) => !Setting.PlacesOff.Contains(place);
+
+		// Switches a place off (it goes to the end of the row) or on (it goes after the ones that are on)
+		public void TogglePlace(string place)
+		{
+			var setting = Setting;
+			var order = PlaceOrder();
+			if (setting.PlacesOff.Remove(place))
+			{
+				order.Remove(place);
+				order.Insert(order.Count(other => !setting.PlacesOff.Contains(other)), place);
+			}
+			else
+			{
+				setting.PlacesOff.Add(place);
+				order.Remove(place);
+				order.Add(place);
+			}
+
+			setting.Places = order;
+		}
+
+		// Two places swap spots, and with them on or off (an off place dropped on an on one takes its place in the chain)
+		public void SwapPlaces(string place, string other)
+		{
+			var setting = Setting;
+			var order = PlaceOrder();
+			int a = order.IndexOf(place);
+			int b = order.IndexOf(other);
+			if (a < 0 || b < 0 || a == b)
+			{
+				return;
+			}
+
+			bool placeOff = setting.PlacesOff.Contains(place);
+			bool otherOff = setting.PlacesOff.Contains(other);
+			order[a] = other;
+			order[b] = place;
+			setting.PlacesOff.Remove(place);
+			setting.PlacesOff.Remove(other);
+			if (placeOff)
+			{
+				setting.PlacesOff.Add(other);
+			}
+
+			if (otherOff)
+			{
+				setting.PlacesOff.Add(place);
+			}
+
+			setting.Places = order;
+		}
+
+		// The places to try, in order
+		public List<string> PlacesToTry() => PlaceOrder().Where(place => PlaceOn(place)).ToList();
 
 		// The items in the order the owner set (the rest in the default order after them)
 		public List<Entry> OrderedEntries()
@@ -208,13 +295,22 @@ namespace GetReady
 			}
 		}
 
+		// Switches an item off (it goes to the end of the list) or on (it goes after the ones that are on): a switched off item keeps
+		// no spot
 		public void ToggleEntry(string template)
 		{
-			var off = Setting.Off;
-			if (!off.Remove(template))
+			var setting = Setting;
+			var order = OrderedEntries().Select(entry => entry.Template).Where(other => other != template).ToList();
+			bool nowOn = setting.Off.Remove(template);
+			if (!nowOn)
 			{
-				off.Add(template);
+				setting.Off.Add(template);
 			}
+
+			var on = order.Where(other => !setting.Off.Contains(other)).ToList();
+			var off = order.Where(other => setting.Off.Contains(other)).ToList();
+			(nowOn ? on : off).Add(template);
+			setting.Order = on.Concat(off).ToList();
 		}
 
 		// ---- Weighing items
@@ -246,7 +342,7 @@ namespace GetReady
 			foreach (var entry in Random ? ActiveEntries().OrderBy(_ => Guid.NewGuid()) : ActiveEntries().AsEnumerable())
 			{
 				foreach (var item in items
-					.Where(item => item.TemplateId.ToString() == entry.Template)
+					.Where(item => item.TemplateId.ToString() == entry.Template && item.PinLockState != EItemPinLockState.Locked)
 					.OrderBy(Game.LooseBeforeFiR)
 					.ThenBy(item => item.MarkedAsSpawnedInSession ? 1 : 0)
 					.ThenBy(Game.LooseAfterFiR)

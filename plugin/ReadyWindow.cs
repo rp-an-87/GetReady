@@ -16,6 +16,10 @@ namespace GetReady
 
 		private static Rect _rect = new Rect(80, 40, 740, 800);
 
+		// The window is drawn through a scaling matrix: every size and position of the window (_rect, the alert box) is in its own
+		// units, a screen pixel is Scale of them
+		internal static float Scale => Mathf.Clamp(SettingsStore.Current.UiScale, 0.8f, 1.6f);
+
 		private static Vector2 _scroll;
 
 		internal static void Toggle()
@@ -37,7 +41,7 @@ namespace GetReady
 		// (an item dragged across this window) is left alone: switching the game's input off in the middle of it would break the drag.
 		private static void BlockGameInput()
 		{
-			var mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+			var mouse = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y) / Scale;
 			bool inside = (_open && _rect.Contains(mouse)) || (Alerts.Count > 0 && _alertRect.Contains(mouse));
 			bool down = Input.GetMouseButton(0) || Input.GetMouseButton(1);
 			if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
@@ -140,9 +144,17 @@ namespace GetReady
 		internal static void Draw()
 		{
 			Ui.Init();
+			var matrix = GUI.matrix;
+			GUI.matrix = Matrix4x4.Scale(new Vector3(Scale, Scale, 1f));
 			if (_open)
 			{
+				_rect.width = Mathf.Max(_rect.width, MinWindowWidth);
 				_rect = GUILayout.Window(WindowId, _rect, Contents, GUIContent.none, Ui.Window);
+				Tooltips.Draw(Scale);
+			}
+			else
+			{
+				Tooltips.Reset();
 			}
 
 			if (Alerts.Count > 0)
@@ -150,6 +162,8 @@ namespace GetReady
 				_alertRect = GUILayout.Window(AlertId, _alertRect, AlertContents, GUIContent.none, Ui.Alert);
 				GUI.BringWindowToFront(AlertId);
 			}
+
+			GUI.matrix = matrix;
 		}
 
 		// Which page is showing: 0 = Ready (what is missing and the button), 1 = Setup (what to bring and where)
@@ -161,7 +175,7 @@ namespace GetReady
 			bool changed = false;
 
 			GUILayout.BeginHorizontal();
-			GUILayout.Label("Get ready for raid", Ui.Title);
+			HelpTitle("Left-click the stash button to do everything on the Ready page at once. Right-click it to open this window.", "Get ready for raid", Ui.Title, 32f);
 			GUILayout.FlexibleSpace();
 			if (GUILayout.Button(new GUIContent("x", "Close"), Ui.Small))
 			{
@@ -169,7 +183,6 @@ namespace GetReady
 			}
 
 			GUILayout.EndHorizontal();
-			GUILayout.Label("Clicking the stash button does everything on the Ready page at once. Ctrl+click opens this window.", Ui.Muted);
 			GUILayout.Space(4);
 			GUILayout.BeginHorizontal();
 			if (GUILayout.Button("Ready", _tab == 0 ? Ui.TabOn : Ui.Tab))
@@ -195,9 +208,8 @@ namespace GetReady
 			}
 
 			GUILayout.Box(GUIContent.none, Ui.Divider);
-			// A fixed height of three lines: the hover text changes between the layout pass and the draw pass, and a label whose height
-			// follows its text breaks the layout as soon as a hint wraps onto a second line
-			GUILayout.Label(string.IsNullOrEmpty(GUI.tooltip) ? _status : GUI.tooltip, Ui.Muted, GUILayout.Height(50));
+			Tooltips.Observe(GUI.tooltip);
+			GUILayout.Label(_status, Ui.Muted, GUILayout.Height(24));
 			GUILayout.BeginHorizontal();
 			GUILayout.FlexibleSpace();
 			GUI.enabled = !_running && Plan.Any(entry => entry.Value.Any(line => line.Run != null));

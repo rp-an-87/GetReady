@@ -68,15 +68,16 @@ namespace GetReady
 				Place(clone.transform, pin.transform);
 
 				var click = clone.AddComponent<ClickHandler>();
-				click.OnClick = () =>
+				click.OnClick = button =>
 				{
-					if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))
+					switch (ActionOf(button))
 					{
-						ReadyWindow.Toggle();
-					}
-					else
-					{
-						ReadyWindow.QuickRun();
+						case ButtonAction.Configure:
+							ReadyWindow.Toggle();
+							break;
+						case ButtonAction.GetReady:
+							ReadyWindow.QuickRun();
+							break;
 					}
 				};
 
@@ -105,11 +106,17 @@ namespace GetReady
 			cloneRect.anchoredPosition = pinRect.anchoredPosition + new Vector2(0f, pinRect.rect.height + 4f);
 		}
 
+		internal enum ButtonAction { None, GetReady, Configure }
+
+		// Left click gets ready, right click opens the window to configure; the other buttons do nothing
+		internal static ButtonAction ActionOf(PointerEventData.InputButton button) =>
+			button == PointerEventData.InputButton.Left ? ButtonAction.GetReady : button == PointerEventData.InputButton.Right ? ButtonAction.Configure : ButtonAction.None;
+
 		internal class ClickHandler : MonoBehaviour, IPointerClickHandler
 		{
-			internal Action OnClick;
+			internal Action<PointerEventData.InputButton> OnClick;
 
-			public void OnPointerClick(PointerEventData eventData) => OnClick?.Invoke();
+			public void OnPointerClick(PointerEventData eventData) => OnClick?.Invoke(eventData.button);
 		}
 	}
 }

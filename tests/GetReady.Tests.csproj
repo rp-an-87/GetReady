@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- SptDir (the folder that contains BepInEx and EscapeFromTarkov_Data) comes from the same user file as the plugin's -->
+  <Import Project="..\GetReady.csproj.user" Condition="Exists('..\GetReady.csproj.user')" />
+
+  <!-- .NET 8, not Framework: the game's code uses methods (KeyValuePair.Deconstruct...) that only the newer runtime has. The net471 plugin
+       and the game's net4x DLLs load fine in it. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <IsPackable>false</IsPackable>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <NoWarn>$(NoWarn);NU1701;CS8032;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="FluentAssertions" Version="6.12.2" />
+    <PackageReference Include="NSubstitute" Version="5.1.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+  </ItemGroup>
+
+  <!-- The plugin itself (net471, so it can't be a project reference): built first without deploying it to the game, then referenced -->
+  <Target Name="BuildPlugin" BeforeTargets="ResolveAssemblyReferences;CoreCompile">
+    <MSBuild Projects="..\GetReady.csproj" Targets="Build" Properties="NoDeploy=true;Configuration=$(Configuration)" />
+  </Target>
+  <ItemGroup>
+    <Reference Include="GetReady"><HintPath>..\bin\$(Configuration)\GetReady.dll</HintPath></Reference>
+  </ItemGroup>
+
+  <!-- The game's own DLLs, copied beside the tests (bin\ is not versioned) -->
+  <ItemGroup>
+    <Reference Include="0Harmony"><HintPath>$(SptDir)\BepInEx\core\0Harmony.dll</HintPath></Reference>
+    <Reference Include="BepInEx"><HintPath>$(SptDir)\BepInEx\core\BepInEx.dll</HintPath></Reference>
+    <Reference Include="SPT.Common"><HintPath>$(SptDir)\BepInEx\plugins\spt\spt-common.dll</HintPath></Reference>
+    <Reference Include="SPT.Reflection"><HintPath>$(SptDir)\BepInEx\plugins\spt\spt-reflection.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.UI"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.UI.dll</HintPath></Reference>
+    <Reference Include="Newtonsoft.Json"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Newtonsoft.Json.dll</HintPath></Reference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll</HintPath></Reference>
+    <Reference Include="ItemComponent.Types"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\ItemComponent.Types.dll</HintPath></Reference>
+    <Reference Include="Comfort"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Comfort.dll</HintPath></Reference>
+    <Reference Include="UnityEngine"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.CoreModule"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.IMGUIModule"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.TextRenderingModule"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath></Reference>
+    <Reference Include="Unity.TextMeshPro"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Unity.TextMeshPro.dll</HintPath></Reference>
+    <Reference Include="UnityEngine.InputLegacyModule"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath></Reference>
+    <Reference Include="Sirenix.Serialization"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Sirenix.Serialization.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

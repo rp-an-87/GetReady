@@ -6,14 +6,17 @@ namespace GetReady
 
 	internal class HealingStep : SuppliesStep
 	{
-		public override string Name => "Healing";
+		public override string Name => "Medicine to bring";
 		public override bool Enabled { get => SettingsStore.Current.Supplies.HealingEnabled; set => SettingsStore.Current.Supplies.HealingEnabled = value; }
+
+		// Only surgery kits fit the special slots; the rest of the healing items go anywhere else
+		private static readonly string[] NoSpecial = { "Pockets", "Vest", "Backpack", "Pouch" };
 
 		private static readonly GroupDef[] Definitions =
 		{
 			new GroupDef
 			{
-				Under = Game.UnderMedikit, Match = Game.IsHealingKit, Id = "health", Name = "Healing kits", Unit = "HP", DefaultTarget = 300, Max = 2000, Step = 50, DefaultHotkey = "4",
+				Under = Game.UnderMedikit, Match = Game.IsHealingKit, Id = "health", Locations = NoSpecial, Name = "Healing kits", Unit = "HP", DefaultTarget = 300, Max = 2000, Step = 50, DefaultHotkey = "4",
 				Entries = new[]
 				{
 					Entry.Resource("60098ad7c2240c0fe85c570a"), // AFAK
@@ -25,7 +28,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsBandage, Id = "bandage", Name = "Bandages", Unit = "bandage points", DefaultTarget = 2, Max = 20, DefaultHotkey = "6",
+				Under = Game.UnderMedicalItem, Match = Game.IsBandage, Id = "bandage", Locations = NoSpecial, Name = "Bandages", Unit = "bandage points", DefaultTarget = 2, Max = 20, DefaultHotkey = "6",
 				Entries = new[]
 				{
 					Entry.Resource("5751a25924597722c463c472"), // Army bandage: its remaining uses (2 new)
@@ -34,7 +37,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsTourniquet, Id = "heavybleed", Name = "Heavy bleed", Unit = "tourniquet points", DefaultTarget = 2, Max = 20, DefaultHotkey = "5",
+				Under = Game.UnderMedicalItem, Match = Game.IsTourniquet, Id = "heavybleed", Locations = NoSpecial, Name = "Heavy bleed", Unit = "tourniquet points", DefaultTarget = 2, Max = 20, DefaultHotkey = "5",
 				Entries = new[]
 				{
 					Entry.Resource("5e8488fa988a8701445df1e4"), // CALOK-B: its remaining uses (3 new)
@@ -44,11 +47,11 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Under = Game.UnderMedicalItem, Match = Game.IsSplint, Id = "splint", Name = "Splints", Unit = "splint uses", DefaultTarget = 5, Max = 50, Step = 5,
-				DefaultDestinations = new[] { "Vest", "Pouch" },
+				Under = Game.UnderMedicalItem, Match = Game.IsSplint, Id = "splint", Locations = NoSpecial, Name = "Splints", Unit = "splint uses", DefaultTarget = 5, Max = 50, Step = 1,
+				DefaultDestinations = new[] { "Vest" },
 				Entries = new[]
 				{
-					Entry.Resource("5af0454c86f7746bf20992e8"), // Aluminum splint: 5 uses
+					Entry.Resource("5af0454c86f7746bf20992e8"), // Aluminum splint: counts its own remaining uses (5 in vanilla, 3 with some mods)
 					Entry.Resource("6937ecf8628ee476240c07cb"), // Tigz'Resq splint (WTT Content Backport)
 					Entry.Points("544fb3364bdc2d34748b456a", 1f) // Immobilizing splint
 				}
@@ -56,6 +59,7 @@ namespace GetReady
 			new GroupDef
 			{
 				Under = Game.UnderMedicalItem, Match = Game.IsSurgeryKit, Id = "surgery", Name = "Surgery kits", Unit = "surgery uses", DefaultTarget = 0, Max = 60, Step = 1,
+				DefaultDestinations = new[] { "Special slots", "Pockets", "Vest" },
 				Entries = new[]
 				{
 					Entry.Resource("5d02778e86f774203e7dedbe"), // CMS: 3 uses
@@ -64,7 +68,7 @@ namespace GetReady
 			},
 			new GroupDef
 			{
-				Id = "propital", Name = "Propital", Unit = "Propital", DefaultTarget = 1, DefaultHotkey = "7",
+				Id = "propital", Locations = NoSpecial, Name = "Propital", Unit = "Propital", DefaultTarget = 1, DefaultHotkey = "7",
 				Entries = new[] { Entry.Count("5c0e530286f7747fa1419862") }
 			}
 		};

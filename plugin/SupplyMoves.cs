@@ -32,7 +32,7 @@ namespace GetReady
 				}
 			}
 
-			return failed == 0 ? null : $"{failed} of {moves.Count} not moved ({last})";
+			return failed == 0 ? null : moves.Count == 1 ? Game.Friendly(last) : $"{failed} of {moves.Count} could not be moved ({Game.Friendly(last)})";
 		}
 
 		// The carried one goes to the stash first, and goes back if the better one can't be brought

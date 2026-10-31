@@ -26,18 +26,30 @@ namespace GetReady
 			public HashSet<Item> Owned;          // in a special slot of the template: counted, never swapped here
 			public List<Item> Leaving;           // about to be swapped out of a special slot: no longer counted
 			public List<Item> Planned = new List<Item>(); // about to be brought by the groups above (the grenade total counts it)
+			public Func<string> CashBlockedBy;     // the case you carry that stops all cash, or null
+			public Func<string, bool> PlaceExists = place => true; // whether you have this place (a wallet on you, a vest worn...)
+			public Func<string, string, bool> PlaceAllows = (place, template) => true; // whether a container of the place takes this money
 		}
 
 		public List<PlanLine> Plan(InventoryController controller)
 		{
 			var inventory = controller.Inventory;
+			return Plan(controller, Game.CarriedAndSecured(inventory).ToList(), Game.Stash(inventory), () => Game.CashBlockedBy(inventory), place => Game.HasPlace(inventory, place), (place, template) => Game.PlaceAllows(inventory, place, template));
+		}
+
+		// The plan for what is on you (carried and in the secure container) and what is in the stash; the controller is only for the moves
+		internal List<PlanLine> Plan(InventoryController controller, List<Item> carriedAndSecured, List<Item> stash, Func<string> cashBlockedBy, Func<string, bool> placeExists = null, Func<string, string, bool> placeAllows = null)
+		{
 			var claimed = Steps.Claimed.ToList();
 			var context = new Context
 			{
 				Controller = controller,
+				CashBlockedBy = cashBlockedBy,
+				PlaceExists = placeExists ?? (place => true),
+				PlaceAllows = placeAllows ?? ((place, template) => true),
 				Settings = SettingsStore.Current.Supplies,
-				Carried = Game.CarriedAndSecured(inventory).Where(item => !Game.InsideInjectorCase(item)).ToList(),
-				Stash = Game.Stash(inventory).Where(item => !claimed.Contains(item)).ToList(),
+				Carried = carriedAndSecured.Where(item => !Game.InsideInjectorCase(item)).ToList(),
+				Stash = stash.Where(item => !claimed.Contains(item)).ToList(),
 				Owned = new HashSet<Item>(Steps.Owned),
 				Leaving = Steps.Leaving.ToList()
 			};
@@ -71,13 +83,45 @@ namespace GetReady
 			var progress = Steps.Progress(def.Name, context.Carried.Sum(def.WeightOf) - leaving + bringing, setting.Target, def.Unit, def.ActiveEntries().FirstOrDefault()?.Template);
 			lines.Add(progress);
 
+			if (places.Count == 0)
+			{
+				lines.Add(Steps.Problem(def.Name, "every place is switched off: switch at least one on in Setup", def.ActiveEntries().FirstOrDefault()?.Template));
+				return;
+			}
+
 			if (def.Money)
 			{
-				var leftOut = Game.CashLeftOut(def.Entries[0].Template, places, context.Controller.Inventory);
-				if (leftOut != null)
+				var blockedBy = context.CashBlockedBy();
+				if (blockedBy != null)
 				{
 					progress.Skipped = true;
-					progress.Note = $"kept out of {leftOut}";
+					progress.Note = $"no cash while you carry {blockedBy}";
+					float wanted = setting.Target - context.Carried.Sum(def.WeightOf);
+					if (wanted > 0)
+					{
+						lines.Add(Steps.Info($"Would bring {wanted:N0} {def.Unit}, but {blockedBy} stops all cash while you carry it (Setup > Cash)"));
+					}
+
+					return;
+				}
+			}
+
+			// A place you do not have (no wallet on you, no vest worn) cannot be brought to: the places left are the ones you have
+			var wanted_places = def.PlacesToTry();
+			places = places.Where(context.PlaceExists).ToList();
+			if (places.Count == 0)
+			{
+				lines.Add(Steps.Problem(def.Name, $"none of its places is on you ({string.Join(", ", wanted_places)}): carry one or pick another in Setup", def.ActiveEntries().FirstOrDefault()?.Template));
+				return;
+			}
+
+			if (def.Money)
+			{
+				var moneyTemplate = def.Entries[0].Template;
+				places = places.Where(place => context.PlaceAllows(place, moneyTemplate)).ToList();
+				if (places.Count == 0)
+				{
+					lines.Add(Steps.Problem(def.Name, $"every place you have keeps this money out ({string.Join(", ", wanted_places)}): allow one in Setup", def.ActiveEntries().FirstOrDefault()?.Template));
 					return;
 				}
 			}
@@ -92,8 +136,30 @@ namespace GetReady
 			need = PlanBring(def, context, need, places, lines);
 			if (need > 0)
 			{
-				lines.Add(Steps.Problem(def.Name, $"Missing {need:N0} {def.Unit}: none left in the stash", def.ActiveEntries().FirstOrDefault()?.Template));
+				lines.Add(Steps.Problem(def.Name, $"Missing {need:N0} {def.Unit}: {WhyNoneLeft(def, context, need)}", def.ActiveEntries().FirstOrDefault()?.Template));
 			}
+		}
+
+		// Why the stash could not make up what is missing: nothing there, or only items too big for it (the option is off), and how many
+		// are locked
+		private static string WhyNoneLeft(GroupDef def, Context context, float need)
+		{
+			var active = new HashSet<string>(def.ActiveEntries().Select(entry => entry.Template));
+			if (active.Count == 0)
+			{
+				return "every item of this group is switched off (open Items and switch one on)";
+			}
+
+			int locked = context.Stash.Count(item => active.Contains(item.TemplateId.ToString()) && item.PinLockState == EItemPinLockState.Locked && !context.Planned.Contains(item));
+			var tooBig = def.Stack || context.Settings.AllowOvershoot
+				? null
+				: def.Candidates(context.Stash).Where(item => !context.Planned.Contains(item) && def.WeightOf(item) > need).OrderBy(def.WeightOf).FirstOrDefault();
+			if (tooBig != null)
+			{
+				return $"the smallest in the stash, {Game.NameOf(tooBig)} ({def.WeightOf(tooBig):N0}), is more than is missing and \"Take a bigger item when only a little is missing\" is off";
+			}
+
+			return locked > 0 ? $"none left in the stash that you haven't locked ({locked} locked)" : "none left in the stash";
 		}
 
 		private static void PlanSwaps(GroupDef def, Context context, float fixedWeight, List<string> places, List<PlanLine> lines)
@@ -196,7 +262,9 @@ namespace GetReady
 			var grenades = new HashSet<string>(groups.SelectMany(def => def.Entries.Select(entry => entry.Template)));
 			int have = context.Carried.Concat(Steps.Bringing).Concat(context.Planned).Count(item => grenades.Contains(item.TemplateId.ToString()));
 			int need = setting.Target - have;
-			lines.Add(Steps.Progress(quota.Name, setting.Target - Math.Max(need, 0), setting.Target, "grenades"));
+			var shown = context.Carried.Concat(Steps.Bringing).Concat(context.Planned).FirstOrDefault(item => grenades.Contains(item.TemplateId.ToString()))
+				?? context.Stash.FirstOrDefault(item => grenades.Contains(item.TemplateId.ToString()));
+			lines.Add(Steps.Progress(quota.Name, setting.Target - Math.Max(need, 0), setting.Target, "grenades", shown?.TemplateId.ToString()));
 			if (need <= 0)
 			{
 				return;
@@ -204,7 +272,7 @@ namespace GetReady
 
 			// One pile per non-impact type, non-FiR first. A random type is picked before a grenade, so a type the stash has
 			// many of (say M67) isn't picked more often than the others.
-			var available = context.Stash.Where(item => !context.Planned.Contains(item)).ToList();
+			var available = context.Stash.Where(item => !context.Planned.Contains(item) && item.PinLockState != EItemPinLockState.Locked).ToList();
 			var piles = groups
 				.Where(def => !def.Impact)
 				.Select(def => new Queue<Item>(available
@@ -219,7 +287,7 @@ namespace GetReady
 			var picked = new List<Item>();
 			while (need > 0 && piles.Count > 0)
 			{
-				var pile = piles[UnityEngine.Random.Range(0, piles.Count)];
+				var pile = piles[Game.RandomIndex(piles.Count)];
 				picked.Add(pile.Dequeue());
 				if (pile.Count == 0)
 				{
@@ -230,6 +298,19 @@ namespace GetReady
 			}
 
 			var places = quota.PlacesToTry();
+			if (picked.Count > 0 && places.Count > 0 && !places.Any(context.PlaceExists))
+			{
+				lines.Add(Steps.Problem(quota.Name, $"none of its places is on you ({string.Join(", ", places)}): carry one or pick another in Setup"));
+				return;
+			}
+
+			places = places.Where(context.PlaceExists).ToList();
+			if (picked.Count > 0 && places.Count == 0)
+			{
+				lines.Add(Steps.Problem(quota.Name, "every place is switched off: switch at least one on in Setup"));
+				return;
+			}
+
 			foreach (var group in picked.GroupBy(item => Game.NameOf(item)))
 			{
 				var items = group.ToList();

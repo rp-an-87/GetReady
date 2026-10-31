@@ -9,9 +9,9 @@ namespace GetReady
 	// The plan: what each step found, kept up to date while the stash is up, with the counts the button and the pages show.
 	internal static partial class ReadyWindow
 	{
-		private static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
+		internal static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
 
-		private static string _status = "";
+		internal static string _status = "";
 
 		// The plan is read again shortly after the inventory changes (an item moved in the stash, say)
 		private static InventoryController _watched;
@@ -115,45 +115,59 @@ namespace GetReady
 
 		// How many groups (a supply, a template: a card of the Ready page) have something to bring, and how many have a problem.
 		// It counts groups, not items: "bring 3 grenades" is one thing to get ready, not one per grenade type.
-		private static void Tally(out int toBring, out int withProblems)
+		internal static void Tally(out int toBring, out int withProblems)
 		{
 			toBring = 0;
 			withProblems = 0;
 			foreach (var entry in Plan)
 			{
-				bool run = false, problem = false, open = false;
-				foreach (var line in entry.Value)
+				TallyLines(entry.Value, ref toBring, ref withProblems);
+			}
+		}
+
+		// The same count for the lines of one step
+		internal static void TallyLines(List<PlanLine> lines, ref int toBring, ref int withProblems)
+		{
+			bool run = false, problem = false, open = false;
+			foreach (var line in lines)
+			{
+				if (line.IsProgress)
 				{
-					if (line.IsProgress)
+					if (open)
 					{
-						if (open)
-						{
-							toBring += run ? 1 : 0;
-							withProblems += problem ? 1 : 0;
-						}
-
-						open = true;
-						run = false;
-						problem = false;
-						continue;
+						toBring += run ? 1 : 0;
+						withProblems += problem ? 1 : 0;
 					}
 
-					if (!open)
-					{
-						toBring += line.Run != null ? 1 : 0;
-						withProblems += line.Problem ? 1 : 0;
-						continue;
-					}
-
-					run |= line.Run != null;
-					problem |= line.Problem;
+					open = true;
+					run = false;
+					problem = false;
+					continue;
 				}
 
-				if (open)
+				if (line.Standalone && open)
 				{
+					// Its own thing: the card above ends here
 					toBring += run ? 1 : 0;
 					withProblems += problem ? 1 : 0;
+					open = false;
 				}
+
+				if (!open)
+				{
+					toBring += line.Run != null ? 1 : 0;
+					withProblems += line.Problem ? 1 : 0;
+					continue;
+				}
+
+				run |= line.Run != null;
+				problem |= line.Problem;
+			}
+
+			if (open)
+			{
+				toBring += run ? 1 : 0;
+				withProblems += problem ? 1 : 0;
 			}
 		}
 
@@ -169,6 +183,70 @@ namespace GetReady
 
 		private static string Short(string text, int length) => text.Length <= length ? text : text.Substring(0, length - 1).TrimEnd() + "…";
 
+		private const int TipLines = 14;
+
+		// What the red box says on hover: every problem, step by step, with what is wrong
+		internal static string ProblemsTooltip()
+		{
+			var text = new System.Text.StringBuilder("Cannot be done as set up:");
+			var problems = Problems();
+			foreach (var problem in problems.Take(TipLines))
+			{
+				var line = problem.Value;
+				text.Append($"\n- {problem.Key}: {line.Subject ?? line.Text}");
+				if (!string.IsNullOrEmpty(line.Detail))
+				{
+					text.Append($"\n     {line.Detail}");
+				}
+			}
+
+			if (problems.Count > TipLines)
+			{
+				text.Append($"\n... and {problems.Count - TipLines} more");
+			}
+
+			return text.ToString();
+		}
+
+		// What the amber box says on hover: what Get ready will do, step by step
+		internal static string ToDoTooltip()
+		{
+			var text = new System.Text.StringBuilder("Get ready will:");
+			int shown = 0, hidden = 0;
+			foreach (var entry in Plan)
+			{
+				var work = entry.Value.Where(line => line.Run != null).ToList();
+				if (work.Count == 0)
+				{
+					continue;
+				}
+
+				if (shown < TipLines)
+				{
+					text.Append($"\n{entry.Key.Name}");
+				}
+
+				foreach (var line in work)
+				{
+					if (shown >= TipLines)
+					{
+						hidden++;
+						continue;
+					}
+
+					text.Append($"\n  + {line.Text}");
+					shown++;
+				}
+			}
+
+			if (hidden > 0)
+			{
+				text.Append($"\n... and {hidden} more");
+			}
+
+			return text.ToString();
+		}
+
 		// The tooltip of the stash button: the title, how it stands, what is wrong (red, a few lines), and what the clicks do
 		internal static string Summary()
 		{
@@ -180,17 +258,22 @@ namespace GetReady
 			{
 				text.Append($"<color={Grey}>Nothing is switched on</color>");
 			}
+			else if (problems.Count > 0)
+			{
+				// Red first: whatever can't be done decides how it stands, then what Get ready can still do
+				text.Append($"<color={Red}>Needs your attention</color>");
+				if (moves > 0)
+				{
+					text.Append($"\n<color={Amber}>{(moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil")}</color>");
+				}
+			}
 			else if (moves > 0)
 			{
 				text.Append($"<color={Amber}>{(moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil")}</color>");
 			}
-			else if (problems.Count == 0)
-			{
-				text.Append($"<color={Green}>You are all set</color>");
-			}
 			else
 			{
-				text.Append($"<color={Red}>Needs your attention</color>");
+				text.Append($"<color={Green}>You are all set</color>");
 			}
 
 			if (problems.Count > 0)
@@ -210,7 +293,7 @@ namespace GetReady
 				}
 			}
 
-			text.Append("\n" + Separator + $"\n<size=11><color={Key}>[Click]</color> <color={Grey}>get ready</color>   <color={Key}>[Ctrl+Click]</color> <color={Grey}>open the window</color></size>");
+			text.Append("\n" + Separator + $"\n<size=11><color={Key}>[Left click]</color> <color={Grey}>get ready</color>   <color={Key}>[Right click]</color> <color={Grey}>configure</color></size>");
 			return text.ToString();
 		}
 
@@ -222,7 +305,7 @@ namespace GetReady
 		}
 
 		// What is wrong right now, one line each: the problems of every step in the plan
-		private static List<KeyValuePair<string, PlanLine>> Problems() =>
+		internal static List<KeyValuePair<string, PlanLine>> Problems() =>
 			Plan.SelectMany(entry => entry.Value.Where(line => line.Problem).Select(line => new KeyValuePair<string, PlanLine>(entry.Key.Name, line))).ToList();
 	}
 }

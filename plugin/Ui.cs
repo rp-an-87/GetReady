@@ -18,7 +18,7 @@ namespace GetReady
 
 		internal static GUIStyle Window, Section, Group, Inner, Divider, Field, ValueOk, ValueWarn, ValueBad, ValueMuted, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
 			Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, Centered,
-			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert;
+			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert, Tip, TipText, Help, Todo, ProblemTitle, TodoTitle, ProblemBoxTop, TodoBoxTop;
 
 		internal static Font Font;
 		private static bool _ready;
@@ -33,6 +33,26 @@ namespace GetReady
 				{
 					bool onEdge = x < edgeWidth || y < edgeWidth || x >= size - edgeWidth || y >= size - edgeWidth;
 					texture.SetPixel(x, y, edgeWidth > 0 && onEdge ? edge : fill);
+				}
+			}
+
+			texture.Apply();
+			return texture;
+		}
+
+		// A filled circle with an edge, smooth at its rim
+		private static Texture2D Disc(int size, Color fill, Color edge)
+		{
+			var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+			float radius = size / 2f;
+			for (int x = 0; x < size; x++)
+			{
+				for (int y = 0; y < size; y++)
+				{
+					float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius));
+					var color = distance > radius - 1.6f ? edge : fill;
+					color.a *= Mathf.Clamp01(radius - distance);
+					texture.SetPixel(x, y, color);
 				}
 			}
 
@@ -130,8 +150,22 @@ namespace GetReady
 			Divider = Back(new GUIStyle(GUI.skin.box) { fixedHeight = 1, margin = new RectOffset(0, 0, 6, 6), padding = new RectOffset(0, 0, 0, 0) }, new Color(0.33f, 0.34f, 0.32f), new Color(0.33f, 0.34f, 0.32f), 0);
 			AlertCard = Panel(new Color(0.27f, 0.09f, 0.09f), Bad, 2, new RectOffset(12, 12, 10, 10), new RectOffset(0, 0, 4, 10));
 			Alert = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(24, 24, 20, 20) }, new Color(0.15f, 0.05f, 0.05f, 0.99f), Bad, 3);
-			ProblemBox = Panel(new Color(0.25f, 0.15f, 0.07f), new Color(0.55f, 0.33f, 0.12f), 1, new RectOffset(8, 8, 4, 4), new RectOffset(0, 0, 8, 2));
+			Tip = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(0, 0, 0, 0) }, new Color(0.075f, 0.08f, 0.08f, 0.995f), new Color(0.5f, 0.46f, 0.3f), 1);
+			TipText = Label(13, Text);
+			TipText.wordWrap = true;
+			TipText.padding = new RectOffset(9, 9, 6, 6);
+			Help = new GUIStyle(GUI.skin.label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, padding = new RectOffset(0, 0, 0, 1), margin = new RectOffset(2, 8, 3, 3), fixedWidth = 22, fixedHeight = 22 };
+			var disc = Disc(44, new Color(0.17f, 0.18f, 0.18f), new Color(0.55f, 0.5f, 0.32f));
+			var discHover = Disc(44, new Color(0.27f, 0.26f, 0.18f), new Color(0.8f, 0.72f, 0.45f));
+			Help.normal.background = disc;
+			Help.hover.background = discHover;
+			Help.normal.textColor = Sand;
+			Help.hover.textColor = new Color(0.95f, 0.9f, 0.72f);
+			ProblemBox = Panel(new Color(0.26f, 0.1f, 0.1f), new Color(0.62f, 0.22f, 0.2f), 1, new RectOffset(8, 8, 4, 4), new RectOffset(0, 0, 8, 2));
 
+			// The two summary boxes at the top of the Ready page: the same size and margins, only the colours differ
+			ProblemBoxTop = Panel(new Color(0.27f, 0.09f, 0.09f), Bad, 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
+			TodoBoxTop = Panel(new Color(0.22f, 0.2f, 0.12f), Sand, 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
 			OkCard = Panel(new Color(0.12f, 0.22f, 0.13f), new Color(0.35f, 0.6f, 0.38f), 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
 			TodoCard = Panel(new Color(0.22f, 0.2f, 0.12f), Sand, 2, new RectOffset(14, 14, 10, 10), new RectOffset(0, 0, 0, 10));
 
@@ -148,7 +182,10 @@ namespace GetReady
 			Body = Label(14, Text);
 			Muted = Label(12, Dim);
 			Move = Label(14, Color.white);
-			Problem = Label(14, Warn, FontStyle.Bold);
+			Problem = Label(14, Bad, FontStyle.Bold);
+			Todo = Label(14, Warn, FontStyle.Bold);
+			ProblemTitle = Label(16, Bad, FontStyle.Bold);
+			TodoTitle = Label(16, Warn, FontStyle.Bold);
 			Centered = Label(14, Text, FontStyle.Normal, TextAnchor.MiddleCenter);
 			AlertTitle = Label(26, Bad, FontStyle.Bold);
 			AlertText = Label(19, Color.white, FontStyle.Bold);
@@ -172,9 +209,15 @@ namespace GetReady
 			ChipBad = Chip(new Color(0.6f, 0.2f, 0.18f));
 			ChipOff = Chip(new Color(0.26f, 0.27f, 0.27f));
 
+			// One-line texts never wrap: under the window scale their measured width can be a pixel short, and "Off" would break into "Of" and "f"
+			foreach (var style in new[] { ValueOk, ValueWarn, ValueBad, ValueMuted, Title, SectionTitle, Name, Centered, ChipOk, ChipTodo, ChipBad, ChipOff })
+			{
+				style.wordWrap = false;
+			}
+
 			if (Font != null)
 			{
-				foreach (var style in new[] { Field, ValueOk, ValueWarn, ValueBad, ValueMuted, Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard,
+				foreach (var style in new[] { Field, ValueOk, ValueWarn, ValueBad, ValueMuted, Window, Section, Group, Inner, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox, Centered, AlertTitle, AlertText, AlertDetail, Alert, AlertCard, Tip, TipText, Help, ProblemTitle, TodoTitle,
 					Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, ChipOk, ChipTodo, ChipBad, ChipOff })
 				{
 					style.font = Font;

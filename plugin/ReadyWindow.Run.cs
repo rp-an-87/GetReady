@@ -13,14 +13,14 @@ namespace GetReady
 	{
 		private static bool _running;
 
-		private static int _moved;
-		private static int _repaired;
-		private static int _filled;
-		private static int _chambered;
-		private static int _topped;
-		private static int _keys;
-		private static int _healed;
-		private static int _modes;
+		internal static int _moved;
+		internal static int _repaired;
+		internal static int _filled;
+		internal static int _chambered;
+		internal static int _topped;
+		internal static int _keys;
+		internal static int _healed;
+		internal static int _modes;
 
 		// The window's button: close the window and do it like the stash button does (alert and sound included)
 		private static void Go()
@@ -30,7 +30,7 @@ namespace GetReady
 		}
 
 		// What could not be moved in the last run, shown with the other problems
-		private static readonly List<KeyValuePair<string, PlanLine>> Failures = new List<KeyValuePair<string, PlanLine>>();
+		internal static readonly List<KeyValuePair<string, PlanLine>> Failures = new List<KeyValuePair<string, PlanLine>>();
 
 		private static void Play(EUISoundType sound)
 		{
@@ -59,16 +59,7 @@ namespace GetReady
 			// The red box says what is wrong, so a notification is only for when all went well
 			if (problems.Count == 0)
 			{
-				var brought = _moved > 0 ? $"{_moved} item(s) brought" : "";
-				var repaired = _repaired > 0 ? $"{_repaired} piece(s) of gear repaired" : "";
-				var filled = _filled > 0 ? $"{_filled} magazine(s) filled" : "";
-				var chambered = _chambered > 0 ? $"{_chambered} round(s) chambered" : "";
-				var topped = _topped > 0 ? $"{_topped} ammo stack(s) topped up" : "";
-				var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
-				var healed = _healed > 0 ? "healed" : "";
-				var modes = _modes > 0 ? $"{_modes} weapon(s) on full auto" : "";
-				var report = string.Join(", ", new[] { brought, repaired, filled, chambered, topped, keys, healed, modes }.Where(part => part != "").ToArray());
-				NotificationManager.DisplayMessageNotification("Ready for raid: " + (report == "" ? "you already have everything" : report) + ".");
+				NotificationManager.DisplayMessageNotification(Report());
 			}
 
 			// Nothing to say, nothing to hear: no sound when you already had everything
@@ -85,11 +76,26 @@ namespace GetReady
 			{
 				Alerts.Clear();
 				Alerts.AddRange(problems);
-				_alertRect = new Rect((Screen.width - 640) / 2f, Screen.height * 0.18f, 640, 10);
+				_alertRect = new Rect((Screen.width / Scale - 640) / 2f, Screen.height / Scale * 0.18f, 640, 10);
 			}
 		}
 
-		private static async System.Threading.Tasks.Task RunPlan()
+		// What the notification says after a run that went well
+		internal static string Report()
+		{
+			var brought = _moved > 0 ? $"{_moved} item(s) brought" : "";
+			var repaired = _repaired > 0 ? $"{_repaired} piece(s) of gear repaired" : "";
+			var filled = _filled > 0 ? $"{_filled} magazine(s) filled" : "";
+			var chambered = _chambered > 0 ? $"{_chambered} round(s) chambered" : "";
+			var topped = _topped > 0 ? $"{_topped} ammo stack(s) topped up" : "";
+			var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
+			var healed = _healed > 0 ? "healed" : "";
+			var modes = _modes > 0 ? $"{_modes} weapon(s) on full auto" : "";
+			var report = string.Join(", ", new[] { brought, repaired, filled, chambered, topped, keys, healed, modes }.Where(part => part != "").ToArray());
+			return "Ready for raid: " + (report == "" ? "you already have everything" : report) + ".";
+		}
+
+		internal static async System.Threading.Tasks.Task RunPlan()
 		{
 			if (_running)
 			{

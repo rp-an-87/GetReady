@@ -54,6 +54,12 @@ namespace GetReady
 		// The line tops up a loose stack of ammo (counted apart in the notification)
 		public bool Topped;
 
+		// A line that stands for work another line of the plan does (a second weapon of the same caliber: the spare ammo is brought once)
+		public bool Covered;
+
+		// A line that is about something of its own, not a part of the card above it (a weapon with no magazine at all): it ends that card
+		public bool Standalone;
+
 		// A progress line: how much of what is wanted is there (drawn as a bar)
 		public bool IsProgress;
 		public float Have;
@@ -86,6 +92,17 @@ namespace GetReady
 		{
 			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep(), new FullAutoStep(), new HealMeStep()
 		};
+
+		// The order of the Ready and Setup pages (what you tweak most first). Running order is All: Heal me must stay last and the special slots
+		// first, since later steps count what earlier ones bring.
+		internal static IEnumerable<IStep> DisplayOrder
+		{
+			get
+			{
+				string[] order = { "Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Injector case", "Repair", "Full auto", "Treat injuries", "Cash" };
+				return All.OrderBy(step => { int index = Array.IndexOf(order, step.Name); return index < 0 ? order.Length : index; });
+			}
+		}
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
 		// (a Propital for the injector case also counts for the Propital supply). Cleared before every planning pass.
@@ -130,9 +147,9 @@ namespace GetReady
 		}
 
 		// "2/3 in place", then what to bring grouped by name ("Bring 2x Propital (cells 0,0, 1,0)"), then what the stash lacks
-		internal static List<PlanLine> Summarize(int inPlace, int total, string unit, List<Need> needs, List<PlanLine> others)
+		internal static List<PlanLine> Summarize(int inPlace, int total, string unit, List<Need> needs, List<PlanLine> others, string title = null)
 		{
-			var lines = new List<PlanLine> { Progress(char.ToUpperInvariant(unit[0]) + unit.Substring(1), inPlace, total, "in place") };
+			var lines = new List<PlanLine> { Progress(title ?? char.ToUpperInvariant(unit[0]) + unit.Substring(1), inPlace, total, "in place") };
 			foreach (var group in needs.Where(need => need.Run != null).GroupBy(need => need.Name))
 			{
 				var runs = group.Select(need => need.Run).ToList();

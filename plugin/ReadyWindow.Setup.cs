@@ -14,21 +14,49 @@ namespace GetReady
 
 		private static string PlaceLabel(string place) => place == "Special slots" ? "Special" : place;
 
+		// One width for every place chip, so all cards line up: the grip and the longest name
+		private static float PlaceButtonWidth(bool compact)
+		{
+			float widest = 0;
+			foreach (var place in new[] { "Pockets", "Vest", "Backpack", "Pouch", "Special slots", "Wallet", "WZ wallet", "Docs case", "SICC case" })
+			{
+				widest = Math.Max(widest, Ui.PickOn.CalcSize(new GUIContent(PlaceLabel(place))).x);
+			}
+
+			return Math.Max(compact ? 84 : 100, widest + 24);
+		}
+
 		// A supply group as a card: the item's icon, the name, the amount with - and +, where it goes (click the places in the
 		// order you want them tried) and, opened with "Items", which items count and in what order
-		private static bool GroupRow(GroupDef def)
+		private static bool GroupRow(GroupDef def, bool compact = false, float rowContent = 0)
 		{
 			var setting = def.Setting;
 			var active = def.ActiveEntries();
 			bool changed = false;
 			bool on = setting.Target > 0;
 
-			GUILayout.BeginVertical(Ui.Group);
+			if (compact)
+			{
+				// The card is as tall as the tallest card of its row (rowContent is that height, measured on the previous frame)
+				GUILayout.BeginVertical(Ui.Group, GUILayout.Width(CompactWidth), GUILayout.MinHeight(Math.Max(80, rowContent + Ui.Group.padding.vertical)), GUILayout.ExpandHeight(true));
+			}
+			else
+			{
+				GUILayout.BeginVertical(Ui.Group);
+			}
+
+			// The content on its own, not stretched, so its height is what this card needs
+			GUILayout.BeginVertical();
+
 			GUILayout.BeginHorizontal();
 			if (def.Entries.Length > 0)
 			{
 				var shown = active.FirstOrDefault() ?? def.Entries[0];
 				Icons.Slot(shown.Template, shown.Name, 44);
+			}
+			else if (def.IsQuota)
+			{
+				Icons.SlotUnknown("Any of your grenades, picked at random", 44);
 			}
 
 			GUILayout.BeginVertical();
@@ -55,7 +83,7 @@ namespace GetReady
 			}
 			else
 			{
-				GUILayout.Label(on ? $"{setting.Target} {def.Unit}" : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(150));
+				GUILayout.Label(on ? $"{setting.Target} {def.Unit}" : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(compact ? (def.IsQuota ? 130 : 90) : 150));
 			}
 
 			if (GUILayout.Button("+", Ui.Small) && setting.Target < def.Max)
@@ -68,10 +96,16 @@ namespace GetReady
 			GUILayout.EndVertical();
 
 			GUILayout.FlexibleSpace();
+			if (compact)
+			{
+				// The key and the items stack on the right of the amount
+				GUILayout.BeginVertical();
+			}
+
 			if (def.Bindable)
 			{
 				string key = def.HotkeyChoice;
-				if (GUILayout.Button(new GUIContent(Hotkeys.Label(key), "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be)."), key == "" ? Ui.Pick : Ui.PickOn, GUILayout.Width(78)))
+				if (GUILayout.Button(new GUIContent(Hotkeys.Label(key), "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be)."), key == "" ? Ui.Pick : Ui.PickOn, GUILayout.Width(86)))
 				{
 					setting.Hotkey = Hotkeys.Next(key);
 					changed = true;
@@ -94,100 +128,217 @@ namespace GetReady
 				}
 			}
 
+			if (compact)
+			{
+				GUILayout.EndVertical();
+			}
+
 			GUILayout.EndHorizontal();
 
-			if (on && !def.IsQuota)
+			if (on)
 			{
 				GUILayout.Space(10);
 				GUILayout.BeginHorizontal();
-				GUILayout.Label(new GUIContent("Goes to", def.NoFallback ? "The places you click are tried in order. Nothing else is used: if they are full or missing, you get a warning." : "The places you click are tried in order. If they are all full, the pockets, vest and backpack are tried after them."), Ui.Muted, GUILayout.Width(52));
-				int shownPlaces = 0;
-				foreach (var place in def.PickablePlaces)
-				{
-					// Five to a row
-					if (shownPlaces > 0 && shownPlaces % 5 == 0)
-					{
-						GUILayout.EndHorizontal();
-						GUILayout.BeginHorizontal();
-						GUILayout.Space(56);
-					}
-
-					shownPlaces++;
-					int rank = setting.Destinations.IndexOf(place);
-					string label = rank >= 0 ? $"{rank + 1}. {PlaceLabel(place)}" : PlaceLabel(place);
-					if (GUILayout.Button(new GUIContent(label, "Click to use this place. They are tried in the order you click them; click again to drop one."), rank >= 0 ? Ui.PickOn : Ui.Pick, GUILayout.Width(90)))
-					{
-						setting.ToggleDestination(place);
-						changed = true;
-					}
-				}
-
+				GUILayout.BeginHorizontal(GUILayout.Width(GoesToWidth));
+				HelpTitle("Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).", "Bring to", Ui.Muted, 28f);
+				GUILayout.EndHorizontal();
+				changed |= PlacePicker(def, compact);
 				GUILayout.EndHorizontal();
 			}
 
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))
 			{
-				GUILayout.BeginVertical(Ui.Inner);
-				GUILayout.Label(def.Random ? "Used, in any order" : "Used, best first", Ui.Muted);
-				var entries = def.OrderedEntries();
-				for (int i = 0; i < entries.Count; i++)
-				{
-					var entry = entries[i];
-					bool off = setting.Off.Contains(entry.Template);
-					GUILayout.BeginHorizontal();
-					Icons.Slot(entry.Template, entry.Name, 30);
-					if (!def.Random)
-					{
-						GUI.enabled = i > 0;
-						if (GUILayout.Button("▲", Ui.Small))
-						{
-							def.MoveEntry(entry.Template, -1);
-							changed = true;
-						}
-
-						GUI.enabled = i < entries.Count - 1;
-						if (GUILayout.Button("▼", Ui.Small))
-						{
-							def.MoveEntry(entry.Template, 1);
-							changed = true;
-						}
-
-						GUI.enabled = true;
-					}
-
-					GUILayout.Label(def.Random ? entry.Name : $"{i + 1}. {entry.Name}", off ? Ui.Muted : Ui.Body);
-					if (!def.Random)
-					{
-						// The most of this one to carry; it is given up when nothing else can make up the amount
-						int max = def.MaxOf(entry.Template);
-						GUILayout.Label(new GUIContent("Max", "The most of this item to carry for the group. If nothing else can make up the amount, more are still brought."), Ui.Muted, GUILayout.Width(30));
-						if (GUILayout.Button("-", Ui.Small) && max > 0)
-						{
-							def.SetMax(entry.Template, max - 1);
-							changed = true;
-						}
-
-						GUILayout.Label(max == 0 ? "any" : max.ToString(), Ui.Centered, GUILayout.Width(34));
-						if (GUILayout.Button("+", Ui.Small) && max < 20)
-						{
-							def.SetMax(entry.Template, max + 1);
-							changed = true;
-						}
-					}
-
-					if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(90)))
-					{
-						def.ToggleEntry(entry.Template);
-						changed = true;
-					}
-
-					GUILayout.EndHorizontal();
-				}
-
-				GUILayout.EndVertical();
+				changed |= GroupItems(def, compact);
 			}
 
 			GUILayout.EndVertical();
+			if (compact && Event.current.type == EventType.Repaint)
+			{
+				CardContent[def.Id] = GUILayoutUtility.GetLastRect().height;
+			}
+
+			GUILayout.EndVertical();
+			return changed;
+		}
+
+		// Where a group goes: every place as a chip, in the order they are tried (the first with room wins). A place switched off is
+		// struck out and at the end. Click to switch it, drag to move it.
+		private static bool PlacePicker(GroupDef def, bool compact)
+		{
+			var order = def.PlaceOrder();
+			var chips = order.Select(place => new Chip
+			{
+				Key = place,
+				Label = PlaceLabel(place),
+				On = def.PlaceOn(place),
+				Tip = def.PlaceOn(place) ? "On: used, in the order of the arrows. Click to switch it off, drag it onto another place to swap them." : "Off: not used. Click to switch it on, or drag it onto a place that is on to take its spot."
+			}).ToList();
+			return Chips("places-" + def.Id, chips, 26, PlaceButtonWidth(compact), compact ? 3 : 5,
+				place => def.TogglePlace(place), (place, other) => def.SwapPlaces(place, other));
+		}
+
+		// The list of the items of a group (opened with "Items"): their order (drag by the grip), limits and switches. What is not used
+		// is at the end.
+		private static bool GroupItems(GroupDef def, bool compact = false)
+		{
+			bool changed = false;
+			GUILayout.BeginVertical(Ui.Inner);
+			GUILayout.Label(def.Random ? "Used, in any order" : "Used, best first (drag a row by its grip)", Ui.Muted);
+			var entries = ShownEntries(def);
+			var rowRects = new List<Rect>();
+			for (int i = 0; i < entries.Count; i++)
+			{
+				var entry = entries[i];
+				bool off = def.Setting.Off.Contains(entry.Template);
+				GUILayout.BeginVertical();
+				changed |= compact ? CompactItem(def, entry, off) : ItemRow(def, entry, off);
+				GUILayout.EndVertical();
+				rowRects.Add(GUILayoutUtility.GetLastRect());
+			}
+
+			GUILayout.EndVertical();
+
+			if (!def.Random)
+			{
+				int from, to;
+				if (Dnd.RowDrop(def.Id, entries.Select(entry => entry.Template).ToList(), rowRects, out from, out to))
+				{
+					ReorderEntries(def, entries, from, to);
+					changed = true;
+				}
+
+				Dnd.RowBar(def.Id, rowRects);
+			}
+
+			return changed;
+		}
+
+		// The most of an item to carry for the group: - any +
+		private static bool MaxControls(GroupDef def, Entry entry)
+		{
+			bool changed = false;
+			int max = def.MaxOf(entry.Template);
+			GUILayout.Label(new GUIContent("Max", "The most of this item to carry for the group. If nothing else can make up the amount, more are still brought."), Ui.Muted, GUILayout.Width(30));
+			if (GUILayout.Button("-", Ui.Small) && max > 0)
+			{
+				def.SetMax(entry.Template, max - 1);
+				changed = true;
+			}
+
+			GUILayout.Label(max == 0 ? "any" : max.ToString(), Ui.Centered, GUILayout.Width(34));
+			if (GUILayout.Button("+", Ui.Small) && max < 20)
+			{
+				def.SetMax(entry.Template, max + 1);
+				changed = true;
+			}
+
+			return changed;
+		}
+
+		// One item of a group's list: the grip, the picture, the name, the limit and the Used switch
+		private static bool ItemRow(GroupDef def, Entry entry, bool off)
+		{
+			bool changed = false;
+			GUILayout.BeginHorizontal();
+			if (!def.Random)
+			{
+				Dnd.Grip(30, "item", def.Id, entry.Template, entry.Name);
+			}
+
+			Icons.Slot(entry.Template, entry.Name, 30);
+			GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.ExpandWidth(true));
+			if (off)
+			{
+				StrikeLast(entry.Name, Ui.Muted);
+			}
+
+			if (!def.Random)
+			{
+				changed |= MaxControls(def, entry);
+			}
+
+			if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(90)))
+			{
+				def.ToggleEntry(entry.Template);
+				changed = true;
+			}
+
+			GUILayout.EndHorizontal();
+			return changed;
+		}
+
+		// The same in a narrow card: the grip, picture, name and Used switch on one line; the limit under it
+		private static bool CompactItem(GroupDef def, Entry entry, bool off)
+		{
+			bool changed = false;
+			GUILayout.BeginHorizontal();
+			if (!def.Random)
+			{
+				Dnd.Grip(28, "item", def.Id, entry.Template, entry.Name);
+			}
+
+			Icons.Slot(entry.Template, entry.Name, 28);
+			GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.ExpandWidth(true));
+			if (off)
+			{
+				StrikeLast(entry.Name, Ui.Muted);
+			}
+
+			if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(76)))
+			{
+				def.ToggleEntry(entry.Template);
+				changed = true;
+			}
+
+			GUILayout.EndHorizontal();
+			if (!def.Random)
+			{
+				GUILayout.BeginHorizontal();
+				GUILayout.Space(34);
+				changed |= MaxControls(def, entry);
+				GUILayout.FlexibleSpace();
+				GUILayout.EndHorizontal();
+			}
+
+			return changed;
+		}
+
+		// Groups two to a row, each card narrow; an opened item list is drawn inside its own card
+		// (wide enough for "Bring to" and three place buttons in a row; the window widens to hold two of them)
+		private const float GoesToWidth = 112f;
+
+		private static float CompactWidth => Math.Max(326, Ui.Group.padding.horizontal + GoesToWidth + 3 * (PlaceButtonWidth(true) + 4) + ChipArrow + ChipOffGap + 8);
+
+		// The narrowest the window can be without a horizontal scroll: two cards side by side, with the window's own padding
+		internal static float MinWindowWidth => Math.Max(740, 2 * CompactWidth + Ui.Group.margin.horizontal * 2 + 96);
+
+		// The height of each card's content as last drawn (what the card needs, not what it was stretched to)
+		private static readonly Dictionary<string, float> CardContent = new Dictionary<string, float>();
+
+		private static float ContentOf(GroupDef def)
+		{
+			float height;
+			return CardContent.TryGetValue(def.Id, out height) ? height : 0;
+		}
+
+		private static bool GroupGrid(IReadOnlyList<GroupDef> defs)
+		{
+			bool changed = false;
+			for (int i = 0; i < defs.Count; i += 2)
+			{
+				// A row is as tall as its tallest card: both cards are given the larger of the two heights
+				float rowContent = Math.Max(ContentOf(defs[i]), i + 1 < defs.Count ? ContentOf(defs[i + 1]) : 0);
+				GUILayout.BeginHorizontal();
+				changed |= GroupRow(defs[i], true, rowContent);
+				if (i + 1 < defs.Count)
+				{
+					changed |= GroupRow(defs[i + 1], true, rowContent);
+				}
+
+				GUILayout.FlexibleSpace();
+				GUILayout.EndHorizontal();
+			}
+
 			return changed;
 		}
 
@@ -223,7 +374,7 @@ namespace GetReady
 				changed = true;
 			}
 
-			GUILayout.Label(step.Name, Ui.SectionTitle);
+			StepTitle(step.Name);
 			GUILayout.EndHorizontal();
 
 			if (step.Enabled)
@@ -233,16 +384,26 @@ namespace GetReady
 				{
 					var slots = SettingsStore.Current.SpecialSlots.Slots;
 					TemplateStrip(slots.Select(entry => new KeyValuePair<string, string>(entry.Templates[0].Template, $"{entry.SlotId.Replace("SpecialSlot", "Slot ")}: {entry.Templates[0].Name}" + (entry.Count > 1 ? $" x{entry.Count}" : ""))), "Nothing saved yet. Put what you want in the special slots, then save them.");
+					GUILayout.BeginHorizontal();
 					if (controller != null && GUILayout.Button(new GUIContent("Save my current special slots as the template", "Remembers what is in each special slot of your pockets right now"), Ui.Button))
 					{
 						_status = $"Saved {SpecialSlotsStep.Capture(controller)} special slot(s).";
 						RefreshSoon();
 					}
+
+					if (slots.Count > 0 && GUILayout.Button(new GUIContent("Clear", "Forgets the saved template (nothing moves)"), Ui.Button, GUILayout.Width(80)))
+					{
+						SpecialSlotsStep.Clear();
+						_status = "Cleared the special slots template.";
+						RefreshSoon();
+					}
+
+					GUILayout.EndHorizontal();
 				}
 				else if (step is AmmoStep)
 				{
 					var ammo = SettingsStore.Current.Ammo;
-					GUILayout.Label("Follows what your magazines and containers already hold. Nothing moves until you press Get ready.", Ui.Muted);
+					TitleWithHelp("How the magazines are filled", "Follows what your magazines and containers already hold. Nothing moves until you press Get ready.");
 					bool chamber = OptionRow(ammo.Chamber, "Chamber a round in weapons with an empty chamber", "The round is the same ammo as the weapon's magazine, taken from your gear first, then the stash");
 					if (chamber != ammo.Chamber)
 					{
@@ -257,37 +418,13 @@ namespace GetReady
 						changed = true;
 					}
 
-					changed |= PriorityList("What an empty spare magazine copies, the first that applies wins:", AmmoRules.PointerOrder(),
-						pointer => AmmoRules.PointerName(pointer), null, (pointer, step) => AmmoRules.MovePointer(pointer, step));
+					changed |= PriorityList("What an empty spare magazine on you copies", AmmoRules.PointerOrder(),
+						pointer => AmmoRules.PointerName(pointer), null, (pointer, step) => AmmoRules.MovePointer(pointer, step),
+						"The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
 				}
 				else if (step is InjectorCaseStep)
 				{
-					var cells = SettingsStore.Current.InjectorCase.Cells;
-					TemplateStrip(cells.OrderBy(cell => cell.Y).ThenBy(cell => cell.X).Select(cell => new KeyValuePair<string, string>(cell.Template, cell.Name)), "Nothing saved yet. Fill the case the way you like it, then save it.");
-					if (controller != null)
-					{
-						var cases = InjectorCaseStep.FindCases(controller.Inventory);
-						if (cases.Count == 0)
-						{
-							GUILayout.Label("No injector case on you (pockets, vest, backpack or pouch).", Ui.Muted);
-						}
-
-						for (int i = 0; i < cases.Count; i++)
-						{
-							var injectorCase = cases[i];
-							bool bound = injectorCase.Id.ToString() == SettingsStore.Current.InjectorCase.CaseId;
-							string name = cases.Count == 1 ? "Your injector case" : $"Injector case {i + 1}";
-							GUILayout.BeginHorizontal();
-							GUILayout.Label($"{name}  -  {injectorCase.Grids[0].Items.Count()} injectors inside" + (bound ? "  -  this is the saved one" : ""), bound ? Ui.Name : Ui.Body);
-							if (GUILayout.Button(new GUIContent(bound ? "Update template" : "Use as template", "Remembers which injector is in each cell of this case. Only this case is filled later; other injector cases are left alone."), Ui.Button, GUILayout.Width(150)))
-							{
-								_status = $"Saved {InjectorCaseStep.Capture(injectorCase)} injector(s) from {name.ToLowerInvariant()}.";
-								RefreshSoon();
-							}
-
-							GUILayout.EndHorizontal();
-						}
-					}
+					InjectorCaseSetup(controller);
 				}
 				else if (step is HealMeStep)
 				{
@@ -302,9 +439,21 @@ namespace GetReady
 					changed |= RepairSetup(controller);
 				}
 
-				foreach (var def in step.Groups)
+				if (step is GrenadesStep)
 				{
-					changed |= GroupRow(def);
+					changed |= GroupGrid(step.Groups);
+				}
+				else
+				{
+					foreach (var def in step.Groups)
+					{
+						changed |= GroupRow(def);
+					}
+				}
+
+				if (step is AmmoStep && controller != null)
+				{
+					changed |= SpareAmmoSetup(controller);
 				}
 
 				if (step is CashStep && controller != null)
@@ -333,8 +482,9 @@ namespace GetReady
 		{
 			var supplies = SettingsStore.Current.Supplies;
 			bool changed = false;
-			_scroll = GUILayout.BeginScrollView(_scroll);
-			foreach (var step in Steps.All)
+			// No horizontal scrollbar at all: the window is widened to fit the cards instead
+			_scroll = GUILayout.BeginScrollView(_scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+			foreach (var step in Steps.DisplayOrder)
 			{
 				changed |= StepSection(step, controller);
 			}
@@ -342,6 +492,23 @@ namespace GetReady
 			GUILayout.BeginVertical(Ui.Section);
 			GUILayout.Label("Options", Ui.SectionTitle);
 			GUILayout.Box(GUIContent.none, Ui.Divider);
+			GUILayout.BeginHorizontal();
+			GUILayout.Label(new GUIContent("Window size", "Scales this window and the red check box. Handy on a big screen; the text gets a little softer above 100%."), Ui.Body, GUILayout.Width(110));
+			float scale = Scale;
+			if (GUILayout.Button("-", Ui.Small) && scale > 0.85f)
+			{
+				SettingsStore.Current.UiScale = Mathf.Round((scale - 0.1f) * 10f) / 10f;
+				changed = true;
+			}
+
+			GUILayout.Label($"{Mathf.RoundToInt(scale * 100f)}%", Ui.Centered, GUILayout.Width(60));
+			if (GUILayout.Button("+", Ui.Small) && scale < 1.55f)
+			{
+				SettingsStore.Current.UiScale = Mathf.Round((scale + 0.1f) * 10f) / 10f;
+				changed = true;
+			}
+
+			GUILayout.EndHorizontal();
 			bool swap = OptionRow(supplies.SwapWorse, "Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one");
 			bool overshoot = OptionRow(supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway");
 			bool nonFir = OptionRow(supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is");
@@ -356,6 +523,7 @@ namespace GetReady
 			}
 
 			GUILayout.EndScrollView();
+			Dnd.DrawGhost();
 			return changed;
 		}
 	}

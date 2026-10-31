@@ -14,8 +14,25 @@ namespace GetReady
 	// magazines are left alone.
 	internal class AmmoStep : IStep
 	{
+		// A line about a weapon that has no card of its own (no magazine, locked): it ends the card above it
+		private static PlanLine Alone(PlanLine line)
+		{
+			line.Standalone = true;
+			return line;
+		}
+
 		public string Name => "Ammo";
-		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
+		public IReadOnlyList<GroupDef> Groups => new[] { Spare };
+
+		// How many stacks of spare ammo to carry for each caliber you use (0: off) and where they go. A stack is the ammo's full stack size.
+		internal static readonly GroupDef Spare = new GroupDef
+		{
+			Id = "spareammo", Name = "Spare ammo", Unit = "stacks per caliber", DefaultTarget = 1, Max = 5, Bindable = false,
+			DefaultDestinations = new[] { "Pouch" }, Locations = new[] { "Pockets", "Vest", "Backpack", "Pouch" }
+		};
+
+		// The ammo types (with their caliber) the magazines planned in this pass will hold: they say which ammo is in use
+		private static readonly Dictionary<MongoID, string> Planned = new Dictionary<MongoID, string>();
 		public bool Enabled { get => SettingsStore.Current.Ammo.Enabled; set => SettingsStore.Current.Ammo.Enabled = value; }
 
 		// A magazine that can't be filled, to be reported with the others of its kind
@@ -30,19 +47,28 @@ namespace GetReady
 
 		public List<PlanLine> Plan(InventoryController controller)
 		{
-			var inventory = controller.Inventory;
+			var view = AmmoRules.AmmoView.Of(controller);
 			var stock = AmmoRules.AmmoStock.Build(controller);
 			var lines = new List<PlanLine>();
 			var missing = new Dictionary<string, int>();
 			var stuck = new List<Stuck>();
-			var spares = Game.Carried(inventory).OfType<Magazine>()
+			var spares = view.Carried().OfType<Magazine>()
 				.Where(magazine => magazine.Parent?.Container is Grid && magazine.PinLockState != EItemPinLockState.Locked)
 				.ToList();
 			var inserted = new HashSet<Magazine>();
+			Planned.Clear();
 
-			// The magazine in each weapon: one card per weapon
-			foreach (var weapon in AmmoRules.EquippedWeapons(inventory))
+			// The magazine in each weapon: one card per weapon (where each weapon's lines end is kept: its spare ammo goes right below)
+			var blockEnd = new Dictionary<Weapon, int>();
+			Weapon previous = null;
+			foreach (var weapon in view.Weapons())
 			{
+				if (previous != null)
+				{
+					blockEnd[previous] = lines.Count;
+				}
+
+				previous = weapon;
 				var slot = weapon.GetMagazineSlot();
 				if (slot == null)
 				{
@@ -53,7 +79,7 @@ namespace GetReady
 				var template = weapon.TemplateId.ToString();
 				if (weapon.PinLockState == EItemPinLockState.Locked)
 				{
-					lines.Add(Steps.Info($"{name}: left alone (locked)"));
+					lines.Add(Alone(Steps.Info($"{name}: left alone (locked)")));
 					continue;
 				}
 
@@ -66,13 +92,19 @@ namespace GetReady
 
 				if (magazine.PinLockState == EItemPinLockState.Locked)
 				{
-					lines.Add(Steps.Info($"{name}: left alone (its magazine is locked)"));
+					lines.Add(Alone(Steps.Info($"{name}: left alone (its magazine is locked)")));
 					continue;
 				}
 
 				lines.Add(Steps.Progress(name, magazine.Count, magazine.MaxCount, "rounds", template).WithItem(weapon));
 				var made = AddFill(controller, stock, magazine, $"{name}'s magazine", lines, missing, stuck, null, null, slot);
 				AddChamber(controller, stock, weapon, magazine, made, lines);
+			}
+
+			// Where the last weapon's lines end: its spare ammo goes right below, before the spare magazines and the loose ammo
+			if (previous != null)
+			{
+				blockEnd[previous] = lines.Count;
 			}
 
 			// The spare magazines on you, nearest the same container together
@@ -89,10 +121,21 @@ namespace GetReady
 				}
 			}
 
+			// The magazines that cannot be filled, and the rounds that are missing: in the "Magazines on you" card when there is one, else
+			// each stands alone (it must not end up inside the card of a weapon)
+			int problemsFrom = lines.Count;
 			AddStuck(lines, stuck);
 			foreach (var pair in missing)
 			{
 				lines.Add(Steps.Problem($"Ammo: {pair.Key}", $"missing {pair.Value:N0} round(s), none left"));
+			}
+
+			if (rest.Count == 0)
+			{
+				for (int index = problemsFrom; index < lines.Count; index++)
+				{
+					lines[index].Standalone = true;
+				}
 			}
 
 			if (SettingsStore.Current.Ammo.TopUpLoose)
@@ -100,7 +143,224 @@ namespace GetReady
 				AddLoose(controller, stock, lines);
 			}
 
+			// The spare ammo of each weapon right below its card, the last weapon's first so the places stay right
+			var spare = AddSpare(controller, stock);
+			foreach (var weapon in view.Weapons().Where(candidate => spare.ContainsKey(candidate) && blockEnd.ContainsKey(candidate)).Reverse())
+			{
+				lines.InsertRange(blockEnd[weapon], spare[weapon]);
+			}
+
 			return lines;
+		}
+
+		// For each caliber your equipped weapons use: when, after the magazines are filled, none of the places spare ammo goes to (the
+		// ones switched on in Setup) holds loose ammo of it, the stash gives the owner's number of stacks of ammo that is already in use for it: what is in the
+		// weapons and magazines, and what the magazines are about to be filled with. Which kind when several are in use is the owner's
+		// choice (worst, best, random). When nothing tells which ammo, or the stash has none of it, it is a problem and nothing is guessed.
+		private static Dictionary<Weapon, List<PlanLine>> AddSpare(InventoryController controller, AmmoRules.AmmoStock stock)
+		{
+			var result = new Dictionary<Weapon, List<PlanLine>>();
+			var setting = Spare.Setting;
+			if (setting.Target <= 0 || !stock.InStash)
+			{
+				return result;
+			}
+
+			var view = AmmoRules.AmmoView.Of(controller);
+			var ignored = new HashSet<string>(SettingsStore.Current.Ammo.SpareIgnored.Select(entry => entry.Template));
+			var weapons = view.Weapons().Where(weapon => !string.IsNullOrEmpty(weapon.AmmoCaliber) && !ignored.Contains(weapon.TemplateId.ToString())).ToList();
+			if (weapons.Count == 0)
+			{
+				return result;
+			}
+
+			var spareMagazines = view.Carried().OfType<Magazine>().Where(magazine => magazine.Parent?.Container is Grid).ToList();
+			var places = Spare.PlacesToTry();
+			// Spare ammo is what lies in the places it is set to go to: loose ammo anywhere else on you is not it
+			var inPlaces = new HashSet<Item>(places.SelectMany(view.InPlace));
+			var loose = view.Carried().Concat(view.Secured()).OfType<Ammo>().Where(ammo => ammo.Parent?.Container is Grid && stock.Left(ammo) > 0 && inPlaces.Contains(ammo)).ToList();
+
+			var groups = new List<KeyValuePair<List<Weapon>, List<PlanLine>>>();
+			foreach (var group in weapons.GroupBy(weapon => weapon.AmmoCaliber))
+			{
+				var caliber = group.Key;
+				var first = group.First();
+				var names = string.Join(", ", group.Select(weapon => Game.NameOf(weapon)).Distinct().ToArray());
+				var subject = $"Spare ammo for {Game.NameOf(first)}";
+				var made = new List<PlanLine>();
+				result[first] = made;
+				groups.Add(new KeyValuePair<List<Weapon>, List<PlanLine>>(group.ToList(), made));
+				bool has = loose.Any(ammo => ammo.Caliber == caliber);
+				made.Add(Steps.Progress(subject, has ? 1 : 0, 1, "spare ammo on you", first.TemplateId.ToString()).WithItem(first));
+				if (has)
+				{
+					continue;
+				}
+
+				// The ammo in use: loaded, chambered, in the spare magazines that fit these weapons, and about to be loaded
+				var inUse = new HashSet<MongoID>(Planned.Where(pair => pair.Value == caliber).Select(pair => pair.Key));
+				foreach (var weapon in group)
+				{
+					foreach (var item in weapon.GetAllItems())
+					{
+						var ammo = item as Ammo;
+						if (ammo != null && !ammo.IsUsed && ammo.Caliber == caliber)
+						{
+							inUse.Add(ammo.TemplateId);
+						}
+
+						var magazine = item as Magazine;
+						if (magazine != null)
+						{
+							foreach (var held in magazine.Cartridges.Items.OfType<Ammo>().Where(held => held.Caliber == caliber))
+							{
+								inUse.Add(held.TemplateId);
+							}
+						}
+					}
+
+					var slot = weapon.GetMagazineSlot();
+					if (slot != null)
+					{
+						foreach (var magazine in spareMagazines.Where(magazine => slot.CheckCompatibility(magazine)))
+						{
+							foreach (var held in magazine.Cartridges.Items.OfType<Ammo>().Where(held => held.Caliber == caliber))
+							{
+								inUse.Add(held.TemplateId);
+							}
+						}
+					}
+				}
+
+				if (inUse.Count == 0)
+				{
+					made.Add(Steps.Problem(subject, "no loose ammo on you, and nothing is loaded or chambered to tell which ammo to bring", first.TemplateId.ToString()).WithItem(first));
+					continue;
+				}
+
+				var inStash = stock.Stash.OfType<Ammo>()
+					.Where(ammo => ammo.Parent?.Container is Grid && ammo.PinLockState != EItemPinLockState.Locked && ammo.Caliber == caliber && inUse.Contains(ammo.TemplateId) && stock.Left(ammo) > 0 && view.Examined(ammo))
+					.ToList();
+				if (inStash.Count == 0)
+				{
+					var inUseNames = string.Join(", ", inUse.Select(type => Game.TemplateName(type.ToString())).ToArray());
+					made.Add(Steps.Problem(subject, $"no loose ammo on you, and the stash has none of the ammo in use ({inUseNames})", first.TemplateId.ToString()).WithItem(first));
+					continue;
+				}
+
+				var kinds = inStash.GroupBy(ammo => ammo.TemplateId).Select(kind => kind.First()).ToList();
+				var mode = SettingsStore.Current.Ammo.SparePick;
+				Ammo chosen;
+				if (kinds.Count == 1)
+				{
+					chosen = kinds[0];
+				}
+				else if (mode == "random")
+				{
+					chosen = kinds[Game.RandomIndex(kinds.Count)];
+				}
+				else if (mode == "worst")
+				{
+					chosen = kinds.OrderBy(ammo => ammo.PenetrationPower).ThenBy(ammo => ammo.Damage).First();
+				}
+				else
+				{
+					chosen = kinds.OrderByDescending(ammo => ammo.PenetrationPower).ThenByDescending(ammo => ammo.Damage).First();
+				}
+
+				// Loose on the stash first, non-FiR first (as for the supplies); whole stacks are used before a split is made
+				var sources = inStash.Where(ammo => ammo.TemplateId == chosen.TemplateId)
+					.OrderBy(ammo => Game.LooseBeforeFiR(ammo))
+					.ThenBy(ammo => ammo.MarkedAsSpawnedInSession ? 1 : 0)
+					.ThenBy(ammo => Game.LooseAfterFiR(ammo))
+					.ThenByDescending(ammo => stock.Left(ammo))
+					.ToList();
+				int perStack = chosen.StackMaxSize;
+				int want = perStack * setting.Target;
+				var picks = new List<KeyValuePair<Ammo, int>>();
+				foreach (var source in sources)
+				{
+					int take = Math.Min(stock.Left(source), want);
+					if (take <= 0)
+					{
+						continue;
+					}
+
+					picks.Add(new KeyValuePair<Ammo, int>(source, take));
+					int used;
+					stock.Used[source] = (stock.Used.TryGetValue(source, out used) ? used : 0) + take;
+					want -= take;
+					if (want == 0)
+					{
+						break;
+					}
+				}
+
+				int bringing = picks.Sum(pick => pick.Value);
+				var why = kinds.Count == 1 ? "the ammo in use" : mode == "random" ? $"random of the {kinds.Count} kinds in use" : $"{mode} of the {kinds.Count} kinds in use";
+				var typeName = Game.NameOf(chosen);
+				var move = picks;
+				made.Add(new PlanLine
+				{
+					Text = $"Bring {bringing:N0} {typeName} for {names}  ({why}, from the stash{(want > 0 ? $"; the stash only has {bringing:N0} of {perStack * setting.Target:N0}" : "")})",
+					Template = chosen.TemplateId.ToString(),
+					Items = move.Count,
+					Run = async () =>
+					{
+						foreach (var pick in move)
+						{
+							int count = Math.Min(pick.Value, pick.Key.StackObjectsCount);
+							if (count <= 0)
+							{
+								continue;
+							}
+
+							bool whole = count >= pick.Key.StackObjectsCount;
+							var error = await Game.MoveTo(controller, pick.Key, places, count);
+							if (error == null && whole && !await Game.WaitUntilCarried(controller, pick.Key))
+							{
+								error = "the game accepted the move but the stack is still in the stash";
+							}
+
+							if (error != null)
+							{
+								Plugin.Log.LogWarning($"Spare ammo {typeName} ({pick.Key.Id}) not brought: {error}");
+								return $"could not bring {typeName}: {error}";
+							}
+						}
+
+						return null;
+					}
+				});
+			}
+
+			// Weapons that share a caliber each show the card (repeated, with the same numbers); the ammo is only brought once, with the first
+			foreach (var pair in groups)
+			{
+				var first = pair.Key[0];
+				var firstName = Game.NameOf(first);
+				var head = pair.Value[0];
+				foreach (var other in pair.Key.Skip(1))
+				{
+					var subject = $"Spare ammo for {Game.NameOf(other)}";
+					var copy = new List<PlanLine> { Steps.Progress(subject, head.Have, head.Want, head.Unit, other.TemplateId.ToString()).WithItem(other) };
+					foreach (var line in pair.Value.Skip(1))
+					{
+						if (line.Problem)
+						{
+							copy.Add(Steps.Problem(subject, line.Detail, other.TemplateId.ToString()).WithItem(other));
+						}
+						else if (line.Run != null)
+						{
+							copy.Add(new PlanLine { Text = $"Brought with the stack for {firstName}", Template = line.Template, Covered = true });
+						}
+					}
+
+					result[other] = copy;
+				}
+			}
+
+			return result;
 		}
 
 		// The loose stacks of ammo you carry (vest, pockets, backpack, pouch; not in magazines or boxes) filled up to a full stack with
@@ -108,8 +368,8 @@ namespace GetReady
 		// is left out (it will be gone), and so is a locked one. Only stacks you already carry: no new kinds of ammo.
 		private static void AddLoose(InventoryController controller, AmmoRules.AmmoStock stock, List<PlanLine> lines)
 		{
-			var inventory = controller.Inventory;
-			var mine = Game.CarriedAndSecured(inventory).OfType<Ammo>()
+			var view = AmmoRules.AmmoView.Of(controller);
+			var mine = view.Carried().Concat(view.Secured()).OfType<Ammo>()
 				.Where(stack => stack.Parent?.Container is Grid && stack.PinLockState != EItemPinLockState.Locked && stock.Left(stack) > 0)
 				.OrderBy(stack => Game.NameOf(stack.Parent.Container.ParentItem))
 				.ThenBy(stack => Game.NameOf(stack))
@@ -119,8 +379,8 @@ namespace GetReady
 				return;
 			}
 
-			var sources = inventory.Stash == null ? new List<Ammo>() : inventory.GetPlayerItems(EPlayerItems.Stash).OfType<Ammo>()
-				.Where(stack => stack.Parent?.Container is Grid && stack.PinLockState != EItemPinLockState.Locked && controller.Examined(stack))
+			var sources = !view.HasStash ? new List<Ammo>() : view.Stash().OfType<Ammo>()
+				.Where(stack => stack.Parent?.Container is Grid && stack.PinLockState != EItemPinLockState.Locked && view.Examined(stack))
 				.ToList();
 			var rows = new List<PlanLine>();
 			int full = 0;
@@ -244,9 +504,9 @@ namespace GetReady
 
 			if (chosen == null)
 			{
-				lines.Add(Steps.Problem(name, candidates.Count == 0
+				lines.Add(Alone(Steps.Problem(name, candidates.Count == 0
 					? "no magazine in it, and none of the magazines you carry fits it"
-					: "no magazine in it, and none of yours can be put in and filled for it", template).WithItem(weapon));
+					: "no magazine in it, and none of yours can be put in and filled for it", template).WithItem(weapon)));
 				return;
 			}
 
@@ -353,6 +613,7 @@ namespace GetReady
 				return plan;
 			}
 
+			Planned[plan.Type.Value] = plan.Allocation[0].Key.Caliber;
 			var run = plan;
 			var weaponSlot = takeOutOf;
 			lines.Add(new PlanLine

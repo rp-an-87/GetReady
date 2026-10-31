@@ -25,19 +25,23 @@ namespace GetReady
 		}
 
 		// The traders that repair, in the order set in Setup (new ones at the end)
-		internal static List<EFT.Trading.Trader> OrderedTraders(EFT.Repairing.RepairController repairController)
+		internal static List<EFT.Trading.Trader> OrderedTraders(EFT.Repairing.RepairController repairController) => OrderedTraders(repairController.TraderRepairers);
+
+		internal static List<EFT.Trading.Trader> OrderedTraders(IEnumerable<EFT.Trading.Trader> traders)
 		{
 			var order = SettingsStore.Current.Repair.TraderOrder;
-			return repairController.TraderRepairers
+			return traders
 				.Select((trader, index) => new { trader, key = order.IndexOf(trader.Id) >= 0 ? order.IndexOf(trader.Id) : 1000 + index })
 				.OrderBy(pair => pair.key)
 				.Select(pair => pair.trader)
 				.ToList();
 		}
 
-		internal static void MoveTrader(EFT.Repairing.RepairController repairController, string traderId, int step)
+		internal static void MoveTrader(EFT.Repairing.RepairController repairController, string traderId, int step) => MoveTrader(repairController.TraderRepairers, traderId, step);
+
+		internal static void MoveTrader(IEnumerable<EFT.Trading.Trader> traders, string traderId, int step)
 		{
-			var ids = OrderedTraders(repairController).Select(trader => trader.Id).ToList();
+			var ids = OrderedTraders(traders).Select(trader => trader.Id).ToList();
 			int index = ids.IndexOf(traderId);
 			int target = index + step;
 			if (index < 0 || target < 0 || target >= ids.Count)
@@ -87,8 +91,9 @@ namespace GetReady
 			{
 				var name = Game.NameOf(item);
 				var template = item.TemplateId.ToString();
-				bool needs = RepairWithKit.NeedsRepair(item, repairController, out bool hasKit);
-				if (!needs)
+				// The same decision the R key makes (kits, else a trader, else a problem), here with the roubles earlier pieces already take
+				var decision = RepairWithKit.Decide(item, repairController, controller, spent);
+				if (decision.Kind == RepairWithKit.RepairKind.Nothing)
 				{
 					inShape++;
 				}
@@ -98,57 +103,33 @@ namespace GetReady
 					inShape++;
 					lines.Add(new PlanLine { Text = $"{name}: left damaged (on your no-repair list)", Subject = name, Detail = "left damaged (on your no-repair list)", Template = template });
 				}
-				else if (!hasKit)
+				else if (decision.Kind == RepairWithKit.RepairKind.Problem)
 				{
-					// No kit at all: the trader does it, if switched on and one can
-					var useTraders = SettingsStore.Current.Repair.UseTraders;
-					var quote = useTraders ? RepairWithKit.QuoteTrader(item, repairController, controller) : null;
-					if (quote == null)
-					{
-						lines.Add(Steps.Problem(name, useTraders ? "needs repair, but you have no repair kit with resource left and no trader repairs it" : "needs repair, but you have no repair kit with resource left (traders are switched off)", template));
-					}
-					else if (quote.Price + spent > quote.Money)
-					{
-						lines.Add(Steps.Problem(name, $"needs repair: {quote.Trader.LocalizedName} wants {quote.Price:N0} roubles, you have {Math.Max(0, quote.Money - spent):N0}", template));
-					}
-					else
-					{
-						spent += quote.Price;
-						var piece = item;
-						var traderId = quote.Trader.Id;
-						lines.Add(new PlanLine
-						{
-							Text = $"Repair {name} at {quote.Trader.LocalizedName} for {quote.Price:N0} roubles",
-							Template = template,
-							Repair = true,
-							Items = 0,
-							Run = async () =>
-							{
-								var outcome = await RepairWithKit.RepairAtTrader(repairController, controller, piece, traderId);
-								return outcome.Error ?? (outcome.Whole ? null : $"the trader left it at {outcome.Durability:F1}");
-							}
-						});
-					}
+					lines.Add(Steps.Problem(name, decision.Problem, template));
 				}
 				else
 				{
 					var piece = item;
+					bool trader = decision.Kind == RepairWithKit.RepairKind.Trader;
+					if (trader)
+					{
+						spent += decision.Quote.Price;
+					}
+
 					lines.Add(new PlanLine
 					{
-						Text = $"Repair {name}",
+						Text = trader ? $"Repair {name} at {RepairWithKit.NameOfTrader(decision.Quote.Trader)} for {decision.Quote.Price:N0} roubles" : $"Repair {name}",
 						Template = template,
 						Repair = true,
 						Items = 0,
-						Run = async () =>
-						{
-							var outcome = await RepairWithKit.RepairAll(repairController, piece);
-							return outcome.Error ?? (outcome.Whole ? null : $"the repair kits ran out, it is at {outcome.Durability:F1}");
-						}
+						Run = async () => RepairWithKit.Shortfall(decision, await RepairWithKit.Execute(decision, repairController, controller, piece))
 					});
 				}
 			}
 
-			lines.Insert(0, Steps.Progress("Gear", inShape, armor.Count, "in shape"));
+			// Shown with the first piece that needs work, else the first piece
+			var shown = armor.FirstOrDefault(piece => lines.Any(line => line.Template == piece.TemplateId.ToString())) ?? armor[0];
+			lines.Insert(0, Steps.Progress("Gear", inShape, armor.Count, "in shape", shown.TemplateId.ToString()).WithItem(shown));
 			foreach (var line in lines.Where(line => line.Item == null && line.Template != null))
 			{
 				// The icon of the very piece (plates and mods on it), found again from the template among what is worn

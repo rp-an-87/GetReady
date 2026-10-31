@@ -20,7 +20,7 @@ namespace GetReady
 		{
 			var template = SettingsStore.Current.SpecialSlots;
 			template.Slots.Clear();
-			foreach (var slot in SlotsOf(controller.Inventory))
+			foreach (var slot in SlotsOf(Game.InventoryOf(controller)))
 			{
 				var item = slot.ContainedItem;
 				if (item == null)
@@ -37,6 +37,13 @@ namespace GetReady
 			return template.Slots.Count;
 		}
 
+		// Forgets the saved template: the step shows "Nothing saved" until you save again
+		internal static void Clear()
+		{
+			SettingsStore.Current.SpecialSlots.Slots.Clear();
+			SettingsStore.Save();
+		}
+
 		public List<PlanLine> Plan(InventoryController controller)
 		{
 			var template = SettingsStore.Current.SpecialSlots;
@@ -45,8 +52,8 @@ namespace GetReady
 				return new List<PlanLine> { Steps.Info("Nothing saved. Put the items in the special slots and save them.") };
 			}
 
-			var slots = SlotsOf(controller.Inventory);
-			var stash = Game.Stash(controller.Inventory);
+			var slots = SlotsOf(Game.InventoryOf(controller));
+			var stash = Game.Stash(Game.InventoryOf(controller));
 			var taken = new HashSet<Item>();
 			var needs = new List<Need>();
 			var others = new List<PlanLine>();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using EFT;
@@ -51,6 +52,9 @@ namespace GetReady
 		// Where the medical items live in the item tree: medikits (AFAK, Salewa...) and the single-purpose "medical items"
 		internal static readonly string[] UnderMedikit = { "5448f39d4bdc2d0a728b4568" };
 		internal static readonly string[] UnderMedicalItem = { "5448f3ac4bdc2dce718b4569" };
+
+		// Medical items that are in the item tree but that a player can't get (the Sanitar boss's own first aid and surgery kits): never listed
+		internal static readonly HashSet<string> NotAvailable = new HashSet<string> { "5e99711486f7744bfc4af328", "5e99735686f7744bfc4af32c" };
 
 		internal static bool IsHealingKit(Item item) => item.GetItemComponent<MedKitComponent>() != null && !Treats(item, EDamageEffectType.DestroyedPart);
 

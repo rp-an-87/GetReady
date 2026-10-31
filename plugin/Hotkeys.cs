@@ -14,7 +14,7 @@ namespace GetReady
 
 		internal static string Next(string choice) => Choices[(System.Array.IndexOf(Choices, choice) + 1) % Choices.Length];
 
-		internal static string Label(string choice) => choice == "" ? "No key" : "Key " + choice;
+		internal static string Label(string choice) => choice == "" ? "No key" : choice;
 
 		private static EBoundItem? KeyOf(string choice)
 		{
@@ -46,7 +46,7 @@ namespace GetReady
 					continue;
 				}
 
-				var carried = Game.Carried(controller.Inventory).Where(item => def.WeightOf(item) > 0 && controller.IsAtBindablePlace(item)).ToList();
+				var carried = Game.Carried(Game.InventoryOf(controller)).Where(item => def.WeightOf(item) > 0 && controller.IsAtBindablePlace(item)).ToList();
 				var best = carried.OrderBy(def.PriorityOf).ThenByDescending(Game.ResourceOf).FirstOrDefault();
 				if (best == null)
 				{
@@ -54,7 +54,7 @@ namespace GetReady
 				}
 
 				Item bound;
-				if (controller.Inventory.FastAccess.BoundItems.TryGetValue(key.Value, out bound) && carried.Contains(bound))
+				if (Game.InventoryOf(controller).FastAccess.BoundItems.TryGetValue(key.Value, out bound) && carried.Contains(bound))
 				{
 					continue;
 				}
@@ -66,7 +66,7 @@ namespace GetReady
 					continue;
 				}
 
-				var outcome = await controller.TryRunNetworkTransaction((OperationResult)operation);
+				var outcome = await Game.RunOperation(controller, (OperationResult)operation);
 				if (outcome.Failed)
 				{
 					Plugin.Log.LogWarning($"Could not bind {Game.NameOf(best)} to {def.HotkeyChoice}: {outcome.Error}");

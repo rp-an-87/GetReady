@@ -57,6 +57,13 @@ namespace GetReady
 			}
 		}
 
+		// Everything inside the containers of this place (empty when you do not have it)
+		internal static IEnumerable<Item> ItemsInPlace(Inventory inventory, string place) =>
+			TargetsOf(inventory, place).SelectMany(target => target.Container.GetAllItems().Where(item => item != target.Container));
+
+		// Whether you have this place: the wallet or case is carried, the vest or backpack is worn, the stash is there
+		internal static bool HasPlace(Inventory inventory, string place) => TargetsOf(inventory, place).Count > 0;
+
 		private static List<Target> One(CompoundItem container, bool grids, bool slots) =>
 			container == null ? new List<Target>() : new List<Target> { new Target { Container = container, Grids = grids, Slots = slots } };
 
@@ -68,7 +75,7 @@ namespace GetReady
 
 		private static async Task<string> Run(InventoryController controller, OperationResult operation)
 		{
-			var outcome = await controller.TryRunNetworkTransaction(operation);
+			var outcome = await RunOperation(controller, operation);
 			return outcome.Failed ? outcome.Error.ToString() : null;
 		}
 
@@ -195,23 +202,31 @@ namespace GetReady
 			return currency != null && SettingsStore.Current.Supplies.CashExclusions.Any(excluded => excluded.CaseId == id && excluded.Currency == currency);
 		}
 
-		// The first of the places that exists on you decides: if every container of it is kept out for this money, it is not brought at
-		// all, and the other places are not tried. Returns that place's name, or null when the money may go there.
-		internal static string CashLeftOut(string template, IEnumerable<string> places, Inventory inventory)
+		// A case of yours with "No cash" on stops all cash while you carry it: returns what it is called, or null when there is none
+		internal static string CashBlockedBy(Inventory inventory)
 		{
-			foreach (var place in places)
+			var blocking = SettingsStore.Current.Supplies.CashExclusions.Where(entry => entry.Currency == CashExclusion.All).ToList();
+			if (blocking.Count == 0)
 			{
-				var targets = TargetsOf(inventory, place);
-				if (targets.Count == 0)
-				{
-					continue;
-				}
+				return null;
+			}
 
-				return targets.All(target => IsCashExcluded(template, target.Container)) ? place : null;
+			foreach (var item in CarriedAndSecured(inventory))
+			{
+				var id = item.Id.ToString();
+				var entry = blocking.FirstOrDefault(candidate => candidate.CaseId == id);
+				if (entry != null)
+				{
+					return !string.IsNullOrEmpty(entry.Tag) ? entry.Tag : string.IsNullOrEmpty(entry.CaseName) ? NameOf(item) : entry.CaseName;
+				}
 			}
 
 			return null;
 		}
+
+		// Whether a container of this place takes this money (a case kept out for the currency does not; a place you do not have does not)
+		internal static bool PlaceAllows(Inventory inventory, string place, string template) =>
+			TargetsOf(inventory, place).Any(target => !IsCashExcluded(template, target.Container));
 
 		// Moves the item (count of it, or all) to the first of the places that takes it. Returns null, or why the last one refused.
 		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places, int count = 0)
@@ -224,18 +239,19 @@ namespace GetReady
 			string last = "no place to put it";
 			foreach (var place in places)
 			{
-				var targets = TargetsOf(controller.Inventory, place);
+				var targets = TargetsOf(InventoryOf(controller), place);
 				if (targets.Count == 0)
 				{
 					last = $"no {place} on you";
 					continue;
 				}
 
-				// Cases this money is kept out of are not used; when that leaves none, it stops there (no other place is tried)
+				// Cases this money is kept out of are not used; when that leaves none, the next place is tried
 				var allowed = targets.Where(target => !IsCashExcluded(item.TemplateId.ToString(), target.Container)).ToList();
 				if (allowed.Count == 0)
 				{
-					return $"{place} is on your cash exclusion list";
+					last = $"{place} keeps this money out";
+					continue;
 				}
 
 				var error = await PlaceInto(controller, item, count, allowed);
@@ -256,7 +272,7 @@ namespace GetReady
 		{
 			for (int i = 0; i < 20; i++)
 			{
-				if (!Stash(controller.Inventory).Contains(item))
+				if (!Stash(InventoryOf(controller)).Contains(item))
 				{
 					return true;
 				}

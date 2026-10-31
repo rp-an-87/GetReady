@@ -11,10 +11,17 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 
+  <!-- The logic tests are their own project (tests\): not part of the plugin, but they may see its internals -->
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <InternalsVisibleTo Include="GetReady.Tests" />
+  </ItemGroup>
+
   <!-- SptDir comes from GetReady.csproj.user (the folder that contains BepInEx and EscapeFromTarkov_Data); it is loaded after this body, so it is only used in items/targets -->
   <ItemGroup>
     <Reference Include="0Harmony"><HintPath>$(SptDir)\BepInEx\core\0Harmony.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="BepInEx"><HintPath>$(SptDir)\BepInEx\core\BepInEx.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="SPT.Common"><HintPath>$(SptDir)\BepInEx\plugins\spt\spt-common.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="SPT.Reflection"><HintPath>$(SptDir)\BepInEx\plugins\spt\spt-reflection.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="UnityEngine.UI"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\UnityEngine.UI.dll</HintPath><Private>false</Private></Reference>
     <Reference Include="Newtonsoft.Json"><HintPath>$(SptDir)\EscapeFromTarkov_Data\Managed\Newtonsoft.Json.dll</HintPath><Private>false</Private></Reference>

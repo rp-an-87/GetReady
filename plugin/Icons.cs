@@ -25,6 +25,86 @@ namespace GetReady
 
 		private static readonly Dictionary<string, bool> Examined = new Dictionary<string, bool>();
 
+		private static readonly Dictionary<object, Sprite> EffectSprites = new Dictionary<object, Sprite>();
+
+		// The game's own icon of a kind of trouble in a framed square, the name is the tooltip. A type (IHeavyBleeding, IFracture...) is
+		// the status icon of the health screen; the health factor (HP) is the game's health icon.
+		internal static void DrawEffect(Rect rect, object trouble, string name)
+		{
+			Sprite sprite;
+			if (!EffectSprites.TryGetValue(trouble, out sprite))
+			{
+				try
+				{
+					var icons = EFTHardSettings.Instance?.StaticIcons;
+					var type = trouble as Type;
+					if (type != null)
+					{
+						icons.EffectIcons.EffectIcons.TryGetValue(type, out sprite);
+					}
+					else
+					{
+						sprite = icons?.GetAttributeIcon((Enum)trouble);
+					}
+				}
+				catch (Exception e)
+				{
+					Plugin.Log.LogWarning($"No icon for {trouble}: {e.Message}");
+					sprite = null;
+				}
+
+				EffectSprites[trouble] = sprite;
+			}
+
+			GUI.Box(rect, GUIContent.none, Ui.Inner);
+			DrawSprite(rect, sprite, name);
+		}
+
+		// The game's own small icon for a kind of item (the one the stash button uses), null when it has none
+		private static Sprite TypeSprite(EItemType type)
+		{
+			try
+			{
+				return EFTHardSettings.Instance?.StaticIcons?.GetItemTypeIcon(type);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"No icon for {type}: {e.Message}");
+				return null;
+			}
+		}
+
+		private static EItemType? TypeOfStep(string step)
+		{
+			switch (step)
+			{
+				case "Special slots": return EItemType.Special;
+				case "Injector case": return EItemType.Container;
+				case "Medicine to bring": return EItemType.Meds;
+				case "Treat injuries": return EItemType.Meds;
+				case "Grenades and flares": return EItemType.Grenade;
+				case "Cash": return EItemType.Barter;
+				case "Repair": return EItemType.Armor;
+				case "Ammo": return EItemType.Ammo;
+				case "Full auto": return EItemType.Weapon;
+				default: return null;
+			}
+		}
+
+		// A small framed icon for a step's title, like the item slots (just the space when the game has none)
+		internal static void Step(Rect rect, string step)
+		{
+			var type = TypeOfStep(step);
+			var sprite = type == null ? null : TypeSprite(type.Value);
+			if (sprite == null)
+			{
+				return;
+			}
+
+			GUI.Box(rect, GUIContent.none, Ui.Inner);
+			DrawSprite(rect, sprite, step);
+		}
+
 		// Whether the template is in the item tree below the parent
 		internal static bool IsUnder(ItemTemplate template, string parent)
 		{
@@ -202,6 +282,15 @@ namespace GetReady
 		internal static void Slot(Item item, string name, float size)
 		{
 			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), item, name);
+		}
+
+		// A square of the given size with a "?" like an item not inspected yet: for a group that stands for any of several items
+		internal static void SlotUnknown(string name, float size)
+		{
+			var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
+			GUI.Box(rect, GUIContent.none, Ui.Inner);
+			GUI.Label(rect, "?", Ui.Centered);
+			GUI.Label(rect, new GUIContent("", name));
 		}
 
 		// A square of the given size in the layout with the item's icon

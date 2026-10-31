@@ -34,9 +34,10 @@ namespace GetReady
 		{
 			var lines = new List<PlanLine>();
 			int total = 0, inPlace = 0;
+			Weapon shown = null;
 			foreach (var pair in Slots.Where(pair => IsSelected(pair.Key)))
 			{
-				var weapon = controller.Inventory.Equipment.GetSlot(pair.Key).ContainedItem as Weapon;
+				var weapon = Game.InventoryOf(controller).Equipment.GetSlot(pair.Key).ContainedItem as Weapon;
 				var mode = weapon?.FireMode;
 				if (mode == null || !mode.AvailableEFireModes.Contains(Weapon.EFireMode.fullauto))
 				{
@@ -44,6 +45,7 @@ namespace GetReady
 				}
 
 				total++;
+				shown = shown ?? weapon;
 				if (mode.FireMode == Weapon.EFireMode.fullauto)
 				{
 					inPlace++;
@@ -69,7 +71,7 @@ namespace GetReady
 				return new List<PlanLine> { Steps.Info("No weapon in the picked slots has full auto.") };
 			}
 
-			lines.Insert(0, Steps.Progress("Weapons on full auto", inPlace, total, "weapons"));
+			lines.Insert(0, Steps.Progress("Weapons on full auto", inPlace, total, "weapons", shown.TemplateId.ToString()).WithItem(shown));
 			return lines;
 		}
 	}

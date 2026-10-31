@@ -38,31 +38,63 @@ namespace GetReady
 			var itemContext = uiContext?.CurrentItemContext;
 			var controller = uiContext == null ? null : ControllerField.GetValue(uiContext) as InventoryController;
 			var repairController = uiContext?.Session?.RepairController;
-			var kit = FindKit(uiContext, itemContext, controller, false, out var why);
-			if (kit == null || repairController == null)
+			if (itemContext == null || controller == null || repairController == null || itemContext.Item is RepairKit)
 			{
-				if (itemContext != null)
-				{
-					Plugin.Log.LogInfo($"Repair key: no kit used for {itemContext.Item.ShortName.Localized()} (reason: {why ?? "nothing to repair, or the game's menu doesn't offer Repair"}, repair controller: {repairController != null})");
-				}
-
-				// Only tell when there is something to repair: a key pressed over an item that is fine says nothing
-				if (why != null)
-				{
-					NotificationManager.DisplayMessageNotification($"Repair: {why}");
-				}
-
 				return;
 			}
 
-			Run(repairController, itemContext.Item);
+			// The same decision as the Repair step in the window: kits, else a trader, else say why not
+			var item = itemContext.Item;
+			var decision = Decide(item, repairController, controller, 0);
+			switch (decision.Kind)
+			{
+				case RepairKind.Nothing:
+					// A key pressed over an item that is fine says nothing
+					return;
+				case RepairKind.Trader:
+					RunKey(repairController, controller, item, decision);
+					return;
+				case RepairKind.Kits:
+					if (FindKit(uiContext, itemContext, controller, false, out var kitWhy) != null)
+					{
+						RunKey(repairController, controller, item, decision);
+						return;
+					}
+
+					Plugin.Log.LogInfo($"Repair key: no kit used for {item.ShortName.Localized()} (reason: {kitWhy ?? "the game's menu doesn't offer Repair"})");
+					if (kitWhy != null)
+					{
+						Refuse($"Repair: {kitWhy}");
+					}
+
+					return;
+				default:
+					// Nothing can repair it. With traders off the kits are the whole story, so say what is wrong with them (locked, in your
+					// gear, not examined...); with traders on the trader is the last thing that failed (no money, none repairs it)
+					string why = null;
+					if (!SettingsStore.Current.Repair.UseTraders)
+					{
+						FindKit(uiContext, itemContext, controller, false, out why);
+					}
+
+					Plugin.Log.LogInfo($"Repair key: nothing used for {item.ShortName.Localized()} ({why ?? decision.Problem})");
+					Refuse($"Repair: {why ?? decision.Problem}");
+					return;
+			}
 		}
 
-		// Whether the hotkey would do something for the item: it is damaged and one of your kits can repair it
+		// Whether the hotkey would do something for the item: it is damaged and a kit or a trader can repair it
 		internal static bool IsApplicable(ItemUiContext uiContext, InventoryController controller, Item item)
 		{
 			var itemContext = uiContext.CurrentItemContext;
-			return itemContext != null && itemContext.Item == item && FindKit(uiContext, itemContext, controller, true, out _) != null;
+			var repairController = uiContext.Session?.RepairController;
+			if (itemContext == null || itemContext.Item != item || item is RepairKit || repairController == null || controller?.Inventory.Stash == null)
+			{
+				return false;
+			}
+
+			var decision = Decide(item, repairController, controller, 0);
+			return decision.Kind == RepairKind.Trader || (decision.Kind == RepairKind.Kits && FindKit(uiContext, itemContext, controller, true, out _) != null);
 		}
 
 		// The kit the hotkey uses, or null when there is nothing to do: the least used kit that can repair the item
@@ -76,12 +108,14 @@ namespace GetReady
 			}
 
 			var repairables = itemContext.Item.GetItemComponentsInChildren<RepairableComponent>(true).ToList();
-			if (onlyDamaged && !repairables.Any(repairable => repairable.Durability + 0.1f < repairable.MaxDurability))
+			// Damaged = the game would accept some repair points (the same question the repair itself asks); a part a hair under its
+			// maximum after a repair does not count
+			var damaged = NeedsRepair(itemContext.Item, uiContext.Session.RepairController, out _);
+			if (onlyDamaged && !damaged)
 			{
 				return null;
 			}
 
-			var damaged = repairables.Any(repairable => repairable.Durability + 0.1f < repairable.MaxDurability);
 			var fitting = controller.Inventory.GetPlayerItems(EPlayerItems.Stash | EPlayerItems.Equipment)
 				.OfType<RepairKit>()
 				.Where(candidate => repairables.Any(repairable => candidate.CanRepair(repairable.Item)))
@@ -95,7 +129,7 @@ namespace GetReady
 				IRepairStrategy strategy = itemContext.Item.GetItemComponent<ArmorHolderComponent>() != null
 					? (IRepairStrategy)new ArmorRepairStrategy(itemContext.Item, uiContext.Session.RepairController)
 					: new DefaultRepairStrategy(itemContext.Item, uiContext.Session.RepairController);
-				usable = strategy.RepairKitsCollections.SelectMany(collection => collection._repairKits).ToList();
+				usable = strategy.RepairKitsCollections.SelectMany(collection => collection._repairKits).Where(kit => kit.PinLockState != EItemPinLockState.Locked).ToList();
 			}
 			catch (Exception e)
 			{
@@ -105,7 +139,8 @@ namespace GetReady
 			var kit = usable.OrderBy(candidate => candidate.Resource).FirstOrDefault();
 			if (kit == null)
 			{
-				if (damaged)
+				// Only for the key press: the tooltip hint asks the same question every frame and needs no reason
+				if (damaged && !onlyDamaged)
 				{
 					var name = itemContext.Item.ShortName.Localized();
 					var inStash = new HashSet<Item>(controller.Inventory.GetPlayerItems(EPlayerItems.Stash));
@@ -136,10 +171,23 @@ namespace GetReady
 			return interactions.IsInteractionAvailable(EItemInfoButton.Repair).Succeed ? kit : null;
 		}
 
-		private static IRepairStrategy NewStrategy(Item item, EFT.Repairing.RepairController repairController) =>
+		// The game's repair strategy for the item (replaceable, so the tests can give the repair state of an item without the game's repair controller)
+		internal static Func<Item, EFT.Repairing.RepairController, IRepairStrategy> StrategyOf = (item, repairController) =>
 			item.GetItemComponent<ArmorHolderComponent>() != null
 				? (IRepairStrategy)new ArmorRepairStrategy(item, repairController)
 				: new DefaultRepairStrategy(item, repairController);
+
+		private static IRepairStrategy NewStrategy(Item item, EFT.Repairing.RepairController repairController) => StrategyOf(item, repairController);
+
+		// The wait for a repair to reach the inventory, the roubles in the stash and a trader's name (replaceable for the tests)
+		internal static Func<Task> Pause = () => Task.Delay(150);
+		internal static Func<InventoryController, int> RoublesIn = controller =>
+		{
+			var sums = InventoryExtension.GetMoneySums(controller.Inventory.Stash.Grid.ContainedItems.Keys);
+			int roubles;
+			return sums.TryGetValue(ECurrencyType.RUB, out roubles) ? roubles : 0;
+		};
+		internal static Func<Trader, string> NameOfTrader = trader => trader.LocalizedName;
 
 		// A kit with this little left (or less) is not used: it keeps what a repair can't safely take
 		private const float KitFloor = 1.5f;
@@ -172,6 +220,70 @@ namespace GetReady
 			return low;
 		}
 
+		internal enum RepairKind { Nothing, Kits, Trader, Problem }
+
+		// What to do about one piece, the same for the Repair step and the R key
+		internal class RepairDecision
+		{
+			public RepairKind Kind;
+			public TraderQuote Quote; // Trader: who and what it costs
+			public string Problem;    // Problem: why nothing can repair it
+		}
+
+		// Nothing to repair; else the kits when an unlocked one with resource can do it; else, with traders on, the first trader in your
+		// order that can repair it (all or nothing: not enough roubles is a problem; spentOnTraders is what earlier pieces of the same
+		// run already take); else a problem saying why
+		internal static RepairDecision Decide(Item item, EFT.Repairing.RepairController repairController, InventoryController controller, int spentOnTraders)
+		{
+			bool hasKit;
+			if (!NeedsRepair(item, repairController, out hasKit))
+			{
+				return new RepairDecision { Kind = RepairKind.Nothing };
+			}
+
+			if (hasKit)
+			{
+				return new RepairDecision { Kind = RepairKind.Kits };
+			}
+
+			if (!SettingsStore.Current.Repair.UseTraders)
+			{
+				return new RepairDecision { Kind = RepairKind.Problem, Problem = "needs repair, but you have no repair kit with resource left (traders are switched off)" };
+			}
+
+			TraderQuote quote = null;
+			try
+			{
+				quote = QuoteTrader(item, repairController, controller);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not ask the traders about {item.ShortName.Localized()}: {e.Message}");
+			}
+
+			if (quote == null)
+			{
+				return new RepairDecision { Kind = RepairKind.Problem, Problem = "needs repair, but you have no repair kit with resource left and no trader repairs it" };
+			}
+
+			if (quote.Price + spentOnTraders > quote.Money)
+			{
+				return new RepairDecision { Kind = RepairKind.Problem, Problem = $"needs repair: {NameOfTrader(quote.Trader)} wants {quote.Price:N0} roubles, you have {Math.Max(0, quote.Money - spentOnTraders):N0}" };
+			}
+
+			return new RepairDecision { Kind = RepairKind.Trader, Quote = quote };
+		}
+
+		// Does what Decide said (Kits or Trader)
+		internal static Task<RepairOutcome> Execute(RepairDecision decision, EFT.Repairing.RepairController repairController, InventoryController controller, Item item) =>
+			decision.Kind == RepairKind.Trader
+				? RepairAtTrader(repairController, controller, item, decision.Quote.Trader.Id)
+				: RepairAll(repairController, item);
+
+		// What went wrong when the repair did not finish, or null when the piece is whole
+		internal static string Shortfall(RepairDecision decision, RepairOutcome outcome) =>
+			outcome.Error ?? (outcome.Whole ? null : decision.Kind == RepairKind.Trader ? $"the trader left it at {outcome.Durability:F1}" : $"the repair kits ran out, it is at {outcome.Durability:F1}");
+
 		internal class RepairOutcome
 		{
 			public int Steps;
@@ -182,17 +294,23 @@ namespace GetReady
 
 		// The repair controller of the session: through the item screen when it is up, else straight from the session (the badge asks before
 		// the stash screen has set the item screen up)
-		internal static EFT.Repairing.RepairController Controller() =>
+		internal static Func<EFT.Repairing.RepairController> Controller = () =>
 			ItemUiContext.Instance?.Session?.RepairController ?? SPT.Reflection.Utils.ClientAppUtils.GetMainApp()?.GetClientBackEndSession()?.RepairController;
 
 		// Whether the item has anything to repair and some kit the game offers could do it: what the window and the key start from
 		internal static bool NeedsRepair(Item item, EFT.Repairing.RepairController repairController, out bool hasKit)
 		{
 			hasKit = false;
+			// Medicine, ammo and the like have nothing to repair (and the game's repair strategy throws for them)
+			if (!item.GetItemComponentsInChildren<RepairableComponent>(true).Any())
+			{
+				return false;
+			}
+
 			try
 			{
 				var strategy = NewStrategy(item, repairController);
-				hasKit = strategy.RepairKitsCollections.SelectMany(group => group._repairKits).Any(kit => kit.Resource > KitFloor);
+				hasKit = strategy.RepairKitsCollections.SelectMany(group => group._repairKits).Any(kit => kit.Resource > KitFloor && kit.PinLockState != EItemPinLockState.Locked);
 				return strategy.HowMuchRepairScoresCanAccept() >= 0.1f;
 			}
 			catch (Exception e)
@@ -222,7 +340,7 @@ namespace GetReady
 					RepairKit kit = null;
 					RepairKitsCollection collection = null;
 					float amount = 0f;
-					foreach (var candidate in strategy.RepairKitsCollections.SelectMany(group => group._repairKits.Select(one => new { group, one })).Where(pair => pair.one.Resource > KitFloor).OrderBy(pair => pair.one.Resource))
+					foreach (var candidate in strategy.RepairKitsCollections.SelectMany(group => group._repairKits.Select(one => new { group, one })).Where(pair => pair.one.Resource > KitFloor && pair.one.PinLockState != EItemPinLockState.Locked).OrderBy(pair => pair.one.Resource))
 					{
 						strategy.CurrentRepairer = candidate.group;
 						amount = AffordableAmount(strategy, candidate.group, need, candidate.one.Resource);
@@ -261,7 +379,7 @@ namespace GetReady
 					outcome.Steps++;
 
 					// Let the kit's new resource (or its removal) reach the inventory before the next round looks at it
-					await Task.Delay(150);
+					await Pause();
 				}
 
 				var after = NewStrategy(item, repairController);
@@ -290,12 +408,7 @@ namespace GetReady
 		}
 
 		// Roubles in the stash (the repair window counts the same)
-		internal static int Roubles(InventoryController controller)
-		{
-			var sums = InventoryExtension.GetMoneySums(controller.Inventory.Stash.Grid.ContainedItems.Keys);
-			int roubles;
-			return sums.TryGetValue(ECurrencyType.RUB, out roubles) ? roubles : 0;
-		}
+		internal static int Roubles(InventoryController controller) => RoublesIn(controller);
 
 		// The traders that can repair the item, in the order set in Setup (the ones not listed after them, in the game's order)
 		internal static List<Trader> TradersFor(Item item, EFT.Repairing.RepairController repairController)
@@ -349,11 +462,11 @@ namespace GetReady
 				int money = Roubles(controller);
 				if (price > money)
 				{
-					outcome.Error = $"{trader.LocalizedName} wants {price:N0} roubles, you have {money:N0}";
+					outcome.Error = $"{NameOfTrader(trader)} wants {price:N0} roubles, you have {money:N0}";
 					return outcome;
 				}
 
-				Plugin.Log.LogInfo($"Repair: {item.ShortName.Localized()} {item.Id} at {trader.LocalizedName}, {amount:F1} points for {price:N0} roubles");
+				Plugin.Log.LogInfo($"Repair: {item.ShortName.Localized()} {item.Id} at {NameOfTrader(trader)}, {amount:F1} points for {price:N0} roubles");
 				repairController.OnSuccessfulRepairChangedEvent += NoListener;
 				IResult result;
 				try
@@ -373,7 +486,7 @@ namespace GetReady
 				}
 
 				outcome.Steps = 1;
-				await Task.Delay(150);
+				await Pause();
 				var after = NewStrategy(item, repairController);
 				outcome.Whole = after.HowMuchRepairScoresCanAccept() < 0.1f;
 				outcome.Durability = after.Durability();
@@ -391,14 +504,28 @@ namespace GetReady
 			return outcome;
 		}
 
-		// The hotkey: repairs and tells what happened
-		private static async void Run(EFT.Repairing.RepairController repairController, Item item)
+		// The key could not repair: the message, with the game's error sound (not the plain notification sound alone)
+		private static void Refuse(string message)
+		{
+			NotificationManager.DisplayMessageNotification(message);
+			try
+			{
+				Singleton<GUISounds>.Instance?.PlayUISound(EUISoundType.ErrorMessage);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not play the error sound: {e.Message}");
+			}
+		}
+
+		// The hotkey: repairs the way Decide said and tells what happened
+		private static async void RunKey(EFT.Repairing.RepairController repairController, InventoryController controller, Item item, RepairDecision decision)
 		{
 			var name = item.ShortName.Localized();
-			var outcome = await RepairAll(repairController, item);
+			var outcome = await Execute(decision, repairController, controller, item);
 			if (outcome.Error != null)
 			{
-				NotificationManager.DisplayMessageNotification($"Repair of {name} failed: {outcome.Error}");
+				Refuse($"Repair of {name} failed: {outcome.Error}");
 				return;
 			}
 
@@ -407,11 +534,19 @@ namespace GetReady
 				Singleton<GUISounds>.Instance.PlayUISound(EUISoundType.RepairComplete);
 			}
 
+			// Nothing repaired and not whole: a refusal, with the error sound (a partial repair has had the repair sound already)
+			if (outcome.Steps == 0 && !outcome.Whole)
+			{
+				Refuse(decision.Kind == RepairKind.Trader ? $"Repair: {name} is at {outcome.Durability:F1}, the trader left it so." : $"Repair: {name} is at {outcome.Durability:F1}, your repair kits ran out.");
+				return;
+			}
+
 			if (outcome.Steps > 0 || !outcome.Whole)
 			{
+				var where = decision.Kind == RepairKind.Trader ? $" at {NameOfTrader(decision.Quote.Trader)} for {decision.Quote.Price:N0} roubles" : "";
 				NotificationManager.DisplayMessageNotification(outcome.Whole
-					? $"Repaired {name} to {outcome.Durability:F1}."
-					: $"Repair: {name} is at {outcome.Durability:F1}, your repair kits ran out.");
+					? $"Repaired {name}{where} to {outcome.Durability:F1}."
+					: decision.Kind == RepairKind.Trader ? $"Repair: {name} is at {outcome.Durability:F1}, the trader left it so." : $"Repair: {name} is at {outcome.Durability:F1}, your repair kits ran out.");
 			}
 		}
 	}

@@ -49,7 +49,12 @@ namespace GetReady
 		// A square of the given size in the layout with the trader's portrait; the name is the tooltip
 		internal static void Slot(Trader trader, float size)
 		{
-			var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
+			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), trader);
+		}
+
+		// The same in a given rect
+		internal static void Draw(Rect rect, Trader trader)
+		{
 			GUI.Box(rect, GUIContent.none, Ui.Inner);
 			var sprite = Of(trader);
 			if (sprite != null && sprite.texture != null)
