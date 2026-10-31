@@ -124,6 +124,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void A_saved_case_with_its_template_is_named_by_the_template()
 		{
+			Names[M4A1] = "M4A1"; // the names are filled in by the first test that touches Gear: do not depend on the order
 			CashChoice.BareName(new CashExclusion { CaseTemplate = M4A1, CaseName = "Whatever in Somewhere" }).Should().Be("M4A1");
 		}
 	}

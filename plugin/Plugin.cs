@@ -27,15 +27,6 @@ namespace GetReady
 				"Adds a button above the pin button of your stash (hideout and main menu) that opens the Get ready window. Takes effect the next time the stash opens.");
 			OpenHotkey = Config.Bind("1. General", "2. Open the window with a key", KeyboardShortcut.Empty,
 				"Opens and closes the window without the button. Empty by default.");
-			Config.Bind("9. Advanced", "Hurt me (test)", "", new ConfigDescription(
-				"Dev tool. Asks the CustomRpTweaks server mod to leave your profile with a fractured left leg, a light and a heavy bleed and missing HP, then reloads the menu. Same condition as the test kit reset (profile listed in testKit.profiles).",
-				null, new ConfigurationManagerAttributes { IsAdvanced = true, CustomDrawer = TestKitReset.DrawHurt }));
-			Config.Bind("9. Advanced", "Heal me fully (test)", "", new ConfigDescription(
-				"Dev tool. Makes every body part full and clears fractures and bleeds on your profile (no medicine used), then reloads the menu.",
-				null, new ConfigurationManagerAttributes { IsAdvanced = true, CustomDrawer = TestKitReset.DrawHeal }));
-			Config.Bind("9. Advanced", "Reset the test kit", "", new ConfigDescription(
-				"Dev tool. Asks the CustomRpTweaks server mod to put its test kit back in this profile's stash (armors and weapons worn down again, used up items back, the profile must be in testKit.profiles of the server config), then reloads the profile. Leave the stash screen and open it again afterwards.",
-				null, new ConfigurationManagerAttributes { IsAdvanced = true, CustomDrawer = TestKitReset.Draw }));
 			ShowFlash = Config.Bind("1. General", "3. READY flash after a successful run", true,
 				"A light green vignette and a green READY on screen for a moment when Get ready has brought everything. Just for show.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
