@@ -131,6 +131,7 @@ namespace GetReady.Tests
 			read.UiScale.Should().Be(1.2f);
 			read.Repair.UseTraders.Should().BeTrue();
 			read.Ammo.TopUpLoose.Should().BeTrue();
+			read.Ammo.LooseShortIsProblem.Should().BeFalse();
 			read.Supplies.NonFiRBeforeLoose.Should().BeTrue();
 		}
 
@@ -149,6 +150,69 @@ namespace GetReady.Tests
 			System.Action save = () => SettingsStore.Save();
 
 			save.Should().NotThrow();
+		}
+
+		[Fact]
+		public void An_old_file_has_no_stacks_per_model()
+		{
+			SettingsStore.Parse("{ \"UiScale\": 1.2 }").Ammo.SpareStacks.Should().BeEmpty();
+		}
+
+		[Fact]
+		public void The_stacks_per_model_are_read_from_the_file()
+		{
+			var read = SettingsStore.Parse("{ \"Ammo\": { \"SpareStacks\": [ { \"Template\": \"abc\", \"Name\": \"M4A1\", \"Stacks\": 3 } ] } }");
+
+			read.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(3);
+		}
+
+		[Fact]
+		public void Setting_the_stacks_of_a_model_adds_it_once_and_then_changes_it()
+		{
+			SettingsStore.UseForTests(new Settings());
+			var generic = AmmoStep.Spare.Setting.Target;
+
+			ReadyWindow.SetStacks("abc", "M4A1", generic + 1);
+			ReadyWindow.SetStacks("abc", "M4A1", generic + 3);
+
+			SettingsStore.Current.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(generic + 3);
+		}
+
+		[Fact]
+		public void Setting_a_model_back_to_the_generic_number_takes_it_off_the_list()
+		{
+			SettingsStore.UseForTests(new Settings());
+			var generic = AmmoStep.Spare.Setting.Target;
+			ReadyWindow.SetStacks("abc", "M4A1", generic + 2);
+
+			ReadyWindow.SetStacks("abc", "M4A1", generic);
+
+			SettingsStore.Current.Ammo.SpareStacks.Should().BeEmpty();
+			AmmoStep.StacksOf("abc").Should().Be(generic);
+		}
+
+		[Fact]
+		public void None_is_zero_stacks_and_stays_on_the_list()
+		{
+			SettingsStore.UseForTests(new Settings());
+
+			ReadyWindow.SetStacks("abc", "Glock", 0);
+
+			AmmoStep.StacksOf("abc").Should().Be(0);
+			SettingsStore.Current.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(0);
+		}
+
+		[Fact]
+		public void A_model_skipped_the_older_way_is_none_and_the_stepper_takes_it_over()
+		{
+			SettingsStore.UseForTests(new Settings());
+			SettingsStore.Current.Ammo.SpareIgnored.Add(new ItemRef { Template = "abc", Name = "Glock" });
+			AmmoStep.StacksOf("abc").Should().Be(0);
+
+			ReadyWindow.SetStacks("abc", "Glock", 1);
+
+			SettingsStore.Current.Ammo.SpareIgnored.Should().BeEmpty();
+			AmmoStep.StacksOf("abc").Should().Be(1);
 		}
 	}
 }

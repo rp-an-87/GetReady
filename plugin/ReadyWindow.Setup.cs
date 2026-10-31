@@ -135,7 +135,8 @@ namespace GetReady
 
 			GUILayout.EndHorizontal();
 
-			if (on)
+			// The spare ammo is on for a model with a number of its own even when the generic number is 0: its places stay in reach
+			if (on || def.Id == AmmoStep.Spare.Id && AmmoStep.AnyOwnStacks())
 			{
 				GUILayout.Space(10);
 				GUILayout.BeginHorizontal();
@@ -418,6 +419,13 @@ namespace GetReady
 						changed = true;
 					}
 
+					bool shortIsProblem = OptionRow(ammo.LooseShortIsProblem, "A loose stack that can't be filled is a problem", "When on, a loose stack that is short and that the stash has no more of is reported in red, and counted in the box at the top. When off it is just left as it is.");
+					if (shortIsProblem != ammo.LooseShortIsProblem)
+					{
+						ammo.LooseShortIsProblem = shortIsProblem;
+						changed = true;
+					}
+
 					changed |= PriorityList("What an empty spare magazine on you copies", AmmoRules.PointerOrder(),
 						pointer => AmmoRules.PointerName(pointer), null, (pointer, step) => AmmoRules.MovePointer(pointer, step),
 						"The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
@@ -445,7 +453,8 @@ namespace GetReady
 				}
 				else
 				{
-					foreach (var def in step.Groups)
+					// The spare ammo has one card of its own (the stacks, the places, the kind and the weapons); without the stash screen only the stacks
+					foreach (var def in step.Groups.Where(def => !(step is AmmoStep && controller != null)))
 					{
 						changed |= GroupRow(def);
 					}

@@ -21,6 +21,10 @@ namespace GetReady
 			return line;
 		}
 
+		// The two cards after the weapons (the window gives them a "?")
+		internal const string ExtraMagazines = "Extra magazines on you";
+		internal const string LooseAmmo = "Loose ammo on you";
+
 		public string Name => "Ammo";
 		public IReadOnlyList<GroupDef> Groups => new[] { Spare };
 
@@ -35,12 +39,48 @@ namespace GetReady
 		private static readonly Dictionary<MongoID, string> Planned = new Dictionary<MongoID, string>();
 		public bool Enabled { get => SettingsStore.Current.Ammo.Enabled; set => SettingsStore.Current.Ammo.Enabled = value; }
 
+		// The ammo a spare magazine holds that none of the equipped weapons it fits takes (a STANAG with .300 when only a 5.56 rifle is on you), or
+		// null: it holds nothing, holds ammo one of them takes, or fits none of your weapons (a spare for a weapon you swap in is left alone)
+		private static Ammo WrongAmmoFor(AmmoRules.AmmoView view, Magazine magazine)
+		{
+			var held = magazine.Cartridges.Items.OfType<Ammo>().ToList();
+			if (held.Count == 0)
+			{
+				return null;
+			}
+
+			var fits = view.Weapons().Where(weapon => !string.IsNullOrEmpty(weapon.AmmoCaliber) && weapon.GetMagazineSlot()?.CheckCompatibility(magazine) == true).ToList();
+			if (fits.Count == 0)
+			{
+				return null;
+			}
+
+			return held.FirstOrDefault(ammo => !fits.Any(weapon => weapon.AmmoCaliber == ammo.Caliber));
+		}
+
+		// The spare magazines that hold ammo no weapon they fit takes: one line for each kind of ammo, with how many magazines hold it
+		private static void AddWrongAmmo(List<PlanLine> lines, AmmoRules.AmmoView view, IEnumerable<Magazine> spares)
+		{
+			var wrong = spares.Select(magazine => new { Magazine = magazine, Ammo = WrongAmmoFor(view, magazine) }).Where(pair => pair.Ammo != null).ToList();
+			foreach (var kind in wrong.GroupBy(pair => pair.Ammo.TemplateId))
+			{
+				var list = kind.ToList();
+				var ammo = list[0].Ammo;
+				var takes = string.Join(", ", view.Weapons().Where(weapon => !string.IsNullOrEmpty(weapon.AmmoCaliber)).Select(weapon => AmmoPanels.CaliberLabel(weapon.AmmoCaliber)).Distinct().ToArray());
+				var line = Steps.Problem(list.Count == 1 ? "1 magazine holds ammo your weapons don't take" : $"{list.Count} magazines hold ammo your weapons don't take",
+					$"{Game.NameOf(ammo)} ({AmmoPanels.CaliberLabel(ammo.Caliber)}) in {string.Join(", ", list.Select(pair => $"{Game.NameOf(pair.Magazine)} in {Where(pair.Magazine)}").ToArray())}; the weapons they fit take {takes}", list[0].Magazine.TemplateId.ToString());
+				line.AlertIconOnly = true;
+				lines.Add(line);
+			}
+		}
+
 		// A magazine that can't be filled, to be reported with the others of its kind
 		private class Stuck
 		{
 			public string Label;
 			public string Template;
 			public string Options; // null: no compatible ammo left at all
+			public MagInfo Info;
 		}
 
 		private static string Where(Magazine magazine) => Game.NameOf(magazine.Parent.Container.ParentItem);
@@ -96,7 +136,15 @@ namespace GetReady
 					continue;
 				}
 
-				lines.Add(Steps.Progress(name, magazine.Count, magazine.MaxCount, "rounds", template).WithItem(weapon));
+				lines.Add(Steps.Progress(name, magazine.Count, magazine.MaxCount, "rounds", template).WithItem(weapon).InPart("magazine"));
+				// A magazine that fits but holds ammo of another caliber (a STANAG with .300 in a 5.56 rifle): the weapon is not ready, and nothing is guessed
+				var wrong = string.IsNullOrEmpty(weapon.AmmoCaliber) ? null : magazine.Cartridges.Items.OfType<Ammo>().FirstOrDefault(held => held.Caliber != weapon.AmmoCaliber);
+				if (wrong != null)
+				{
+					lines.Add(Steps.Problem(name, $"its magazine holds {Game.NameOf(wrong)} ({AmmoPanels.CaliberLabel(wrong.Caliber)}), this weapon takes {AmmoPanels.CaliberLabel(weapon.AmmoCaliber)}", template).WithItem(weapon).InPart("magazine"));
+					continue;
+				}
+
 				var made = AddFill(controller, stock, magazine, $"{name}'s magazine", lines, missing, stuck, null, null, slot);
 				AddChamber(controller, stock, weapon, magazine, made, lines);
 			}
@@ -108,22 +156,23 @@ namespace GetReady
 			}
 
 			// The spare magazines on you, nearest the same container together
-			var rest = spares.Where(magazine => !inserted.Contains(magazine))
+			var rest = spares.Where(magazine => !inserted.Contains(magazine) && WrongAmmoFor(view, magazine) == null)
 				.OrderBy(magazine => Where(magazine))
 				.ThenBy(magazine => magazine.Template.NameLocalizationKey)
 				.ToList();
 			if (rest.Count > 0)
 			{
-				lines.Add(Steps.Progress("Magazines on you", rest.Count(magazine => magazine.Count >= magazine.MaxCount), rest.Count, "full", rest[0].TemplateId.ToString()));
+				lines.Add(Steps.Progress(ExtraMagazines, rest.Count(magazine => magazine.Count >= magazine.MaxCount), rest.Count, "full", rest[0].TemplateId.ToString()));
 				foreach (var magazine in rest)
 				{
 					AddFill(controller, stock, magazine, $"{Game.NameOf(magazine)} in {Where(magazine)}", lines, missing, stuck, null, null, null);
 				}
 			}
 
-			// The magazines that cannot be filled, and the rounds that are missing: in the "Magazines on you" card when there is one, else
+			// The magazines that cannot be filled, and the rounds that are missing: in the "Extra magazines on you" card when there is one, else
 			// each stands alone (it must not end up inside the card of a weapon)
 			int problemsFrom = lines.Count;
+			AddWrongAmmo(lines, view, spares.Where(magazine => !inserted.Contains(magazine)));
 			AddStuck(lines, stuck);
 			foreach (var pair in missing)
 			{
@@ -144,7 +193,7 @@ namespace GetReady
 			}
 
 			// The spare ammo of each weapon right below its card, the last weapon's first so the places stay right
-			var spare = AddSpare(controller, stock);
+			var spare = AddSpare(controller, stock, lines);
 			foreach (var weapon in view.Weapons().Where(candidate => spare.ContainsKey(candidate) && blockEnd.ContainsKey(candidate)).Reverse())
 			{
 				lines.InsertRange(blockEnd[weapon], spare[weapon]);
@@ -153,22 +202,43 @@ namespace GetReady
 			return lines;
 		}
 
+		// How many stacks of spare ammo a weapon model asks for: its own number, else the generic one
+		internal static int StacksOf(Weapon weapon) => StacksOf(weapon.TemplateId.ToString());
+
+		// By model: 0 for a model set aside before ("skipped": the older way of saying none), else its own number, else the generic one
+		internal static int StacksOf(string template)
+		{
+			var ammo = SettingsStore.Current.Ammo;
+			if (ammo.SpareIgnored.Any(entry => entry.Template == template))
+			{
+				return 0;
+			}
+
+			var own = ammo.SpareStacks.FirstOrDefault(entry => entry.Template == template);
+			return own != null ? own.Stacks : Spare.Setting.Target;
+		}
+
+		// Some model has a number of its own above zero (spare ammo is on for it whatever the generic number is)
+		internal static bool AnyOwnStacks() => SettingsStore.Current.Ammo.SpareStacks.Any(entry => entry.Stacks > 0);
+
+		// The weapons of a caliber share the request: the biggest of their models' numbers (two of one model count once)
+		internal static int StacksFor(IEnumerable<Weapon> weapons) => weapons.Select(StacksOf).DefaultIfEmpty(0).Max();
+
 		// For each caliber your equipped weapons use: when, after the magazines are filled, none of the places spare ammo goes to (the
 		// ones switched on in Setup) holds loose ammo of it, the stash gives the owner's number of stacks of ammo that is already in use for it: what is in the
 		// weapons and magazines, and what the magazines are about to be filled with. Which kind when several are in use is the owner's
 		// choice (worst, best, random). When nothing tells which ammo, or the stash has none of it, it is a problem and nothing is guessed.
-		private static Dictionary<Weapon, List<PlanLine>> AddSpare(InventoryController controller, AmmoRules.AmmoStock stock)
+		private static Dictionary<Weapon, List<PlanLine>> AddSpare(InventoryController controller, AmmoRules.AmmoStock stock, List<PlanLine> planned)
 		{
 			var result = new Dictionary<Weapon, List<PlanLine>>();
 			var setting = Spare.Setting;
-			if (setting.Target <= 0 || !stock.InStash)
+			if (!stock.InStash)
 			{
 				return result;
 			}
 
 			var view = AmmoRules.AmmoView.Of(controller);
-			var ignored = new HashSet<string>(SettingsStore.Current.Ammo.SpareIgnored.Select(entry => entry.Template));
-			var weapons = view.Weapons().Where(weapon => !string.IsNullOrEmpty(weapon.AmmoCaliber) && !ignored.Contains(weapon.TemplateId.ToString())).ToList();
+			var weapons = view.Weapons().Where(weapon => !string.IsNullOrEmpty(weapon.AmmoCaliber) && StacksOf(weapon) > 0).ToList();
 			if (weapons.Count == 0)
 			{
 				return result;
@@ -176,29 +246,57 @@ namespace GetReady
 
 			var spareMagazines = view.Carried().OfType<Magazine>().Where(magazine => magazine.Parent?.Container is Grid).ToList();
 			var places = Spare.PlacesToTry();
-			// Spare ammo is what lies in the places it is set to go to: loose ammo anywhere else on you is not it
-			var inPlaces = new HashSet<Item>(places.SelectMany(view.InPlace));
-			var loose = view.Carried().Concat(view.Secured()).OfType<Ammo>().Where(ammo => ammo.Parent?.Container is Grid && stock.Left(ammo) > 0 && inPlaces.Contains(ammo)).ToList();
+			// Loose ammo of the caliber anywhere on you is spare ammo (the loose stacks are topped up anyway); the places it is set to go to
+			// only say where ammo is brought when there is none
+			var loose = view.Carried().Concat(view.Secured()).OfType<Ammo>().Where(ammo => ammo.Parent?.Container is Grid && stock.Left(ammo) > 0).ToList();
 
 			var groups = new List<KeyValuePair<List<Weapon>, List<PlanLine>>>();
 			foreach (var group in weapons.GroupBy(weapon => weapon.AmmoCaliber))
 			{
 				var caliber = group.Key;
 				var first = group.First();
+				int stacks = StacksFor(group);
+				if (stacks <= 0)
+				{
+					continue;
+				}
+
 				var names = string.Join(", ", group.Select(weapon => Game.NameOf(weapon)).Distinct().ToArray());
 				var subject = $"Spare ammo for {Game.NameOf(first)}";
 				var made = new List<PlanLine>();
 				result[first] = made;
 				groups.Add(new KeyValuePair<List<Weapon>, List<PlanLine>>(group.ToList(), made));
-				bool has = loose.Any(ammo => ammo.Caliber == caliber);
-				made.Add(Steps.Progress(subject, has ? 1 : 0, 1, "spare ammo on you", first.TemplateId.ToString()).WithItem(first));
+				// What is asked is a total: the loose ammo of the caliber on you counts toward it, and so does what the top-up of the
+				// loose stacks will add; what is still short is brought from the stash
+				var mine = loose.Where(ammo => ammo.Caliber == caliber).ToList();
+				var onYou = mine.FirstOrDefault();
+				bool has = onYou != null;
+				int onYouCount = mine.Sum(ammo => stock.Left(ammo));
+				int coming = planned.Where(line => line.Topped).Where(line => mine.Any(ammo => ammo.TemplateId.ToString() == line.Template)).Sum(line => line.Amount);
+				int asked = has ? onYou.StackMaxSize * stacks : 0;
+				int shortBy = has ? Math.Max(0, asked - onYouCount - coming) : 0;
+				var head = Steps.Progress(subject, has && shortBy == 0 ? 1 : 0, 1, "spare ammo on you", first.TemplateId.ToString()).WithItem(first).InPart("spare");
 				if (has)
+				{
+					head.What = Game.NameOf(onYou);
+					head.WhatTemplate = onYou.TemplateId.ToString();
+					head.Amount = onYouCount + coming;
+					head.Asked = asked;
+				}
+
+				made.Add(head);
+				if (has && shortBy == 0)
 				{
 					continue;
 				}
 
 				// The ammo in use: loaded, chambered, in the spare magazines that fit these weapons, and about to be loaded
 				var inUse = new HashSet<MongoID>(Planned.Where(pair => pair.Value == caliber).Select(pair => pair.Key));
+				foreach (var carried in mine)
+				{
+					inUse.Add(carried.TemplateId);
+				}
+
 				foreach (var weapon in group)
 				{
 					foreach (var item in weapon.GetAllItems())
@@ -234,7 +332,7 @@ namespace GetReady
 
 				if (inUse.Count == 0)
 				{
-					made.Add(Steps.Problem(subject, "no loose ammo on you, and nothing is loaded or chambered to tell which ammo to bring", first.TemplateId.ToString()).WithItem(first));
+					made.Add(Steps.Problem(subject, "no loose ammo on you, and nothing is loaded or chambered to tell which ammo to bring", first.TemplateId.ToString()).WithItem(first).InPart("spare"));
 					continue;
 				}
 
@@ -244,7 +342,9 @@ namespace GetReady
 				if (inStash.Count == 0)
 				{
 					var inUseNames = string.Join(", ", inUse.Select(type => Game.TemplateName(type.ToString())).ToArray());
-					made.Add(Steps.Problem(subject, $"no loose ammo on you, and the stash has none of the ammo in use ({inUseNames})", first.TemplateId.ToString()).WithItem(first));
+					made.Add(Steps.Problem(subject, has
+						? $"{onYouCount + coming:N0} of {asked:N0} {head.What}: the stash has no more of it"
+						: $"no loose ammo on you, and the stash has none of the ammo in use ({inUseNames})", first.TemplateId.ToString()).WithItem(first).InPart("spare"));
 					continue;
 				}
 
@@ -276,7 +376,8 @@ namespace GetReady
 					.ThenByDescending(ammo => stock.Left(ammo))
 					.ToList();
 				int perStack = chosen.StackMaxSize;
-				int want = perStack * setting.Target;
+				int totalWant = has ? shortBy : perStack * stacks;
+				int want = totalWant;
 				var picks = new List<KeyValuePair<Ammo, int>>();
 				foreach (var source in sources)
 				{
@@ -302,7 +403,11 @@ namespace GetReady
 				var move = picks;
 				made.Add(new PlanLine
 				{
-					Text = $"Bring {bringing:N0} {typeName} for {names}  ({why}, from the stash{(want > 0 ? $"; the stash only has {bringing:N0} of {perStack * setting.Target:N0}" : "")})",
+					Text = $"Bring {bringing:N0} {typeName} for {names}  ({why}; taken from the stash{(want > 0 ? $"; the stash only has {bringing:N0} of {totalWant:N0}" : "")})",
+					Part = "spare",
+					Amount = bringing,
+					Asked = has ? asked : perStack * stacks,
+					What = typeName,
 					Template = chosen.TemplateId.ToString(),
 					Items = move.Count,
 					Run = async () =>
@@ -332,6 +437,14 @@ namespace GetReady
 						return null;
 					}
 				});
+
+				// What the stash could not give is a problem: what you asked for is not on you
+				if (want > 0)
+				{
+					int have = has ? onYouCount + coming + bringing : bringing;
+					int total = has ? asked : perStack * stacks;
+					made.Add(Steps.Problem(subject, $"{have:N0} of {total:N0} {typeName}: the stash has no more of it", chosen.TemplateId.ToString()).WithItem(first).InPart("spare"));
+				}
 			}
 
 			// Weapons that share a caliber each show the card (repeated, with the same numbers); the ammo is only brought once, with the first
@@ -409,6 +522,12 @@ namespace GetReady
 				}
 
 				int added = allocation.Sum(pair => pair.Value);
+				if (SettingsStore.Current.Ammo.LooseShortIsProblem && free > 0)
+				{
+					// Short, and the stash has no more of it (or not enough): the owner asked for that to be reported
+					rows.Add(Steps.Problem($"{Game.NameOf(target)} in {Game.NameOf(target.Parent.Container.ParentItem)}", $"{have + added}/{target.StackMaxSize}, the stash has no more of it", target.TemplateId.ToString()));
+				}
+
 				if (added == 0)
 				{
 					continue; // nothing of it in the stash: it can't be fuller
@@ -418,8 +537,14 @@ namespace GetReady
 				var picks = allocation;
 				rows.Add(new PlanLine
 				{
-					Text = $"{Game.NameOf(target)} in {Game.NameOf(target.Parent.Container.ParentItem)}: {have}/{target.StackMaxSize}  +{added} from the stash",
+					Text = $"{Game.NameOf(target)} in {Game.NameOf(target.Parent.Container.ParentItem)}: {have}/{target.StackMaxSize}  topped up with {added} from the stash",
 					Template = target.TemplateId.ToString(),
+					Label = Game.NameOf(target),
+					Place = Game.NameOf(target.Parent.Container.ParentItem),
+					PlaceTemplate = target.Parent.Container.ParentItem.TemplateId.ToString(),
+					Amount = added,
+					Have = have,
+					Want = target.StackMaxSize,
 					Topped = true,
 					Items = 0,
 					Run = async () =>
@@ -448,7 +573,7 @@ namespace GetReady
 				});
 			}
 
-			lines.Add(Steps.Progress("Loose ammo on you", full, mine.Count, "full", mine[0].TemplateId.ToString()));
+			lines.Add(Steps.Progress(LooseAmmo, full, mine.Count, "full", mine[0].TemplateId.ToString()));
 			lines.AddRange(rows);
 		}
 
@@ -463,11 +588,31 @@ namespace GetReady
 				var subject = noAmmo
 					? (list.Count == 1 ? "1 magazine: no ammo left for it" : $"{list.Count} magazines: no ammo left for them")
 					: (list.Count == 1 ? "1 empty magazine: which ammo?" : $"{list.Count} empty magazines: which ammo?");
-				var detail = noAmmo ? what : $"{what}. Load one of them yourself and the others follow.";
+				var detail = noAmmo ? what : $"{what}. They could take {group.Key}, and nothing tells which one: load one of them yourself and the others follow.";
 				var line = Steps.Problem(subject, detail, list[0].Template);
+				line.Part = "stuck";
+				line.Mags = list.Select(one => one.Info).ToList();
+				line.Options = noAmmo ? null : group.Key;
 				line.AlertIconOnly = true; // the alert box has no card above it, so it keeps the icon; the Ready page drops it
 				lines.Add(line);
 			}
+		}
+
+		// Why none of the empty magazines you carry can be filled for the weapon: nothing tells which of several kinds of ammo to put in, or
+		// there is no ammo left for it
+		internal static string NoMagazineFilled(AmmoRules.FillPlan failed)
+		{
+			if (failed != null && failed.Problem == "nothing to follow")
+			{
+				return $"no magazine in it, and nothing tells which ammo to put in your empty magazines ({failed.Options}): load one of them yourself and the others follow";
+			}
+
+			if (failed != null && failed.Problem == "no compatible ammo left")
+			{
+				return "no magazine in it, and there is no ammo left to fill an empty magazine for it";
+			}
+
+			return "no magazine in it, and none of yours can be put in and filled for it";
 		}
 
 		// A weapon with no magazine: one of your equipped magazines that fits it goes in, the fullest first (one holding ammo of another
@@ -484,7 +629,7 @@ namespace GetReady
 				.ToList();
 
 			Magazine chosen = null;
-			AmmoRules.FillPlan fill = null;
+			AmmoRules.FillPlan fill = null, failed = null;
 			foreach (var candidate in candidates)
 			{
 				if (candidate.Count > 0)
@@ -500,27 +645,39 @@ namespace GetReady
 					fill = trial;
 					break;
 				}
+
+				failed = failed ?? trial;
 			}
 
 			if (chosen == null)
 			{
+				bool fitsAny = spares.Any(magazine => !inserted.Contains(magazine) && slot.CheckCompatibility(magazine));
 				lines.Add(Alone(Steps.Problem(name, candidates.Count == 0
-					? "no magazine in it, and none of the magazines you carry fits it"
-					: "no magazine in it, and none of yours can be put in and filled for it", template).WithItem(weapon)));
+					? (fitsAny ? "no magazine in it, and the magazines you carry that fit it hold ammo of another caliber" : "no magazine in it, and none of the magazines you carry fits it")
+					: NoMagazineFilled(failed), template).WithItem(weapon).InPart("magazine")));
 				return;
 			}
 
 			inserted.Add(chosen);
-			lines.Add(Steps.Progress(name, 0, chosen.MaxCount, "rounds", template).WithItem(weapon));
+			lines.Add(Steps.Progress(name, 0, chosen.MaxCount, "rounds", template).WithItem(weapon).InPart("magazine"));
 			int before = lines.Count;
 			var made = AddFill(controller, stock, chosen, $"{Game.NameOf(chosen)} for {name}", lines, missing, stuck, weapon, fill, null);
 			bool filled = lines.Count > before;
 
 			var put = chosen;
+			var heldAmmo = chosen.Cartridges.Items.OfType<Ammo>().FirstOrDefault();
 			var address = slot.CreateItemAddress();
 			lines.Add(new PlanLine
 			{
-				Text = $"Put {Game.NameOf(chosen)} from your {Where(chosen)} into {name}  ({chosen.Count}/{chosen.MaxCount}{(filled ? ", after filling it" : "")})",
+				Text = $"Put {Game.NameOf(chosen)} from your {Where(chosen)} into {name}  ({(filled && made != null ? Math.Min(chosen.MaxCount, chosen.Count + made.Rounds) : chosen.Count)}/{chosen.MaxCount}{(filled ? ", after filling it" : "")})",
+				Place = Where(chosen),
+				PlaceTemplate = chosen.Parent.Container.ParentItem.TemplateId.ToString(),
+				Have = chosen.Count,
+				Want = chosen.MaxCount,
+				Part = "put",
+				Label = heldAmmo == null ? null : Game.NameOf(heldAmmo),
+				WhatTemplate = heldAmmo?.TemplateId.ToString(),
+				What = Game.NameOf(chosen),
 				Template = chosen.TemplateId.ToString(),
 				Items = 0,
 				Fill = !filled,
@@ -567,7 +724,7 @@ namespace GetReady
 			var round = AmmoRules.PickForChamber(controller, stock, weapon, chamber, magazine, type.Value);
 			if (round == null)
 			{
-				lines.Add(Steps.Problem(name, "empty chamber, and none of the ammo in its magazine is left to chamber", weapon.TemplateId.ToString()).WithItem(weapon));
+				lines.Add(Steps.Problem(name, "empty chamber, and none of the ammo in its magazine is left to chamber", weapon.TemplateId.ToString()).WithItem(weapon).InPart("chamber"));
 				return;
 			}
 
@@ -576,13 +733,30 @@ namespace GetReady
 			var where = stock.Stash.Contains(round) ? "the stash" : "your gear";
 			lines.Add(new PlanLine
 			{
-				Text = $"Chamber {round.LocalizedShortName()} in {name}  (same as its magazine, from {where})",
+				Text = $"Chamber {round.LocalizedShortName()} in {name}  (same as its magazine; taken from {where})",
+				Part = "chamber",
+				Why = "same as its magazine",
+				Place = stock.Stash.Contains(round) ? "Stash" : round.Parent?.Container?.ParentItem == null ? null : Game.NameOf(round.Parent.Container.ParentItem),
+				PlaceTemplate = stock.Stash.Contains(round) ? null : round.Parent?.Container?.ParentItem?.TemplateId.ToString(),
+				What = round.LocalizedShortName(),
 				Template = round.TemplateId.ToString(),
 				Chamber = true,
 				Items = 0,
 				Run = () => Game.PlaceAt(controller, piece, 1, address)
 			});
 		}
+
+		// The containers the rounds of a fill are taken from, with how many from each
+		private static List<PlaceCount> SourcesOf(AmmoRules.AmmoStock stock, AmmoRules.FillPlan plan) =>
+			plan.Allocation.Where(pair => pair.Key.Parent?.Container?.ParentItem != null)
+				.GroupBy(pair => pair.Key.Parent.Container.ParentItem.Id.ToString())
+				.Select(group =>
+				{
+					var place = group.First().Key.Parent.Container.ParentItem;
+					// The stash has no icon of its own to draw: no template, the window writes its name
+					bool stash = stock.Stash.Contains(group.First().Key);
+					return new PlaceCount { Template = stash ? null : place.TemplateId.ToString(), Name = stash ? "Stash" : Game.NameOf(place), Count = group.Sum(pair => pair.Value) };
+				}).ToList();
 
 		// A fill line for the magazine. takeOutOf: the weapon slot the magazine sits in (the game does not load it there: it is taken
 		// out to a free place of yours, filled and put back).
@@ -595,9 +769,20 @@ namespace GetReady
 
 			var plan = ready ?? AmmoRules.PlanFill(controller, stock, magazine, forWeapon);
 			var magazineTemplate = magazine.TemplateId.ToString();
+			var container = magazine.Parent?.Container is Grid ? magazine.Parent.Container.ParentItem : null;
 			if (plan.Problem != null)
 			{
-				stuck.Add(new Stuck { Label = $"{label} ({magazine.Count}/{magazine.MaxCount})", Template = magazineTemplate, Options = plan.Problem == "nothing to follow" ? plan.Options : null });
+				stuck.Add(new Stuck
+				{
+					Label = $"{label} ({magazine.Count}/{magazine.MaxCount})",
+					Template = magazineTemplate,
+					Options = plan.Problem == "nothing to follow" ? plan.Options : null,
+					Info = new MagInfo
+					{
+						Template = magazineTemplate, Name = container == null ? label : Game.NameOf(magazine), Place = container == null ? null : Game.NameOf(container),
+						PlaceTemplate = container?.TemplateId.ToString(), Have = magazine.Count, Want = magazine.MaxCount
+					}
+				});
 				return plan;
 			}
 
@@ -618,7 +803,18 @@ namespace GetReady
 			var weaponSlot = takeOutOf;
 			lines.Add(new PlanLine
 			{
-				Text = $"{label}: {magazine.Count}/{magazine.MaxCount}  +{plan.Rounds} {plan.TypeName}  ({plan.Reason}, from {plan.Sources}){(takeOutOf != null ? "  [taken out and put back]" : "")}",
+				Text = $"{label}: {magazine.Count}/{magazine.MaxCount}  +{plan.Rounds} {plan.TypeName}  ({plan.Reason}; taken from {plan.Sources}){(takeOutOf != null ? "  [taken out and put back]" : "")}",
+				Label = Game.NameOf(magazine),
+				Place = container == null ? null : Game.NameOf(container),
+				PlaceTemplate = container?.TemplateId.ToString(),
+				Have = magazine.Count,
+				Want = magazine.MaxCount,
+				ItemTemplate = magazineTemplate,
+				Part = "magazine",
+				Amount = plan.Rounds,
+				Why = plan.Reason,
+				From = SourcesOf(stock, plan),
+				What = plan.TypeName,
 				Template = plan.Allocation[0].Key.TemplateId.ToString(),
 				Fill = true,
 				Items = 0,

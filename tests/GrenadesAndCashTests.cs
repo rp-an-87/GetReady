@@ -206,7 +206,7 @@ namespace GetReady.Tests
 
 			var lines = _step.Plan(null, new List<Item>(), Items(M67).ToList(), () => null, place => false);
 
-			lines.Should().Contain(line => line.Problem && line.Detail != null && line.Detail.StartsWith("none of its places is on you"));
+			lines.Should().Contain(line => line.Problem && line.Detail != null && line.Detail.StartsWith("set to bring to"));
 			lines.Should().NotContain(line => line.Run != null);
 		}
 
@@ -274,7 +274,7 @@ namespace GetReady.Tests
 
 			var lines = PlanWithout("Wallet", Money(Euros, 1000));
 
-			lines.Should().Contain(line => line.Problem && line.Subject == "Euros" && line.Detail == "none of its places is on you (Wallet): carry one or pick another in Setup");
+			lines.Should().Contain(line => line.Problem && line.Subject == "Euros" && line.Detail == "set to bring to Wallet, which you are not carrying: carry one, or add another place under \"Bring to\" in Setup");
 			lines.Should().NotContain(line => line.Run != null);
 		}
 
@@ -444,6 +444,13 @@ namespace GetReady.Tests
 			stack.PinLockState = EItemPinLockState.Locked;
 
 			Plan(_step, new Item[0], new[] { stack }).Last().Text.Should().Contain("1 locked");
+		}
+
+		[Fact]
+		public void The_message_about_places_you_do_not_carry_talks_about_what_was_set_up()
+		{
+			SuppliesStep.NoPlaceOnYou(new[] { "Wallet" }).Should().Be("set to bring to Wallet, which you are not carrying: carry one, or add another place under \"Bring to\" in Setup");
+			SuppliesStep.NoPlaceOnYou(new[] { "Vest", "Backpack" }).Should().Be("set to bring to Vest, Backpack, none of which you are carrying: carry one, or add another place under \"Bring to\" in Setup");
 		}
 	}
 }

@@ -121,6 +121,14 @@ namespace GetReady
 	}
 
 	// The Ammo step (the rules for loading ammo are fixed and shared with the T key, see AmmoRules)
+	// A weapon model with its own number of spare ammo stacks
+	internal class ModelStacks
+	{
+		public string Template;
+		public string Name;
+		public int Stacks;
+	}
+
 	internal class AmmoSettings
 	{
 		public bool Enabled;
@@ -128,6 +136,8 @@ namespace GetReady
 		public bool Chamber = true;
 		// The loose stacks of ammo you carry are filled up (from the stash) to a full stack
 		public bool TopUpLoose = true;
+		// A loose stack that is short and cannot be filled (the stash has no more of it) is a problem, not just left as it is
+		public bool LooseShortIsProblem;
 		// Who decides, first match wins, for an empty spare magazine: loose ammo in the same container, the nearest magazine, an
 		// equipped weapon that takes it
 		public List<string> Pointers = new List<string> { "nearest", "others", "loose", "weapon" };
@@ -136,9 +146,11 @@ namespace GetReady
 		public string SparePick = "best";
 		// Weapon models that need no spare ammo (a sidearm that is never reloaded)
 		public List<ItemRef> SpareIgnored = new List<ItemRef>();
+		// Weapon models that ask for another number of stacks than the generic one (by model: two of the same ask once)
+		public List<ModelStacks> SpareStacks = new List<ModelStacks>();
 	}
 
-	// An armor piece left damaged on purpose: that very item (its id), with its name kept so it can be shown
+	// An armor piece excluded from repairs (left damaged on purpose): that very item (its id), with its name kept so it can be shown
 	internal class KeptItem
 	{
 		public string Id;

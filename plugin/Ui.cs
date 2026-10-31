@@ -18,7 +18,7 @@ namespace GetReady
 
 		internal static GUIStyle Window, Section, Group, Inner, Divider, Field, ValueOk, ValueWarn, ValueBad, ValueMuted, Title, SectionTitle, Name, Body, Muted, Move, Problem, ProblemBox,
 			Button, Small, Primary, Pick, PickOn, Tab, TabOn, OkCard, TodoCard, SwitchOn, SwitchOff, Centered,
-			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert, Tip, TipText, Help, Todo, ProblemTitle, TodoTitle, ProblemBoxTop, TodoBoxTop;
+			ChipOk, ChipTodo, ChipBad, ChipOff, AlertCard, AlertTitle, AlertText, AlertDetail, Alert, Tip, TipText, Help, Todo, ProblemTitle, TodoTitle, ProblemBoxTop, TodoBoxTop, Plain, PlainMuted, PlainName, Note, PlainWarn, Arrow;
 
 		internal static Font Font;
 		private static bool _ready;
@@ -182,6 +182,14 @@ namespace GetReady
 			Body = Label(14, Text);
 			Muted = Label(12, Dim);
 			Move = Label(14, Color.white);
+			Plain = new GUIStyle(Body) { wordWrap = false };
+			PlainMuted = new GUIStyle(Muted) { wordWrap = false };
+			PlainName = new GUIStyle(Name) { wordWrap = false };
+			Note = new GUIStyle(Body) { wordWrap = false };
+			Note.normal.textColor = Bad;
+			PlainWarn = new GUIStyle(Body) { wordWrap = false };
+			PlainWarn.normal.textColor = Warn;
+			Arrow = Label(14, Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
 			Problem = Label(14, Bad, FontStyle.Bold);
 			Todo = Label(14, Warn, FontStyle.Bold);
 			ProblemTitle = Label(16, Bad, FontStyle.Bold);

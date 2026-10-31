@@ -17,6 +17,14 @@ namespace GetReady
 		public IReadOnlyList<GroupDef> Groups => Defs;
 
 		// What a plan works on: the lists change as swaps and bring-ups are planned, so the later groups see the result
+		// What the owner set up does not work: the places it is set to bring to are not on you
+		internal static string NoPlaceOnYou(IEnumerable<string> places)
+		{
+			var list = places.ToList();
+			var what = list.Count == 1 ? $"set to bring to {list[0]}, which you are not carrying" : $"set to bring to {string.Join(", ", list)}, none of which you are carrying";
+			return what + ": carry one, or add another place under \"Bring to\" in Setup";
+		}
+
 		private class Context
 		{
 			public InventoryController Controller;
@@ -111,7 +119,7 @@ namespace GetReady
 			places = places.Where(context.PlaceExists).ToList();
 			if (places.Count == 0)
 			{
-				lines.Add(Steps.Problem(def.Name, $"none of its places is on you ({string.Join(", ", wanted_places)}): carry one or pick another in Setup", def.ActiveEntries().FirstOrDefault()?.Template));
+				lines.Add(Steps.Problem(def.Name, NoPlaceOnYou(wanted_places), def.ActiveEntries().FirstOrDefault()?.Template));
 				return;
 			}
 
@@ -300,7 +308,7 @@ namespace GetReady
 			var places = quota.PlacesToTry();
 			if (picked.Count > 0 && places.Count > 0 && !places.Any(context.PlaceExists))
 			{
-				lines.Add(Steps.Problem(quota.Name, $"none of its places is on you ({string.Join(", ", places)}): carry one or pick another in Setup"));
+				lines.Add(Steps.Problem(quota.Name, NoPlaceOnYou(places)));
 				return;
 			}
 

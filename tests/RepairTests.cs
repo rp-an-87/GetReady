@@ -654,7 +654,7 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Texts(lines).Should().Equal("Gear: 1/1 in shape", "M4A1: left damaged (on your no-repair list)");
+			Texts(lines).Should().Equal("Gear: 1/1 in shape", "M4A1: excluded from repairs (on your no-repair list)");
 			lines.Should().NotContain(line => line.Run != null);
 		}
 

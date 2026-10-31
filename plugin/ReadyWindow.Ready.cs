@@ -69,25 +69,31 @@ namespace GetReady
 		}
 
 		// What is wanted against what is there: icon, name, a bar and the numbers, in the colour of how the card stands
-		private static void ProgressRow(PlanLine line, Standing standing)
+		private static void ProgressRow(PlanLine line, Standing standing, string subject = null, string iconTemplate = null)
 		{
+			subject = subject ?? line.Subject;
 			var color = line.Skipped ? Ui.Dim : standing == Standing.Done ? Ui.Ok : standing == Standing.Doable ? Ui.Warn : Ui.Bad;
 			var valueStyle = standing == Standing.Done ? Ui.ValueOk : standing == Standing.Doable ? Ui.ValueWarn : Ui.ValueBad;
 			GUILayout.BeginHorizontal();
-			if (line.Item != null)
+			if (iconTemplate != null)
 			{
-				Icons.Slot(line.Item, line.Subject, 34);
+				Icons.Slot(iconTemplate, subject, 34);
+				GUILayout.Space(8);
+			}
+			else if (line.Item != null)
+			{
+				Icons.Slot(line.Item, subject, 34);
 				GUILayout.Space(8);
 			}
 			else if (!string.IsNullOrEmpty(line.Template))
 			{
-				Icons.Slot(line.Template, line.Subject, 34);
+				Icons.Slot(line.Template, subject, 34);
 				GUILayout.Space(8);
 			}
 
 			GUILayout.BeginVertical();
 			GUILayout.BeginHorizontal();
-			GUILayout.Label(line.Subject, line.Skipped ? Ui.Muted : Ui.Body);
+			GUILayout.Label(subject, line.Skipped ? Ui.Muted : Ui.Body);
 			if (line.Skipped)
 			{
 				GUILayout.Label($"{line.Note}  ({line.Have:N0}/{line.Want:N0} {line.Unit})", Ui.ValueMuted);
@@ -266,7 +272,14 @@ namespace GetReady
 				if (step.Enabled && lines != null && lines.Count > 0)
 				{
 					GUILayout.Box(GUIContent.none, Ui.Divider);
-					PlanLines(lines);
+					if (step is AmmoStep)
+					{
+						AmmoPanelLines(lines);
+					}
+					else
+					{
+						PlanLines(lines);
+					}
 				}
 
 				GUILayout.EndVertical();

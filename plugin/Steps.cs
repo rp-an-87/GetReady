@@ -60,11 +60,53 @@ namespace GetReady
 		// A line that is about something of its own, not a part of the card above it (a weapon with no magazine at all): it ends that card
 		public bool Standalone;
 
+		// For the window only (the ammo panels): which part of a weapon the line is about ("magazine", "put", "chamber", "spare"), how
+		// much it moves, of what, and the template whose icon shows it
+		public string Part;
+		public int Amount;
+		public string What;
+		public string WhatTemplate;
+		// Where the rounds of a fill come from: the container (its template and name) and how many rounds from it
+		public List<PlaceCount> From = new List<PlaceCount>();
+		// The magazines a "stuck" problem is about, and the ammo they could take (names)
+		public List<MagInfo> Mags = new List<MagInfo>();
+		public string Options;
+		public string Why; // what decided the ammo of a fill ("the only compatible ammo you carry")
+		public string Label; // what a fill or a top-up line is about, short ("STANAG 30 in Vest")
+		public string Place; // where the thing is (a vest, a backpack): shown as that gear's icon
+		public string PlaceTemplate;
+		public string ItemTemplate; // the magazine the line fills
+		public int Asked; // the spare ammo asked for
+		public PlanLine InPart(string part)
+		{
+			Part = part;
+			return this;
+		}
+
 		// A progress line: how much of what is wanted is there (drawn as a bar)
 		public bool IsProgress;
 		public float Have;
 		public float Want;
 		public string Unit;
+	}
+
+	// A magazine named in a problem: what it is, where it is (null: in a weapon) and how full
+	internal class MagInfo
+	{
+		public string Template;
+		public string Name;
+		public string Place;
+		public string PlaceTemplate;
+		public int Have;
+		public int Want;
+	}
+
+	// Rounds taken from one container (a vest, the stash)
+	internal class PlaceCount
+	{
+		public string Template;
+		public string Name;
+		public int Count;
 	}
 
 	// One item a template wants and the gear lacks: what it is, where it goes, and how to bring it (null when the stash has none)

@@ -64,68 +64,62 @@ namespace GetReady
 				}
 			}
 
-			if (controller != null && cases.Count == 0)
+			var onYouIds = new HashSet<string>(cases.Select(injectorCase => injectorCase.Id.ToString()));
+			var away = templates.Where(saved => !onYouIds.Contains(saved.CaseId)).ToList();
+			TwoSections("injector", "ON YOU", "No injector case on you (pockets, vest, backpack or pouch).", cases.Count > 0, () =>
 			{
-				GUILayout.Label("No injector case on you (pockets, vest, backpack or pouch).", Ui.Muted);
-			}
-
-			for (int i = 0; i < cases.Count; i++)
-			{
-				var injectorCase = cases[i];
-				var saved = InjectorCaseStep.TemplateOf(injectorCase.Id.ToString());
-				var tag = injectorCase.GetItemComponent<TagComponent>();
-				GUILayout.BeginVertical(Ui.Group);
-				GUILayout.BeginHorizontal();
-				string name = CaseLabel(injectorCase);
-				InjectorHeader(injectorCase.TemplateId.ToString(), Game.NameOf(injectorCase), tag?.Name, tag?.Color ?? 0,
-					$"{name}  -  {Injectors(injectorCase.Grids[0].Items.Count())}" + (saved != null ? "  -  saved" : ""), saved != null ? Ui.Name : Ui.Body);
-				if (CenteredButton(new GUIContent(saved != null ? "Update template" : "Save as template", "Remembers which injector is in each cell of this case, and which cells are empty: getting ready makes the case exactly like this. Other injector cases are left alone."), Ui.Button, 150))
+				for (int i = 0; i < cases.Count; i++)
 				{
-					_status = $"Saved {Injectors(InjectorCaseStep.Capture(injectorCase))} from {name}.";
-					RefreshSoon();
+					var injectorCase = cases[i];
+					var saved = InjectorCaseStep.TemplateOf(injectorCase.Id.ToString());
+					var tag = injectorCase.GetItemComponent<TagComponent>();
+					GUILayout.BeginVertical(Ui.Group);
+					GUILayout.BeginHorizontal();
+					string name = Game.NameOf(injectorCase);
+					InjectorHeader(injectorCase.TemplateId.ToString(), Game.NameOf(injectorCase), tag?.Name, tag?.Color ?? 0,
+						$"{name}  -  {Injectors(injectorCase.Grids[0].Items.Count())}" + (saved != null ? "  -  saved" : ""), Ui.Plain);
+					if (CenteredButton(new GUIContent(saved != null ? "Update template" : "Save as template", "Remembers which injector is in each cell of this case, and which cells are empty: getting ready makes the case exactly like this. Other injector cases are left alone."), Ui.Button, 150))
+					{
+						_status = $"Saved {Injectors(InjectorCaseStep.Capture(injectorCase))} from {name}.";
+						RefreshSoon();
+					}
+
+					GUILayout.EndHorizontal();
+					if (saved != null)
+					{
+						TemplatePanel(saved, "Saved empty: getting ready empties this case.", panelWidth);
+						if (RemoveTemplateButton())
+						{
+							InjectorCaseStep.Delete(saved.CaseId);
+							_status = $"Removed the template of {name}.";
+							RefreshSoon();
+						}
+					}
+
+					GUILayout.EndVertical();
 				}
-
-				GUILayout.EndHorizontal();
-				if (saved != null)
+			}, "SAVED, NOT ON YOU (ignored until you carry them)", "Templates of injector cases you are not carrying will appear here.", away.Count > 0, () =>
+			{
+				foreach (var saved in away)
 				{
-					TemplatePanel(saved, "Saved empty: getting ready empties this case.", panelWidth);
+					GUILayout.BeginVertical(Ui.Group);
+					GUILayout.BeginHorizontal();
+					InjectorHeader(string.IsNullOrEmpty(saved.CaseTemplate) ? Game.InjectorCase : saved.CaseTemplate, saved.CaseName, saved.Tag, saved.TagColor,
+						$"{saved.CaseName}  -  {Injectors(saved.Cells.Count)}", Ui.Plain);
+					GUILayout.EndHorizontal();
+					TemplatePanel(saved, "Saved empty.", panelWidth);
 					if (RemoveTemplateButton())
 					{
 						InjectorCaseStep.Delete(saved.CaseId);
-						_status = $"Removed the template of {name}.";
+						_status = $"Removed the template of {InjectorCaseStep.LabelOf(saved)}.";
 						RefreshSoon();
+						GUILayout.EndVertical();
+						break;
 					}
-				}
 
-				GUILayout.EndVertical();
-			}
-
-			var onYou = new HashSet<string>(cases.Select(injectorCase => injectorCase.Id.ToString()));
-			var away = templates.Where(saved => !onYou.Contains(saved.CaseId)).ToList();
-			if (away.Count > 0)
-			{
-				GUILayout.Label("Saved, not on you (ignored until you carry them)", Ui.Name);
-			}
-
-			foreach (var saved in away)
-			{
-				GUILayout.BeginVertical(Ui.Group);
-				GUILayout.BeginHorizontal();
-				InjectorHeader(string.IsNullOrEmpty(saved.CaseTemplate) ? Game.InjectorCase : saved.CaseTemplate, saved.CaseName, saved.Tag, saved.TagColor,
-					$"{saved.CaseName}  -  {Injectors(saved.Cells.Count)}", Ui.Muted);
-				GUILayout.EndHorizontal();
-				TemplatePanel(saved, "Saved empty.", panelWidth);
-				if (RemoveTemplateButton())
-				{
-					InjectorCaseStep.Delete(saved.CaseId);
-					_status = $"Removed the template of {InjectorCaseStep.LabelOf(saved)}.";
-					RefreshSoon();
 					GUILayout.EndVertical();
-					break;
 				}
-
-				GUILayout.EndVertical();
-			}
+			});
 
 			if (templates.Count == 0)
 			{

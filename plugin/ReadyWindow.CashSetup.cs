@@ -8,10 +8,6 @@ namespace GetReady
 	// always shown while something is on the list.
 	internal static partial class ReadyWindow
 	{
-		private static bool _showCashList;
-
-		private static readonly string[] Currencies = { "RUB", "EUR", "USD" };
-
 		private static string CaseLabel(Item item)
 		{
 			var where = item.Parent?.Container?.ParentItem;
@@ -31,7 +27,7 @@ namespace GetReady
 				if (here.TryGetValue(entry.CaseId, out item))
 				{
 					var tag = item.GetItemComponent<TagComponent>();
-					var name = CaseLabel(item);
+					var name = Game.NameOf(item);
 					if (entry.Tag != tag?.Name || entry.TagColor != (tag?.Color ?? 0) || entry.CaseName != name)
 					{
 						entry.Tag = tag?.Name;
@@ -59,92 +55,83 @@ namespace GetReady
 		{
 			var list = SettingsStore.Current.Supplies.CashExclusions;
 			bool changed = Refresh(list, controller);
-			if (list.Count == 0 && !_showCashList)
-			{
-				if (GUILayout.Button(new GUIContent("Choose what a case does with cash...", "Keep a currency out of a case (a SICC case of a map that needs no euros), or stop all cash while you carry a case"), Ui.Pick))
-				{
-					_showCashList = true;
-				}
-
-				return changed;
-			}
-
 			var cases = Game.CarriedAndSecured(controller.Inventory).OfType<CompoundItem>()
 				.Where(item => Game.CasePlaces.Values.Contains(item.TemplateId.ToString()))
 				.ToList();
 
 			GUILayout.BeginVertical(Ui.Group);
 			GUILayout.BeginHorizontal();
-			HelpTitle("RUB, EUR, USD: never put that money in this very case (it goes to the next place of its row). No cash: while you carry this very case, no cash at all is brought. Both are about the very case, not its type.", "Cases and cash", Ui.Name);
+			HelpTitle("RUB, EUR, USD on: this very case accepts that money; turn one off and that money goes to the next place of its row. No cash: while you carry this very case no cash at all is brought. Both are about the very case, not its type.", "Cases and cash", Ui.Name);
 			GUILayout.FlexibleSpace();
-			if (list.Count == 0 && GUILayout.Button("Hide", Ui.Pick, GUILayout.Width(60)))
-			{
-				_showCashList = false;
-			}
-
 			GUILayout.EndHorizontal();
-			if (cases.Count == 0)
-			{
-				GUILayout.Label("No wallet or case on you.", Ui.Muted);
-			}
 
-			// What is kept out comes first (cases on you with their switches, then saved ones that are not on you, one row each), then the
-			// other cases on you
+			// What is set up comes first among the cases on you; the saved ones that are not on you are in the second section, one row each
 			var configured = list.Select(entry => entry.CaseId).Distinct().ToList();
-			if (configured.Count > 0)
+			var onYou = cases.OrderBy(item => configured.Contains(item.Id.ToString()) ? 0 : 1).ToList();
+			var away = configured.Where(id => !cases.Any(candidate => candidate.Id.ToString() == id)).ToList();
+			bool pressed = false;
+			TwoSections("cash", "ON YOU", "No wallet or case on you.", onYou.Count > 0, () =>
 			{
-				GUILayout.Label("Kept out", Ui.Name);
-			}
-
-			foreach (var id in configured)
-			{
-				var item = cases.FirstOrDefault(candidate => candidate.Id.ToString() == id);
-				if (item != null)
+				foreach (var item in onYou)
 				{
-					changed |= CaseRow(item, list);
-					continue;
+					pressed |= CaseRow(item, list);
 				}
-
-				var saved = list.Where(entry => entry.CaseId == id).ToList();
-				GUILayout.BeginHorizontal();
-				Icons.Slot(saved[0].CaseTemplate, saved[0].CaseName, 40);
-				GUILayout.Space(8);
-				if (!string.IsNullOrEmpty(saved[0].Tag))
+			}, "NOT ON YOU (saved, ignored until you carry them)", "Cases you set up and are not carrying will appear here.", away.Count > 0, () =>
+			{
+				foreach (var id in away)
 				{
-					Centered(() => TagChip.Draw(saved[0].Tag, saved[0].TagColor));
+					var saved = list.First(entry => entry.CaseId == id);
+					GUILayout.BeginHorizontal();
+					Icons.Slot(saved.CaseTemplate, CashChoice.BareName(saved), 40);
 					GUILayout.Space(8);
+					if (!string.IsNullOrEmpty(saved.Tag))
+					{
+						Centered(() => TagChip.Draw(saved.Tag, saved.TagColor));
+						GUILayout.Space(8);
+					}
+
+					CenteredLabel(CashChoice.BareName(saved), Ui.Plain, false);
+					GUILayout.FlexibleSpace();
+					pressed |= CurrencyButtons(list, saved);
+					GUILayout.EndHorizontal();
 				}
+			});
 
-				CenteredLabel($"{saved[0].CaseName}  -  {(saved.Any(entry => entry.Currency == CashExclusion.All) ? "no cash" : string.Join(", ", saved.Select(entry => entry.Currency).ToArray()))}  -  saved, not on you", Ui.Muted, true);
-				if (CenteredButton(new GUIContent("Remove from the list"), Ui.Pick, 150))
-				{
-					list.RemoveAll(entry => entry.CaseId == id);
-					changed = true;
-				}
-
-				GUILayout.EndHorizontal();
-			}
-
-			var others = cases.Where(item => !configured.Contains(item.Id.ToString())).ToList();
-			if (others.Count > 0)
-			{
-				GUILayout.Space(6);
-				GUILayout.Label("On you", Ui.Name);
-			}
-
-			foreach (var item in others)
-			{
-				changed |= CaseRow(item, list);
-			}
-
+			changed |= pressed;
 			GUILayout.EndVertical();
 			return changed;
 		}
 
-		// A case or wallet on you with the three currency switches
-		private static bool CaseRow(Item item, System.Collections.Generic.List<CashExclusion> list)
+		// "No cash" and then RUB, EUR and USD of a case: a currency on means the case accepts that money
+		private static bool CurrencyButtons(System.Collections.Generic.List<CashExclusion> list, CashExclusion about)
 		{
 			bool changed = false;
+			bool noCash = CashChoice.NoCash(list, about.CaseId);
+			if (CenteredButton(new GUIContent("No cash", noCash ? "While you carry this case no cash at all is brought. Click to allow cash again." : "Click to stop all cash while you carry this case (it already has what it needs, or it is for something else)"), noCash ? Ui.PickOn : Ui.Pick, 84))
+			{
+				CashChoice.ToggleNoCash(list, about);
+				changed = true;
+			}
+
+			var enabled = GUI.enabled;
+			GUI.enabled = enabled && !noCash;
+			foreach (var currency in CashChoice.Currencies)
+			{
+				bool accepts = CashChoice.Accepts(list, about.CaseId, currency);
+				if (CenteredButton(new GUIContent(currency, accepts ? "Accepted: click to keep this money out of this case (it goes to the next place of its row)" : "Kept out: click to accept this money again"), accepts ? Ui.PickOn : Ui.Pick, 52))
+				{
+					CashChoice.Toggle(list, about, currency);
+					changed = true;
+				}
+			}
+
+			GUI.enabled = enabled;
+			return changed;
+		}
+
+		// A case or wallet on you with its three currency switches
+		private static bool CaseRow(Item item, System.Collections.Generic.List<CashExclusion> list)
+		{
 			var id = item.Id.ToString();
 			GUILayout.BeginHorizontal();
 			Icons.Slot(item, Game.NameOf(item), 40);
@@ -156,43 +143,10 @@ namespace GetReady
 				GUILayout.Space(8);
 			}
 
-			CenteredLabel(CaseLabel(item), Ui.Body, true);
-			bool noCash = list.Any(entry => entry.CaseId == id && entry.Currency == CashExclusion.All);
-			if (CenteredButton(new GUIContent("No cash", noCash ? "While you carry this case no cash at all is brought. Click to allow cash again." : "Click to stop all cash while you carry this case (it already has what it needs, or it is for something else)"), noCash ? Ui.PickOn : Ui.Pick, 84))
-			{
-				if (noCash)
-				{
-					list.RemoveAll(entry => entry.CaseId == id && entry.Currency == CashExclusion.All);
-				}
-				else
-				{
-					list.Add(new CashExclusion { CaseId = id, CaseTemplate = item.TemplateId.ToString(), CaseName = CaseLabel(item), Tag = tagComponent?.Name, TagColor = tagComponent?.Color ?? 0, Currency = CashExclusion.All });
-				}
-
-				changed = true;
-			}
-
-			var enabled = GUI.enabled;
-			GUI.enabled = enabled && !noCash;
-			foreach (var currency in Currencies)
-			{
-				bool kept = list.Any(entry => entry.CaseId == id && entry.Currency == currency);
-				if (CenteredButton(new GUIContent(currency, kept ? "Kept out: click to allow it again" : "Click to keep this money out of this case (it goes to the next place of its row)"), kept ? Ui.PickOn : Ui.Pick, 52))
-				{
-					if (kept)
-					{
-						list.RemoveAll(entry => entry.CaseId == id && entry.Currency == currency);
-					}
-					else
-					{
-						list.Add(new CashExclusion { CaseId = id, CaseTemplate = item.TemplateId.ToString(), CaseName = CaseLabel(item), Tag = tagComponent?.Name, TagColor = tagComponent?.Color ?? 0, Currency = currency });
-					}
-
-					changed = true;
-				}
-			}
-
-			GUI.enabled = enabled;
+			CenteredLabel(Game.NameOf(item), Ui.Plain, false);
+			GUILayout.FlexibleSpace();
+			var about = new CashExclusion { CaseId = id, CaseTemplate = item.TemplateId.ToString(), CaseName = Game.NameOf(item), Tag = tagComponent?.Name, TagColor = tagComponent?.Color ?? 0 };
+			bool changed = CurrencyButtons(list, about);
 			GUILayout.EndHorizontal();
 			return changed;
 		}

@@ -514,12 +514,12 @@ namespace GetReady.Tests
 		public void The_red_box_lists_every_problem_by_step_with_what_is_wrong()
 		{
 			Add("Ammo", Group(), Wrong("Glock 18C", "no magazine in it"));
-			Add("Cash", Wrong("Euros", "none of its places is on you (Wallet)"));
+			Add("Cash", Wrong("Euros", "set to bring to Wallet, which you are not carrying"));
 
 			var text = ReadyWindow.ProblemsTooltip();
 
 			text.Should().StartWith("Cannot be done as set up:");
-			text.Should().Contain("- Ammo: Glock 18C").And.Contain("no magazine in it").And.Contain("- Cash: Euros").And.Contain("none of its places is on you (Wallet)");
+			text.Should().Contain("- Ammo: Glock 18C").And.Contain("no magazine in it").And.Contain("- Cash: Euros").And.Contain("set to bring to Wallet, which you are not carrying");
 		}
 
 		[Fact]
@@ -565,6 +565,33 @@ namespace GetReady.Tests
 			var text = ReadyWindow.ToDoTooltip();
 
 			text.Should().Contain("do14").And.NotContain("do15").And.Contain("... and 6 more");
+		}
+
+		// ---- the standing of the loose ammo card
+
+		private static List<PlanLine> LooseCard(params PlanLine[] below)
+		{
+			var lines = new List<PlanLine> { Steps.Progress(AmmoStep.LooseAmmo, 1, 2, "full") };
+			lines.AddRange(below);
+			return lines;
+		}
+
+		[Fact]
+		public void A_loose_card_that_is_short_with_nothing_to_do_is_not_red()
+		{
+			ReadyWindow.LooseStanding(LooseCard(), 0).Should().Be(ReadyWindow.Standing.Done);
+		}
+
+		[Fact]
+		public void A_loose_card_with_something_to_top_up_is_amber()
+		{
+			ReadyWindow.LooseStanding(LooseCard(new PlanLine { Text = "top up", Run = () => null }), 0).Should().Be(ReadyWindow.Standing.Doable);
+		}
+
+		[Fact]
+		public void A_loose_card_with_a_problem_line_is_red()
+		{
+			ReadyWindow.LooseStanding(LooseCard(Steps.Problem("AP", "10/70, the stash has no more of it")), 0).Should().Be(ReadyWindow.Standing.Problem);
 		}
 	}
 }

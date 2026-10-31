@@ -4,12 +4,11 @@ using UnityEngine;
 
 namespace GetReady
 {
-	// The Setup card of the Repair step: what to repair, the traders, and the pieces left damaged on purpose, each in its own section.
+	// The Setup card of the Repair step: what to repair, the traders, and the pieces excluded from repairs, each in its own section.
 	internal static partial class ReadyWindow
 	{
 		// The "leave damaged" list is out of the way until it is asked for (it is something you rarely want); it always shows while
 		// at least one piece is on it
-		private static bool _showKeepList;
 
 		private static bool RepairSetup(InventoryController controller)
 		{
@@ -54,69 +53,58 @@ namespace GetReady
 
 			GUILayout.EndVertical();
 
-			// Pieces left damaged on purpose
+			// Pieces excluded from repairs
 			var gear = RepairStep.EquippedGear(controller.Inventory);
 			var kept = repair.KeepDamaged;
-			if (kept.Count == 0 && !_showKeepList)
-			{
-				if (GUILayout.Button(new GUIContent("Leave a piece damaged on purpose...", "For gear you want to hand in damaged, for a quest for instance"), Ui.Pick))
-				{
-					_showKeepList = true;
-				}
-
-				return changed;
-			}
-
 			GUILayout.BeginVertical(Ui.Group);
 			GUILayout.BeginHorizontal();
-			HelpTitle("This very piece, not its type: a new armor of the same type is repaired normally.", "Left damaged on purpose", Ui.Name);
+			HelpTitle("This very piece, not its type: a new armor of the same type is repaired normally.", "Exclude from repairs", Ui.Name);
 			GUILayout.FlexibleSpace();
-			if (kept.Count == 0 && GUILayout.Button("Hide", Ui.Pick, GUILayout.Width(60)))
-			{
-				_showKeepList = false;
-			}
-
 			GUILayout.EndHorizontal();
-			if (gear.Count == 0)
+			var aside = kept.Where(entry => !gear.Any(item => item.Id.ToString() == entry.Id)).ToList();
+			bool pressed = false;
+			TwoSections("repair", "EQUIPPED", "No armor or weapon equipped.", gear.Count > 0, () =>
 			{
-				GUILayout.Label("No armor or weapon equipped.", Ui.Muted);
-			}
-
-			foreach (var item in gear)
-			{
-				bool keep = RepairStep.IsKept(item);
-				GUILayout.BeginHorizontal();
-				Icons.Slot(item, Game.NameOf(item), 40);
-				GUILayout.Label(Game.NameOf(item) + (keep ? "  -  left damaged" : ""), keep ? Ui.Name : Ui.Body);
-				GUILayout.FlexibleSpace();
-				if (GUILayout.Button(keep ? "Repair it again" : "Leave it damaged", keep ? Ui.PickOn : Ui.Pick, GUILayout.Width(150)))
+				foreach (var item in gear)
 				{
-					RepairStep.ToggleKept(item);
-					changed = true;
-				}
-
-				GUILayout.EndHorizontal();
-			}
-
-			foreach (var entry in kept.Where(entry => !gear.Any(item => item.Id.ToString() == entry.Id)).ToList())
-			{
-				GUILayout.BeginHorizontal();
-				Icons.Slot(entry.Template, entry.Name, 40);
-				GUILayout.Label(entry.Name + "  -  saved, not on you", Ui.Muted);
-				GUILayout.FlexibleSpace();
-				if (GUILayout.Button("Remove from the list", Ui.Pick, GUILayout.Width(150)))
-				{
-					kept.Remove(entry);
-					changed = true;
-					// The last one gone: the section folds back into the small button
-					if (kept.Count == 0)
+					bool keep = RepairStep.IsKept(item);
+					GUILayout.BeginHorizontal();
+					Icons.Slot(item, Game.NameOf(item), 40);
+					GUILayout.Space(8);
+					Centered(() => GUILayout.Label(Game.NameOf(item), Ui.Plain, GUILayout.ExpandWidth(false)), 40);
+					if (keep)
 					{
-						_showKeepList = false;
+						Centered(() => GUILayout.Label("· excluded", Ui.Muted, GUILayout.ExpandWidth(false)), 40);
 					}
-				}
 
-				GUILayout.EndHorizontal();
-			}
+					GUILayout.FlexibleSpace();
+					if (CenteredButton(new GUIContent(keep ? "Include again" : "Exclude", keep ? "Repair this piece again" : "Leave this piece out of the repairs"), keep ? Ui.PickOn : Ui.Pick, 130, 40))
+					{
+						RepairStep.ToggleKept(item);
+						pressed = true;
+					}
+
+					GUILayout.EndHorizontal();
+				}
+			}, "NOT EQUIPPED (they stay excluded until you include them again)", "Excluded pieces you are not wearing will appear here.", aside.Count > 0, () =>
+			{
+				foreach (var entry in aside)
+				{
+					GUILayout.BeginHorizontal();
+					Icons.Slot(entry.Template, entry.Name, 40);
+					GUILayout.Space(8);
+					Centered(() => GUILayout.Label(entry.Name, Ui.Plain, GUILayout.ExpandWidth(false)), 40);
+					GUILayout.FlexibleSpace();
+					if (CenteredButton(new GUIContent("Include again", "Repairs it again when you wear it. It is not equipped, so it also leaves this list (only excluded pieces are kept here)"), Ui.PickOn, 130, 40))
+					{
+						kept.Remove(entry);
+						pressed = true;
+					}
+
+					GUILayout.EndHorizontal();
+				}
+			});
+			changed |= pressed;
 
 			GUILayout.EndVertical();
 			return changed;

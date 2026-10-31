@@ -150,7 +150,7 @@ namespace GetReady
 		//       the only compatible ammo you carry
 		//   a magazine in a weapon: 2. what a spare magazine for that weapon holds, 3. the round chambered, 4. the only compatible
 		//       ammo you carry
-		private static KeyValuePair<MongoID, string>? Follow(InventoryController controller, AmmoStock stock, List<Ammo> stacks, Magazine magazine)
+		private static KeyValuePair<MongoID, string>? Follow(InventoryController controller, AmmoStock stock, List<Ammo> stacks, Magazine magazine, Weapon forWeapon = null)
 		{
 			bool Available(Item item) => item is Ammo ammo && stacks.Any(stack => stack.TemplateId == ammo.TemplateId);
 			KeyValuePair<MongoID, string>? Found(Item ammo, string reason) => ammo == null ? (KeyValuePair<MongoID, string>?)null : new KeyValuePair<MongoID, string>(ammo.TemplateId, reason);
@@ -165,7 +165,8 @@ namespace GetReady
 			}
 
 			var view = AmmoView.Of(controller);
-			var weapons = view.Weapons();
+			// A magazine that is about to go into a weapon is for that weapon (no guessing which one it is for): only that weapon is asked
+			var weapons = forWeapon != null ? new List<Weapon> { forWeapon } : view.Weapons().ToList();
 
 			// The equipped weapons that take this magazine. With one, follow it if it has ammo. With more (a STANAG that fits both a .300
 			// and a 5.56 rifle) every one of them must have ammo and they must all hold the same: a weapon without ammo, or two that
@@ -361,7 +362,7 @@ namespace GetReady
 				return plan;
 			}
 
-			var follow = Follow(controller, stock, stacks, magazine);
+			var follow = Follow(controller, stock, stacks, magazine, forWeapon);
 			if (follow == null)
 			{
 				plan.Problem = "nothing to follow";

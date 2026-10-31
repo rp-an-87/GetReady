@@ -99,9 +99,9 @@ namespace GetReady
 				}
 				else if (IsKept(item))
 				{
-					// Left as it is on purpose: counts as fine
+					// Excluded from repairs: counts as fine
 					inShape++;
-					lines.Add(new PlanLine { Text = $"{name}: left damaged (on your no-repair list)", Subject = name, Detail = "left damaged (on your no-repair list)", Template = template });
+					lines.Add(new PlanLine { Text = $"{name}: excluded from repairs (on your no-repair list)", Subject = name, Detail = "excluded from repairs (on your no-repair list)", Template = template });
 				}
 				else if (decision.Kind == RepairWithKit.RepairKind.Problem)
 				{
