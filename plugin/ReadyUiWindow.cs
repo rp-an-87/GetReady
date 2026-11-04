@@ -13,7 +13,7 @@ namespace GetReady
 	// The Get ready window made from a copy of a game window (the "name a preset" window of the Builds tab), so it has the game's own
 	// caption bar, red cross, dragging, Esc and stacking, and its pages are built from Unity UI in the game's font. Experimental: opened
 	// by an F12 key, next to the IMGUI window (ReadyWindow), which stays the real one until this one is complete. The Ready page only.
-	internal static class ReadyUiWindow
+	internal static partial class ReadyUiWindow
 	{
 		private static EditBuildNameWindow _window;
 		private static RectTransform _content;
@@ -287,10 +287,16 @@ namespace GetReady
 				}
 			}
 
-			foreach (var step in Steps.DisplayOrder)
+			// What is switched off goes last, greyed out (the sort keeps the usual order inside each group)
+			foreach (var step in Steps.DisplayOrder.OrderBy(step => step.Enabled ? 0 : 1))
 			{
 				var lines = ReadyWindow.Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor);
+				if (!step.Enabled)
+				{
+					section.gameObject.AddComponent<CanvasGroup>().alpha = 0.45f;
+				}
+
 				var head = UiKit.HBox(section, 8f);
 				UiKit.Icon(head, Icons.StepSprite(step.Name), UiKit.Unit * 1.3f, step.Name);
 				UiKit.Label(head, step.Name, 1f, Ui.Heading, bold: true);
@@ -299,7 +305,14 @@ namespace GetReady
 				if (step.Enabled && lines != null && lines.Count > 0)
 				{
 					UiKit.Line(section);
-					PlanLines(section, lines);
+					if (step is AmmoStep)
+					{
+						AmmoPanelLines(section, lines);
+					}
+					else
+					{
+						PlanLines(section, lines);
+					}
 				}
 			}
 		}
@@ -346,18 +359,25 @@ namespace GetReady
 				if (line.IsProgress)
 				{
 					var standing = ReadyWindow.StandingFor(lines, index);
-					var outer = UiKit.HBox(parent, 0f, null, UiKit.CardColor, true);
-					var stripe = UiKit.Node("Stripe", outer);
-					stripe.gameObject.AddComponent<Image>().color = ColorOf(standing);
-					UiKit.Size(stripe, 4f);
-					card = UiKit.VBox(outer, 4f, new RectOffset(10, 10, 8, 8));
-					UiKit.Size(card, flexWidth: 1f);
+					card = Card(parent, standing);
 					ProgressRow(card, line, standing);
 					continue;
 				}
 
 				DetailLine(card ?? (RectTransform)parent, line, card != null);
 			}
+		}
+
+		// One card: a stripe in the colour of how it stands, and the box its content goes in
+		private static RectTransform Card(Transform parent, ReadyWindow.Standing standing)
+		{
+			var outer = UiKit.HBox(parent, 0f, null, UiKit.CardColor, true);
+			var stripe = UiKit.Node("Stripe", outer);
+			stripe.gameObject.AddComponent<Image>().color = ColorOf(standing);
+			UiKit.Size(stripe, 4f);
+			var card = UiKit.VBox(outer, 4f, new RectOffset(10, 10, 8, 8));
+			UiKit.Size(card, flexWidth: 1f);
+			return card;
 		}
 
 		// What is wanted against what is there: icon, name, the numbers and a bar, in the colour of how the card stands

@@ -166,10 +166,11 @@ namespace GetReady
 		}
 
 		// A small coloured tag
-		internal static void Chip(Transform parent, string text, Color background)
+		internal static RectTransform Chip(Transform parent, string text, Color background)
 		{
 			var box = HBox(parent, 0f, new RectOffset(10, 10, 3, 3), background);
 			Label(box, text, 0.7f, Color.white, align: TextAlignmentOptions.Center);
+			return box;
 		}
 
 		// A square frame with a picture in it (the frame stays empty while the picture is null)
@@ -200,11 +201,16 @@ namespace GetReady
 				return;
 			}
 
+			// A piece with no picture of its own gets an invisible one, so the mouse can hit it
 			var graphic = part.GetComponent<Graphic>();
-			if (graphic != null)
+			if (graphic == null)
 			{
-				graphic.raycastTarget = true;
+				var clear = part.gameObject.AddComponent<Image>();
+				clear.color = new Color(0f, 0f, 0f, 0f);
+				graphic = clear;
 			}
+
+			graphic.raycastTarget = true;
 
 			var hover = part.GetComponent<HoverTrigger>() ?? part.gameObject.AddComponent<HoverTrigger>();
 			hover.OnHoverStart += _ => ItemUiContext.Instance?.Tooltip?.Show(text, null, 0.25f, null);
@@ -255,6 +261,33 @@ namespace GetReady
 			return button;
 		}
 
+		private const float ScrollbarWidth = 12f;
+
+		// The bar on the right edge of a scroll view: a dark track and a grey handle the size of the visible part
+		private static Scrollbar ScrollBar(Transform parent)
+		{
+			var track = Node("Scrollbar", parent);
+			track.anchorMin = new Vector2(1f, 0f);
+			track.anchorMax = new Vector2(1f, 1f);
+			track.pivot = new Vector2(1f, 0.5f);
+			track.sizeDelta = new Vector2(ScrollbarWidth, 0f);
+			Fill(track, new Color(0.05f, 0.055f, 0.055f), true);
+			var area = Node("Sliding Area", track);
+			Stretch(area, 1f, 1f, 1f, 1f);
+			var handle = Node("Handle", area);
+			var image = Fill(handle, new Color(0.42f, 0.43f, 0.41f), true);
+			var bar = track.gameObject.AddComponent<Scrollbar>();
+			bar.handleRect = handle;
+			bar.targetGraphic = image;
+			bar.direction = Scrollbar.Direction.BottomToTop;
+			var colors = bar.colors;
+			colors.normalColor = Color.white;
+			colors.highlightedColor = new Color(1.25f, 1.25f, 1.25f, 1f);
+			colors.pressedColor = new Color(0.8f, 0.8f, 0.8f, 1f);
+			bar.colors = colors;
+			return bar;
+		}
+
 		// A scroll view of the given content: mouse wheel and dragging, clipped to its box. content is where the pieces go.
 		internal static ScrollRect Scroll(Transform parent, out RectTransform content)
 		{
@@ -267,7 +300,7 @@ namespace GetReady
 			scroll.scrollSensitivity = 40f;
 
 			var viewport = Node("Viewport", rect);
-			Stretch(viewport, 0f, 0f, 0f, 0f);
+			Stretch(viewport, 0f, 0f, ScrollbarWidth + 4f, 0f);
 			viewport.gameObject.AddComponent<RectMask2D>();
 			Fill(viewport, new Color(0f, 0f, 0f, 0f), true);
 
@@ -289,6 +322,9 @@ namespace GetReady
 
 			scroll.viewport = viewport;
 			scroll.content = content;
+			scroll.verticalScrollbar = ScrollBar(rect);
+			scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+			scroll.verticalScrollbarSpacing = 0f;
 			return scroll;
 		}
 	}
