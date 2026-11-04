@@ -176,16 +176,20 @@ namespace GetReady
 		// A square frame with a picture in it (the frame stays empty while the picture is null)
 		internal static void Icon(Transform parent, Sprite sprite, float size, string tip = null)
 		{
+			// A 1 px grey edge round a dark square, like the item squares of the game
 			var frame = Node("Icon", parent);
-			Fill(frame, InnerColor);
+			Fill(frame, new Color(0.22f, 0.23f, 0.22f));
 			Size(frame, size, size);
 			Tip(frame, tip);
+			var inside = Node("Fill", frame);
+			Stretch(inside, 1f, 1f, 1f, 1f);
+			Fill(inside, new Color(0.105f, 0.11f, 0.11f));
 			if (sprite == null)
 			{
 				return;
 			}
 
-			var picture = Node("Picture", frame);
+			var picture = Node("Picture", inside);
 			Stretch(picture, 2f, 2f, 2f, 2f);
 			var image = picture.gameObject.AddComponent<Image>();
 			image.sprite = sprite;
