@@ -286,7 +286,7 @@ namespace GetReady.Tests
 
 			var lines = PlanWithout("Pockets", Money(Euros, 1000));
 
-			ReadyWindow.StandingFor(lines, 0).ToString().Should().Be("Problem");
+			ReadyPlan.StandingFor(lines, 0).ToString().Should().Be("Problem");
 		}
 
 		[Fact]

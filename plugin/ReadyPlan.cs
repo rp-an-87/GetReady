@@ -7,20 +7,20 @@ using UnityEngine;
 namespace GetReady
 {
 	// The plan: what each step found, kept up to date while the stash is up, with the counts the button and the pages show.
-	internal static partial class ReadyWindow
+	internal static partial class ReadyPlan
 	{
 		internal static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
 
 		internal static string _status = "";
 
 		// The plan is read again shortly after the inventory changes (an item moved in the stash, say)
-		private static InventoryController _watched;
+		internal static InventoryController _watched;
 
-		private static bool _dirty;
+		internal static bool _dirty;
 
-		private static float _dirtyAt;
+		internal static float _dirtyAt;
 
-		private static void Watch(InventoryController controller)
+		internal static void Watch(InventoryController controller)
 		{
 			if (_watched == controller)
 			{
@@ -44,7 +44,7 @@ namespace GetReady
 		// What Get ready moves itself is not a change you made by hand, so it is not written into the records of the cases
 		private static void OnItemAdded(AddItemEventArgs args)
 		{
-			if (!_running)
+			if (!ReadyRun._running)
 			{
 				CasesStep.OnItemEvent(args.To);
 			}
@@ -54,7 +54,7 @@ namespace GetReady
 
 		private static void OnItemRemoved(RemoveItemEventArgs args)
 		{
-			if (!_running)
+			if (!ReadyRun._running)
 			{
 				CasesStep.OnItemEvent(args.From);
 			}
@@ -65,7 +65,7 @@ namespace GetReady
 		// Something outside the inventory changed what the plan shows (a tag on a case)
 		internal static void PlanChanged() => MarkDirty();
 
-		private static void MarkDirty()
+		internal static void MarkDirty()
 		{
 			_dirty = true;
 			_dirtyAt = Time.unscaledTime;
@@ -73,10 +73,7 @@ namespace GetReady
 
 		private static bool _loggedFirst;
 
-		// For the window made from a game window: read the plan now, and whether it has changed since
-		internal static void RefreshNow() => Refresh();
-
-		private static void Refresh()
+		internal static void Refresh()
 		{
 			Plan.Clear();
 			_dirty = false;
@@ -321,7 +318,7 @@ namespace GetReady
 		}
 
 		// Redraw with a fresh plan on the next frame (never in the middle of drawing)
-		private static void RefreshSoon()
+		internal static void RefreshSoon()
 		{
 			_dirty = true;
 			_dirtyAt = 0f;

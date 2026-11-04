@@ -1,6 +1,8 @@
 using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using static GetReady.ReadyPlan;
+using static GetReady.ReadyRun;
 
 namespace GetReady
 {

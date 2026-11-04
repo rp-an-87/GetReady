@@ -1,6 +1,8 @@
 using System.Linq;
 using EFT.InventoryLogic;
 using UnityEngine;
+using static GetReady.ReadyPlan;
+using static GetReady.ReadyRun;
 
 namespace GetReady
 {

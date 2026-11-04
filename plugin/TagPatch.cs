@@ -23,7 +23,7 @@ namespace GetReady
 			{
 				if (CasesStep.OnTagChanged(__instance.Item.Id.ToString(), __instance.Name, __instance.Color))
 				{
-					ReadyWindow.PlanChanged();
+					ReadyPlan.PlanChanged();
 				}
 			}
 			catch (Exception e)

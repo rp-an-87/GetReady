@@ -137,7 +137,7 @@ namespace GetReady.Tests
 			var lines = Plan();
 
 			lines.Single(line => line.Problem && line.Subject == "Glock 18C").Standalone.Should().BeTrue();
-			ReadyWindow.StandingFor(lines, 0).ToString().Should().Be("Doable");
+			ReadyPlan.StandingFor(lines, 0).ToString().Should().Be("Doable");
 		}
 
 		[Fact]
@@ -512,7 +512,7 @@ namespace GetReady.Tests
 			var lines = Plan();
 			var spareCards = Enumerable.Range(0, lines.Count).Where(index => lines[index].IsProgress && lines[index].Subject.StartsWith("Spare ammo")).ToList();
 
-			spareCards.Select(index => ReadyWindow.StandingFor(lines, index).ToString()).Should().Equal("Doable", "Doable");
+			spareCards.Select(index => ReadyPlan.StandingFor(lines, index).ToString()).Should().Equal("Doable", "Doable");
 		}
 
 		[Fact]

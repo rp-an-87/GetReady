@@ -1,4 +1,6 @@
 using UnityEngine;
+using static GetReady.ReadyPlan;
+using static GetReady.ReadyRun;
 
 namespace GetReady
 {

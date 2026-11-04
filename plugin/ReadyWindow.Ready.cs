@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using static GetReady.ReadyPlan;
+using static GetReady.ReadyRun;
 
 namespace GetReady
 {
@@ -46,32 +48,6 @@ namespace GetReady
 			{
 				GUILayout.Label("Ready", Ui.ChipOk);
 			}
-		}
-
-		// How a card stands: red when something is wrong, else green when it is complete, else amber when Get ready can make it complete
-		// Skipped: the step left this card out on purpose (cash while a no-cash case is carried), so it is neither good nor bad
-		internal enum Standing { Done, Doable, Problem, Skipped }
-
-		internal static Standing StandingOf(bool done, bool hasRun, bool hasProblem) =>
-			hasProblem ? Standing.Problem : done ? Standing.Done : hasRun ? Standing.Doable : Standing.Problem;
-
-		// The standing of the card the progress line at this index opens: what follows it up to the next progress line decides
-		internal static Standing StandingFor(List<PlanLine> lines, int progressIndex)
-		{
-			var progress = lines[progressIndex];
-			if (progress.Skipped)
-			{
-				return Standing.Skipped;
-			}
-
-			bool hasRun = false, hasProblem = false;
-			for (int i = progressIndex + 1; i < lines.Count && !lines[i].IsProgress && !lines[i].Standalone; i++)
-			{
-				hasRun |= lines[i].Run != null || lines[i].Covered;
-				hasProblem |= lines[i].Problem;
-			}
-
-			return StandingOf(progress.Have >= progress.Want, hasRun, hasProblem);
 		}
 
 		// What is wanted against what is there: icon, name, a bar and the numbers, in the colour of how the card stands

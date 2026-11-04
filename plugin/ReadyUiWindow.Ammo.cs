@@ -127,8 +127,8 @@ namespace GetReady
 		// One card: the caliber (its bullet and name), the weapons that take it and the spare ammo for it, each in an inner panel
 		private static void AmmoGroup(Transform parent, AmmoPanels.CaliberGroup group)
 		{
-			var card = Card(parent, ReadyWindow.StandingOfAll(group.All()));
-			var caliber = ReadyWindow.CaliberName(group.Caliber);
+			var card = Card(parent, ReadyPlan.StandingOfAll(group.All()));
+			var caliber = ReadyPlan.CaliberName(group.Caliber);
 			var bullet = AmmoPanels.AmmoTemplateOf(group);
 			if (caliber != "" || bullet != null)
 			{
@@ -332,7 +332,7 @@ namespace GetReady
 
 				if (line.IsProgress)
 				{
-					var standing = line.Subject == AmmoStep.LooseAmmo ? ReadyWindow.LooseStanding(lines, index) : ReadyWindow.StandingFor(lines, index);
+					var standing = line.Subject == AmmoStep.LooseAmmo ? ReadyPlan.LooseStanding(lines, index) : ReadyPlan.StandingFor(lines, index);
 					card = Card(parent, standing);
 					AmmoRestHeader(card, line, standing);
 					continue;
@@ -349,11 +349,11 @@ namespace GetReady
 
 		private static void HelpMark(Transform parent, string text) => UiKit.Tip(UiKit.Label(parent, "?", 0.8f, Ui.Dim, align: TextAlignmentOptions.Center), text);
 
-		private static void AmmoRestHeader(Transform parent, PlanLine line, ReadyWindow.Standing standing)
+		private static void AmmoRestHeader(Transform parent, PlanLine line, ReadyPlan.Standing standing)
 		{
 			// Short, nothing to do and nothing wrong (loose stacks the stash can't fill): the count is dim, not a warning
-			bool left = line.Subject == AmmoStep.LooseAmmo && standing == ReadyWindow.Standing.Done && line.Have < line.Want;
-			var color = left ? Ui.Dim : standing == ReadyWindow.Standing.Done ? Ui.Ok : standing == ReadyWindow.Standing.Doable ? Ui.Warn : Ui.Bad;
+			bool left = line.Subject == AmmoStep.LooseAmmo && standing == ReadyPlan.Standing.Done && line.Have < line.Want;
+			var color = left ? Ui.Dim : standing == ReadyPlan.Standing.Done ? Ui.Ok : standing == ReadyPlan.Standing.Doable ? Ui.Warn : Ui.Bad;
 			var row = UiKit.HBox(parent, 8f);
 			if (!string.IsNullOrEmpty(line.Template))
 			{

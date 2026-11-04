@@ -22,9 +22,9 @@ namespace GetReady.Tests
 		public ReadyWindowTests()
 		{
 			SupplyFixture.Reset();
-			ReadyWindow.Plan.Clear();
-			ReadyWindow.Failures.Clear();
-			ReadyWindow._moved = ReadyWindow._repaired = ReadyWindow._filled = ReadyWindow._chambered = ReadyWindow._topped = ReadyWindow._keys = ReadyWindow._healed = ReadyWindow._modes = 0;
+			ReadyPlan.Plan.Clear();
+			ReadyRun.Failures.Clear();
+			ReadyRun._moved = ReadyRun._repaired = ReadyRun._filled = ReadyRun._chambered = ReadyRun._topped = ReadyRun._keys = ReadyRun._healed = ReadyRun._modes = 0;
 		}
 
 		private static PlanLine Todo(string text = "do", int items = 1) => new PlanLine { Text = text, Items = items, Run = () => Task.FromResult<string>(null) };
@@ -33,11 +33,11 @@ namespace GetReady.Tests
 
 		private static PlanLine Group(string text = "Group") => new PlanLine { IsProgress = true, Text = text };
 
-		private static void Add(string name, params PlanLine[] lines) => ReadyWindow.Plan.Add(new KeyValuePair<IStep, List<PlanLine>>(new FakeStep { Name = name }, lines.ToList()));
+		private static void Add(string name, params PlanLine[] lines) => ReadyPlan.Plan.Add(new KeyValuePair<IStep, List<PlanLine>>(new FakeStep { Name = name }, lines.ToList()));
 
 		private static (int toBring, int problems) Tally()
 		{
-			ReadyWindow.Tally(out var toBring, out var problems);
+			ReadyPlan.Tally(out var toBring, out var problems);
 			return (toBring, problems);
 		}
 
@@ -130,7 +130,7 @@ namespace GetReady.Tests
 			Add("Repair", Group(), Wrong("M4A1", "needs repair"));
 			Add("Ammo", Wrong("Magazine", "empty"));
 
-			ReadyWindow.Problems().Select(pair => pair.Key + ": " + pair.Value.Subject).Should().Equal("Repair: M4A1", "Ammo: Magazine");
+			ReadyPlan.Problems().Select(pair => pair.Key + ": " + pair.Value.Subject).Should().Equal("Repair: M4A1", "Ammo: Magazine");
 		}
 
 		// ---- the tooltip
@@ -138,7 +138,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void With_nothing_switched_on_the_tooltip_says_so()
 		{
-			ReadyWindow.Summary().Should().Contain("Nothing is switched on");
+			ReadyPlan.Summary().Should().Contain("Nothing is switched on");
 		}
 
 		[Fact]
@@ -146,7 +146,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group());
 
-			ReadyWindow.Summary().Should().Contain("You are all set");
+			ReadyPlan.Summary().Should().Contain("You are all set");
 		}
 
 		[Fact]
@@ -154,7 +154,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group(), Todo());
 
-			ReadyWindow.Summary().Should().Contain("1 thing to fulfil").And.NotContain("1 things");
+			ReadyPlan.Summary().Should().Contain("1 thing to fulfil").And.NotContain("1 things");
 		}
 
 		[Fact]
@@ -162,7 +162,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group("A"), Todo(), Group("B"), Todo(), Group("C"), Todo());
 
-			ReadyWindow.Summary().Should().Contain("3 things to fulfil");
+			ReadyPlan.Summary().Should().Contain("3 things to fulfil");
 		}
 
 		[Fact]
@@ -170,7 +170,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group(), Wrong("Grenade", "none left"));
 
-			var text = ReadyWindow.Summary();
+			var text = ReadyPlan.Summary();
 
 			text.Should().Contain("Needs your attention").And.Contain("1 problem").And.Contain("Grenade").And.Contain("none left");
 		}
@@ -180,7 +180,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group(), Todo(), Wrong());
 
-			var text = ReadyWindow.Summary();
+			var text = ReadyPlan.Summary();
 
 			text.Should().Contain("Needs your attention").And.Contain("1 thing to fulfil").And.Contain("1 problem");
 			text.IndexOf("Needs your attention").Should().BeLessThan(text.IndexOf("1 thing to fulfil"));
@@ -191,7 +191,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group(), Todo());
 
-			ReadyWindow.Summary().Should().Contain("1 thing to fulfil").And.NotContain("Needs your attention");
+			ReadyPlan.Summary().Should().Contain("1 thing to fulfil").And.NotContain("Needs your attention");
 		}
 
 		[Fact]
@@ -199,7 +199,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Group(), Wrong("p1"), Wrong("p2"), Wrong("p3"), Wrong("p4"), Wrong("p5"), Wrong("p6"), Wrong("p7"));
 
-			var text = ReadyWindow.Summary();
+			var text = ReadyPlan.Summary();
 
 			text.Should().Contain("7 problems").And.Contain("p5").And.NotContain("p6").And.Contain("and 2 more");
 		}
@@ -209,7 +209,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Wrong(new string('x', 80), new string('y', 80)));
 
-			var text = ReadyWindow.Summary();
+			var text = ReadyPlan.Summary();
 
 			text.Should().NotContain(new string('x', 40)).And.NotContain(new string('y', 50)).And.Contain("…");
 		}
@@ -217,7 +217,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_tooltip_tells_what_the_clicks_do()
 		{
-			ReadyWindow.Summary().Should().Contain("[Left click]").And.Contain("get ready").And.Contain("[Right click]").And.Contain("configure");
+			ReadyPlan.Summary().Should().Contain("[Left click]").And.Contain("get ready").And.Contain("[Right click]").And.Contain("configure");
 		}
 
 		// ---- doing the plan
@@ -232,11 +232,11 @@ namespace GetReady.Tests
 			Add("One", Ran("a", 2), Ran("b", 3));
 			Add("Two", Ran("c", 1));
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
 			order.Should().Equal("a", "b", "c");
-			ReadyWindow._moved.Should().Be(6);
-			ReadyWindow.Failures.Should().BeEmpty();
+			ReadyRun._moved.Should().Be(6);
+			ReadyRun.Failures.Should().BeEmpty();
 		}
 
 		[Fact]
@@ -244,9 +244,9 @@ namespace GetReady.Tests
 		{
 			Add("One", Wrong(), Group());
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
-			ReadyWindow._moved.Should().Be(0);
+			ReadyRun._moved.Should().Be(0);
 		}
 
 		[Fact]
@@ -264,10 +264,10 @@ namespace GetReady.Tests
 				Kind(l => l.Fill = true), Kind(l => l.Chamber = true), Kind(l => l.Topped = true),
 				Kind(l => l.Heal = true), Kind(l => l.Mode = true), Kind(l => l.Mode = true), Kind(l => l.Mode = true));
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
-			(ReadyWindow._repaired, ReadyWindow._filled, ReadyWindow._chambered, ReadyWindow._topped, ReadyWindow._healed, ReadyWindow._modes).Should().Be((2, 1, 1, 1, 1, 3));
-			ReadyWindow._moved.Should().Be(0);
+			(ReadyRun._repaired, ReadyRun._filled, ReadyRun._chambered, ReadyRun._topped, ReadyRun._healed, ReadyRun._modes).Should().Be((2, 1, 1, 1, 1, 3));
+			ReadyRun._moved.Should().Be(0);
 		}
 
 		[Fact]
@@ -276,16 +276,16 @@ namespace GetReady.Tests
 			var later = false;
 			Add("Supplies", Failing("no room"), new PlanLine { Text = "later", Run = () => { later = true; return Task.FromResult<string>(null); } });
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
 			later.Should().BeTrue();
-			var failure = ReadyWindow.Failures.Single();
+			var failure = ReadyRun.Failures.Single();
 			failure.Key.Should().Be("Supplies");
 			failure.Value.Problem.Should().BeTrue();
 			failure.Value.Subject.Should().Be("fail");
 			failure.Value.Detail.Should().Be("Could not move it: no room");
 			failure.Value.Template.Should().Be("t");
-			ReadyWindow._moved.Should().Be(1);
+			ReadyRun._moved.Should().Be(1);
 		}
 
 		[Fact]
@@ -296,23 +296,23 @@ namespace GetReady.Tests
 			line.Items = 4;
 			Add("Repair", line);
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
-			ReadyWindow._moved.Should().Be(0);
-			ReadyWindow._repaired.Should().Be(0);
+			ReadyRun._moved.Should().Be(0);
+			ReadyRun._repaired.Should().Be(0);
 		}
 
 		[Fact]
 		public async Task Failures_of_an_earlier_run_are_forgotten()
 		{
 			Add("One", Failing("no"));
-			await ReadyWindow.RunPlan();
-			ReadyWindow.Plan.Clear();
+			await ReadyRun.RunPlan();
+			ReadyPlan.Plan.Clear();
 			Add("One", Todo());
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
-			ReadyWindow.Failures.Should().BeEmpty();
+			ReadyRun.Failures.Should().BeEmpty();
 		}
 
 		[Fact]
@@ -320,9 +320,9 @@ namespace GetReady.Tests
 		{
 			Add("One", Todo());
 
-			await ReadyWindow.RunPlan();
+			await ReadyRun.RunPlan();
 
-			ReadyWindow._keys.Should().Be(0);
+			ReadyRun._keys.Should().Be(0);
 		}
 
 		// ---- what is said afterwards
@@ -330,31 +330,31 @@ namespace GetReady.Tests
 		[Fact]
 		public void Nothing_done_says_you_already_have_everything()
 		{
-			ReadyWindow.Report().Should().Be("Ready for raid: you already have everything.");
+			ReadyRun.Report().Should().Be("Ready for raid: you already have everything.");
 		}
 
 		[Fact]
 		public void The_report_lists_what_was_done_in_a_fixed_order()
 		{
-			ReadyWindow._moved = 3;
-			ReadyWindow._repaired = 2;
-			ReadyWindow._filled = 1;
-			ReadyWindow._chambered = 4;
-			ReadyWindow._topped = 5;
-			ReadyWindow._keys = 6;
-			ReadyWindow._healed = 1;
-			ReadyWindow._modes = 2;
+			ReadyRun._moved = 3;
+			ReadyRun._repaired = 2;
+			ReadyRun._filled = 1;
+			ReadyRun._chambered = 4;
+			ReadyRun._topped = 5;
+			ReadyRun._keys = 6;
+			ReadyRun._healed = 1;
+			ReadyRun._modes = 2;
 
-			ReadyWindow.Report().Should().Be("Ready for raid: 3 item(s) brought, 2 piece(s) of gear repaired, 1 magazine(s) filled, 4 round(s) chambered, 5 ammo stack(s) topped up, 6 quick-slot key(s) set, healed, 2 weapon(s) on full auto.");
+			ReadyRun.Report().Should().Be("Ready for raid: 3 item(s) brought, 2 piece(s) of gear repaired, 1 magazine(s) filled, 4 round(s) chambered, 5 ammo stack(s) topped up, 6 quick-slot key(s) set, healed, 2 weapon(s) on full auto.");
 		}
 
 		[Fact]
 		public void Only_what_happened_is_in_the_report()
 		{
-			ReadyWindow._keys = 2;
-			ReadyWindow._healed = 1;
+			ReadyRun._keys = 2;
+			ReadyRun._healed = 1;
 
-			ReadyWindow.Report().Should().Be("Ready for raid: 2 quick-slot key(s) set, healed.");
+			ReadyRun.Report().Should().Be("Ready for raid: 2 quick-slot key(s) set, healed.");
 		}
 
 		// ---- the stash button
@@ -372,7 +372,7 @@ namespace GetReady.Tests
 
 		private static PlanLine Progress(float have, float want) => new PlanLine { IsProgress = true, Have = have, Want = want };
 
-		private static string Standing(params PlanLine[] lines) => ReadyWindow.StandingFor(lines.ToList(), 0).ToString();
+		private static string Standing(params PlanLine[] lines) => ReadyPlan.StandingFor(lines.ToList(), 0).ToString();
 
 		[Fact]
 		public void A_card_with_what_it_wants_is_done()
@@ -415,8 +415,8 @@ namespace GetReady.Tests
 		{
 			var lines = new List<PlanLine> { Progress(2, 2), Progress(0, 2), Wrong() };
 
-			ReadyWindow.StandingFor(lines, 0).ToString().Should().Be("Done");
-			ReadyWindow.StandingFor(lines, 1).ToString().Should().Be("Problem");
+			ReadyPlan.StandingFor(lines, 0).ToString().Should().Be("Done");
+			ReadyPlan.StandingFor(lines, 1).ToString().Should().Be("Problem");
 		}
 
 		[Fact]
@@ -426,7 +426,7 @@ namespace GetReady.Tests
 			skipped.Skipped = true;
 
 			Standing(skipped, new PlanLine { Text = "Would bring 75,000 RUB" }).Should().Be("Skipped");
-			ReadyWindow.StandingColor(ReadyWindow.Standing.Skipped).Should().Be(Ui.Dim);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Skipped).Should().Be(Ui.Dim);
 		}
 
 		[Fact]
@@ -499,7 +499,7 @@ namespace GetReady.Tests
 		{
 			var lines = new List<PlanLine> { Progress(0, 30), Todo(), Alone(Wrong("Glock", "no magazine")) };
 
-			ReadyWindow.StandingFor(lines, 0).ToString().Should().Be("Doable");
+			ReadyPlan.StandingFor(lines, 0).ToString().Should().Be("Doable");
 		}
 
 		[Fact]
@@ -529,9 +529,9 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_stripe_of_a_card_is_green_amber_or_red()
 		{
-			ReadyWindow.StandingColor(ReadyWindow.Standing.Done).Should().Be(Ui.Ok);
-			ReadyWindow.StandingColor(ReadyWindow.Standing.Doable).Should().Be(Ui.Warn);
-			ReadyWindow.StandingColor(ReadyWindow.Standing.Problem).Should().Be(Ui.Bad);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Done).Should().Be(Ui.Ok);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Doable).Should().Be(Ui.Warn);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Problem).Should().Be(Ui.Bad);
 		}
 
 		// ---- the badge of one step counts cards, like the summary
@@ -539,7 +539,7 @@ namespace GetReady.Tests
 		private static (int moves, int problems) Step(params PlanLine[] lines)
 		{
 			int moves = 0, problems = 0;
-			ReadyWindow.TallyLines(lines.ToList(), ref moves, ref problems);
+			ReadyPlan.TallyLines(lines.ToList(), ref moves, ref problems);
 			return (moves, problems);
 		}
 
@@ -583,7 +583,7 @@ namespace GetReady.Tests
 			Add("Ammo", Group(), Wrong("Glock 18C", "no magazine in it"));
 			Add("Cash", Wrong("Euros", "set to bring to Wallet, which you are not carrying"));
 
-			var text = ReadyWindow.ProblemsTooltip();
+			var text = ReadyPlan.ProblemsTooltip();
 
 			text.Should().StartWith("Cannot be done as set up:");
 			text.Should().Contain("- Ammo: Glock 18C").And.Contain("no magazine in it").And.Contain("- Cash: Euros").And.Contain("set to bring to Wallet, which you are not carrying");
@@ -595,7 +595,7 @@ namespace GetReady.Tests
 			var lines = Enumerable.Range(1, 20).Select(number => Wrong("thing" + number, "wrong")).ToArray();
 			Add("Supplies", lines);
 
-			var text = ReadyWindow.ProblemsTooltip();
+			var text = ReadyPlan.ProblemsTooltip();
 
 			text.Should().Contain("thing14").And.NotContain("thing15").And.Contain("... and 6 more");
 		}
@@ -606,7 +606,7 @@ namespace GetReady.Tests
 			Add("Medicine to bring", Group(), Todo("Bring 1x AFAK"), Todo("Bring 1x Army bandage"));
 			Add("Cash", Group(), Todo("Bring 100,000 RUB to Pockets"));
 
-			var text = ReadyWindow.ToDoTooltip();
+			var text = ReadyPlan.ToDoTooltip();
 
 			text.Should().StartWith("Get ready will:");
 			text.Should().Contain("Medicine to bring").And.Contain("+ Bring 1x AFAK").And.Contain("+ Bring 1x Army bandage").And.Contain("Cash").And.Contain("+ Bring 100,000 RUB to Pockets");
@@ -619,7 +619,7 @@ namespace GetReady.Tests
 			Add("Repair", Group(), Wrong("6B13", "needs repair"));
 			Add("Cash", Group(), Todo("Bring 1 RUB"), new PlanLine { Text = "just so you know" });
 
-			var text = ReadyWindow.ToDoTooltip();
+			var text = ReadyPlan.ToDoTooltip();
 
 			text.Should().NotContain("Repair").And.NotContain("just so you know").And.Contain("+ Bring 1 RUB");
 		}
@@ -629,7 +629,7 @@ namespace GetReady.Tests
 		{
 			Add("Supplies", Enumerable.Range(1, 20).Select(number => Todo("do" + number)).ToArray());
 
-			var text = ReadyWindow.ToDoTooltip();
+			var text = ReadyPlan.ToDoTooltip();
 
 			text.Should().Contain("do14").And.NotContain("do15").And.Contain("... and 6 more");
 		}
@@ -646,19 +646,19 @@ namespace GetReady.Tests
 		[Fact]
 		public void A_loose_card_that_is_short_with_nothing_to_do_is_not_red()
 		{
-			ReadyWindow.LooseStanding(LooseCard(), 0).Should().Be(ReadyWindow.Standing.Done);
+			ReadyPlan.LooseStanding(LooseCard(), 0).Should().Be(ReadyPlan.Standing.Done);
 		}
 
 		[Fact]
 		public void A_loose_card_with_something_to_top_up_is_amber()
 		{
-			ReadyWindow.LooseStanding(LooseCard(new PlanLine { Text = "top up", Run = () => null }), 0).Should().Be(ReadyWindow.Standing.Doable);
+			ReadyPlan.LooseStanding(LooseCard(new PlanLine { Text = "top up", Run = () => null }), 0).Should().Be(ReadyPlan.Standing.Doable);
 		}
 
 		[Fact]
 		public void A_loose_card_with_a_problem_line_is_red()
 		{
-			ReadyWindow.LooseStanding(LooseCard(Steps.Problem("AP", "10/70, the stash has no more of it")), 0).Should().Be(ReadyWindow.Standing.Problem);
+			ReadyPlan.LooseStanding(LooseCard(Steps.Problem("AP", "10/70, the stash has no more of it")), 0).Should().Be(ReadyPlan.Standing.Problem);
 		}
 	}
 }

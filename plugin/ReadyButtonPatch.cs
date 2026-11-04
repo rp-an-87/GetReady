@@ -82,7 +82,7 @@ namespace GetReady
 				};
 
 				var hover = clone.GetComponent<HoverTrigger>() ?? clone.AddComponent<HoverTrigger>();
-				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show(ReadyWindow.Summary(), null, 0.25f, null);
+				hover.OnHoverStart += _ => ItemUiContext.Instance.Tooltip.Show(ReadyPlan.Summary(), null, 0.25f, null);
 				hover.OnHoverEnd += _ => ItemUiContext.Instance.Tooltip.Close();
 			}
 			catch (Exception e)

@@ -69,7 +69,7 @@ namespace GetReady
 				_window = window;
 				_signature = "";
 				_pendingRounds = 0;
-				ReadyWindow.RefreshNow();
+				ReadyPlan.Refresh();
 				Rebuild();
 				Plugin.Log.LogInfo("Get ready window: opened");
 			}
@@ -131,7 +131,7 @@ namespace GetReady
 		private static string Signature()
 		{
 			var text = new StringBuilder();
-			foreach (var pair in ReadyWindow.Plan)
+			foreach (var pair in ReadyPlan.Plan)
 			{
 				text.Append(pair.Key.Name).Append(pair.Key.Enabled).Append('|');
 				foreach (var line in pair.Value)
@@ -140,7 +140,7 @@ namespace GetReady
 				}
 			}
 
-			return text.Append(ReadyWindow._status).ToString();
+			return text.Append(ReadyPlan._status).ToString();
 		}
 
 		// The window: the game's caption, then our own body in place of the name field and the Save button
@@ -250,7 +250,7 @@ namespace GetReady
 			ReadyPage(_content);
 			if (_status != null)
 			{
-				_status.text = ReadyWindow._status ?? "";
+				_status.text = ReadyPlan._status ?? "";
 			}
 
 			LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
@@ -281,14 +281,14 @@ namespace GetReady
 			return sprite;
 		}
 
-		private static Color ColorOf(ReadyWindow.Standing standing) => ReadyWindow.StandingColor(standing);
+		private static Color ColorOf(ReadyPlan.Standing standing) => ReadyWindow.StandingColor(standing);
 
 		// The Ready page: one line of status on top, then what each step found
 		private static void ReadyPage(RectTransform content)
 		{
 			int moves, problemGroups;
-			ReadyWindow.Tally(out moves, out problemGroups);
-			if (ReadyWindow.Plan.Count == 0)
+			ReadyPlan.Tally(out moves, out problemGroups);
+			if (ReadyPlan.Plan.Count == 0)
 			{
 				var box = UiKit.VBox(content, 4f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor);
 				UiKit.Label(box, "Nothing is switched on. Turn something on in Setup.", 0.9f, Ui.Text);
@@ -309,7 +309,7 @@ namespace GetReady
 					var box = UiKit.VBox(row, 0f, new RectOffset(14, 14, 10, 10), UiKit.ProblemColor);
 					UiKit.Size(box, flexWidth: 1f);
 					UiKit.Label(box, problemGroups == 1 ? "1 thing can't be done as set up" : $"{problemGroups} things can't be done as set up", 1f, Ui.Bad);
-					UiKit.Tip(box, ReadyWindow.ProblemsTooltip());
+					UiKit.Tip(box, ReadyPlan.ProblemsTooltip());
 				}
 
 				if (moves > 0)
@@ -317,14 +317,14 @@ namespace GetReady
 					var box = UiKit.VBox(row, 0f, new RectOffset(14, 14, 10, 10), UiKit.TodoColor);
 					UiKit.Size(box, flexWidth: 1f);
 					UiKit.Label(box, moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil", 1f, Ui.Warn);
-					UiKit.Tip(box, ReadyWindow.ToDoTooltip());
+					UiKit.Tip(box, ReadyPlan.ToDoTooltip());
 				}
 			}
 
 			// What is switched off goes last, greyed out (the sort keeps the usual order inside each group)
 			foreach (var step in Steps.DisplayOrder.OrderBy(step => step.Enabled ? 0 : 1))
 			{
-				var lines = ReadyWindow.Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
+				var lines = ReadyPlan.Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 				if (!step.Enabled)
 				{
@@ -361,7 +361,7 @@ namespace GetReady
 			}
 
 			int moves = 0, problems = 0;
-			ReadyWindow.TallyLines(lines, ref moves, ref problems);
+			ReadyPlan.TallyLines(lines, ref moves, ref problems);
 			if (problems > 0)
 			{
 				UiKit.Chip(parent, problems == 1 ? "1 problem" : $"{problems} problems", new Color(0.6f, 0.2f, 0.18f));
@@ -392,7 +392,7 @@ namespace GetReady
 
 				if (line.IsProgress)
 				{
-					var standing = ReadyWindow.StandingFor(lines, index);
+					var standing = ReadyPlan.StandingFor(lines, index);
 					card = Card(parent, standing);
 					ProgressRow(card, line, standing);
 					continue;
@@ -403,7 +403,7 @@ namespace GetReady
 		}
 
 		// One card: a stripe in the colour of how it stands, and the box its content goes in
-		private static RectTransform Card(Transform parent, ReadyWindow.Standing standing)
+		private static RectTransform Card(Transform parent, ReadyPlan.Standing standing)
 		{
 			var outer = UiKit.HBox(parent, 0f, null, UiKit.CardColor, true, UiKit.CardEdge);
 			var stripe = UiKit.Node("Stripe", outer);
@@ -415,7 +415,7 @@ namespace GetReady
 		}
 
 		// What is wanted against what is there: icon, name, the numbers and a bar, in the colour of how the card stands
-		private static void ProgressRow(Transform parent, PlanLine line, ReadyWindow.Standing standing)
+		private static void ProgressRow(Transform parent, PlanLine line, ReadyPlan.Standing standing)
 		{
 			var color = line.Skipped ? Ui.Dim : ColorOf(standing);
 			var row = UiKit.HBox(parent, 8f);

@@ -247,25 +247,25 @@ namespace GetReady.Tests
 		[Fact]
 		public void A_card_with_full_bars_and_nothing_to_do_is_done()
 		{
-			ReadyWindow.StandingOfAll(new List<PlanLine> { Bar(30, 30) }).Should().Be(ReadyWindow.Standing.Done);
+			ReadyPlan.StandingOfAll(new List<PlanLine> { Bar(30, 30) }).Should().Be(ReadyPlan.Standing.Done);
 		}
 
 		[Fact]
 		public void A_card_that_get_ready_can_fill_is_doable()
 		{
-			ReadyWindow.StandingOfAll(new List<PlanLine> { Bar(10, 30), Doing() }).Should().Be(ReadyWindow.Standing.Doable);
+			ReadyPlan.StandingOfAll(new List<PlanLine> { Bar(10, 30), Doing() }).Should().Be(ReadyPlan.Standing.Doable);
 		}
 
 		[Fact]
 		public void A_problem_beats_what_can_be_done()
 		{
-			ReadyWindow.StandingOfAll(new List<PlanLine> { Bar(10, 30), Doing(), Steps.Problem("x", "wrong") }).Should().Be(ReadyWindow.Standing.Problem);
+			ReadyPlan.StandingOfAll(new List<PlanLine> { Bar(10, 30), Doing(), Steps.Problem("x", "wrong") }).Should().Be(ReadyPlan.Standing.Problem);
 		}
 
 		[Fact]
 		public void A_card_that_is_not_full_and_has_nothing_to_do_is_a_problem()
 		{
-			ReadyWindow.StandingOfAll(new List<PlanLine> { Bar(10, 30) }).Should().Be(ReadyWindow.Standing.Problem);
+			ReadyPlan.StandingOfAll(new List<PlanLine> { Bar(10, 30) }).Should().Be(ReadyPlan.Standing.Problem);
 		}
 
 		[Fact]
@@ -273,9 +273,9 @@ namespace GetReady.Tests
 		{
 			Game.Localize = key => key == "Caliber556x45NATO" ? "5.56x45mm NATO" : key;
 
-			ReadyWindow.CaliberName("Caliber556x45NATO").Should().Be("5.56x45mm NATO");
-			ReadyWindow.CaliberName("Caliber9x19PARA").Should().Be("9x19");
-			ReadyWindow.CaliberName("").Should().BeEmpty();
+			ReadyPlan.CaliberName("Caliber556x45NATO").Should().Be("5.56x45mm NATO");
+			ReadyPlan.CaliberName("Caliber9x19PARA").Should().Be("9x19");
+			ReadyPlan.CaliberName("").Should().BeEmpty();
 		}
 
 		// ---- what the rows are made of

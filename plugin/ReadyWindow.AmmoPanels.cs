@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using static GetReady.ReadyPlan;
+using static GetReady.ReadyRun;
 
 namespace GetReady
 {
@@ -10,24 +12,6 @@ namespace GetReady
 	// the step (the extra magazines, the loose stacks, what is wrong with them) follows as cards of the same kind.
 	internal static partial class ReadyWindow
 	{
-		// How a set of lines stands: red when something is wrong, else green when every bar is full, else amber when Get ready can fill it
-		internal static Standing StandingOfAll(List<PlanLine> lines)
-		{
-			var bars = lines.Where(line => line.IsProgress).ToList();
-			return StandingOf(bars.Count > 0 && bars.All(line => line.Have >= line.Want), lines.Any(line => line.Run != null || line.Covered), lines.Any(line => line.Problem));
-		}
-
-		internal static string CaliberName(string caliber)
-		{
-			if (string.IsNullOrEmpty(caliber))
-			{
-				return "";
-			}
-
-			var name = Game.Localize(caliber);
-			return string.IsNullOrEmpty(name) || name == caliber ? AmmoPanels.CaliberLabel(caliber) : name;
-		}
-
 		private const float LabelWidth = 84;
 
 		private static void AmmoPanelLines(List<PlanLine> lines)
@@ -350,27 +334,6 @@ namespace GetReady
 					CellText($"asks for {asked:N0}", Ui.Muted);
 				}
 			}, bring?.Text ?? problem?.Text ?? "Loose ammo of this caliber on you counts toward what is asked, and so does what the top-up of the loose stacks adds.");
-		}
-
-		// The standing of the loose ammo card: it is only red when a line says something is wrong. A stack that can't be filled is
-		// left as it is (green), unless the owner switched on that it is a problem (then it has a problem line).
-		internal static Standing LooseStanding(List<PlanLine> lines, int progressIndex)
-		{
-			var standing = StandingFor(lines, progressIndex);
-			if (standing != Standing.Problem)
-			{
-				return standing;
-			}
-
-			for (int i = progressIndex + 1; i < lines.Count && !lines[i].IsProgress && !lines[i].Standalone; i++)
-			{
-				if (lines[i].Problem)
-				{
-					return Standing.Problem;
-				}
-			}
-
-			return Standing.Done;
 		}
 
 		// The cards after the weapons: each progress line opens a card with a header (icon, title, "?", how many), its lines in an inner panel
