@@ -86,8 +86,8 @@ namespace GetReady
 			}
 		}
 
-		// The pockets, as a pair of slim trousers: a soft grey silhouette, lighter at the waist and darker toward the hems, with the waistband,
-		// the fly and the two pocket slits in a darker grey, so it is shaded like the game's pictures (which the chip then tints the same)
+		// The pockets, as a pair of slim trousers drawn flat, like the game's pictures: one grey, the waistband, the fly and the pocket slits in
+		// a darker grey, and under it a soft dark copy moved a little down and to the right (the shadow the game's pictures have)
 		private static Sprite DrawPockets()
 		{
 			const int size = 48;
@@ -98,29 +98,32 @@ namespace GetReady
 				new Vector2(9f, 40f), new Vector2(39f, 40f), new Vector2(38f, 8f), new Vector2(27f, 8f),
 				new Vector2(24f, 24f), new Vector2(21f, 8f), new Vector2(10f, 8f)
 			};
+			var shadowMove = new Vector2(1.6f, -1.6f);
 			for (int x = 0; x < size; x++)
 			{
 				for (int y = 0; y < size; y++)
 				{
-					// Covered part of the pixel, and how much of that is detail, by looking at nine points in it
-					int covered = 0, detail = 0;
-						float shade = 0f;
+					// Covered part of the pixel by the trousers and by their shadow, and how much of the trousers is detail, by looking at nine points
+					int covered = 0, detail = 0, shadowed = 0;
 					for (int sx = 0; sx < 3; sx++)
 					{
 						for (int sy = 0; sy < 3; sy++)
 						{
 							// Looked up at a larger drawing, so the whole glyph is smaller in the square
-							var point = (new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f) - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
+							var spot = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+							var point = (spot - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
+							var under = (spot - shadowMove - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
+							if (Inside(outline, under))
+							{
+								shadowed++;
+							}
+
 							if (!Inside(outline, point))
 							{
 								continue;
 							}
 
 							covered++;
-							// The light comes from the top left, as with the game's pictures
-							float legMiddle = point.x < 24f ? 15.5f : 32.5f;
-														// Lit from the top left: the left of each leg and the upper part lighter, the right and the lower part a little darker
-								shade += 1f - 0.2f * Mathf.Clamp((point.x - legMiddle) / 6.5f, -1f, 1f) - 0.12f * Mathf.Clamp((24f - point.y) / 16f, -1f, 1f);
 							bool belt = Mathf.Abs(point.y - 36.5f) < 1.3f;
 							bool fly = Mathf.Abs(point.x - 24f) < 0.8f && point.y < 36.5f && point.y > 26f;
 							bool slitLeft = Near(point, new Vector2(12f, 35f), new Vector2(17f, 28f), 1.1f);
@@ -132,16 +135,18 @@ namespace GetReady
 						}
 					}
 
-					if (covered == 0)
+					// The trousers over the shadow
+					float top = covered / 9f, under2 = shadowed / 9f * 0.5f;
+					float alpha = top + under2 * (1f - top);
+					if (alpha <= 0f)
 					{
 						texture.SetPixel(x, y, new Color(1f, 1f, 1f, 0f));
 						continue;
 					}
 
-					// Lighter at the top, darker down the legs; the details darker still
-					float body = Mathf.Lerp(0.7f, 0.95f, Mathf.Clamp01((y - 8f) / 32f));
-					float grey = Mathf.Lerp(body * shade / covered, 0.2f, detail / (float)covered);
-					texture.SetPixel(x, y, new Color(grey, grey, grey, covered / 9f));
+					float grey = covered == 0 ? 0f : Mathf.Lerp(0.86f, 0.25f, detail / (float)covered);
+					float value = grey * top / alpha;
+					texture.SetPixel(x, y, new Color(value, value, value, alpha));
 				}
 			}
 
