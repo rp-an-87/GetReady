@@ -104,17 +104,23 @@ namespace GetReady
 				{
 					// Covered part of the pixel, and how much of that is detail, by looking at nine points in it
 					int covered = 0, detail = 0;
+						float shade = 0f;
 					for (int sx = 0; sx < 3; sx++)
 					{
 						for (int sy = 0; sy < 3; sy++)
 						{
-							var point = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
+							// Looked up at a larger drawing, so the whole glyph is smaller in the square
+							var point = (new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f) - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
 							if (!Inside(outline, point))
 							{
 								continue;
 							}
 
 							covered++;
+							// Each leg is rounded: lighter down its middle, darker at its sides, and a darker hem
+							float legMiddle = point.x < 24f ? 15.5f : 32.5f;
+							float side = Mathf.Clamp01(Mathf.Abs(point.x - legMiddle) / 6.5f);
+							shade += 1f - 0.38f * side * side - (point.y < 11f ? 0.15f : 0f);
 							bool belt = Mathf.Abs(point.y - 36.5f) < 1.3f;
 							bool fly = Mathf.Abs(point.x - 24f) < 0.8f && point.y < 36.5f && point.y > 26f;
 							bool slitLeft = Near(point, new Vector2(12f, 35f), new Vector2(17f, 28f), 1.1f);
@@ -134,7 +140,7 @@ namespace GetReady
 
 					// Lighter at the top, darker down the legs; the details darker still
 					float body = Mathf.Lerp(0.7f, 0.95f, Mathf.Clamp01((y - 8f) / 32f));
-					float grey = Mathf.Lerp(body, 0.22f, detail / (float)covered);
+					float grey = Mathf.Lerp(body * shade / covered, 0.2f, detail / (float)covered);
 					texture.SetPixel(x, y, new Color(grey, grey, grey, covered / 9f));
 				}
 			}
