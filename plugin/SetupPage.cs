@@ -50,7 +50,7 @@ namespace GetReady
 			UiKit.Line(section);
 			if (step is AmmoStep)
 			{
-				AmmoSetup(section);
+				AmmoSetup(section, controller);
 			}
 			else
 			{

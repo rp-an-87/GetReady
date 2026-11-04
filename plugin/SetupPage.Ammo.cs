@@ -1,11 +1,12 @@
+using EFT.InventoryLogic;
 using UnityEngine;
 
 namespace GetReady
 {
-	// The Ammo section of the Setup page: how the magazines are filled. The spare ammo card is still in the old window.
+	// The Ammo section of the Setup page: how the magazines are filled, then the spare ammo card.
 	internal static partial class SetupPage
 	{
-		private static void AmmoSetup(Transform section)
+		private static void AmmoSetup(Transform section, InventoryController controller)
 		{
 			var ammo = SettingsStore.Current.Ammo;
 			HelpTitle(section, "How the magazines are filled", "Follows what your magazines and containers already hold. Nothing moves until you press Get ready.");
@@ -14,7 +15,14 @@ namespace GetReady
 			OptionRow(section, ammo.LooseShortIsProblem, "A loose stack that can't be filled is a problem", "When on, a loose stack that is short and that the stash has no more of is reported in red, and counted in the box at the top. When off it is just left as it is.", value => ammo.LooseShortIsProblem = value);
 			PriorityList(section, "What an empty spare magazine on you copies", AmmoRules.PointerOrder(), pointer => AmmoRules.PointerName(pointer), (pointer, step) => AmmoRules.MovePointer(pointer, step),
 				"The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
-			NotYet(section);
+			if (controller != null)
+			{
+				SpareCard(section, controller);
+			}
+			else
+			{
+				UiKit.Label(section, "Open this with the stash to set the spare ammo.", 0.85f, Ui.Dim);
+			}
 		}
 	}
 }
