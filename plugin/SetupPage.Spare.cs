@@ -109,8 +109,15 @@ namespace GetReady
 		private static void StackRow(Transform parent, string template, string name, Item item)
 		{
 			var row = UiKit.HBox(parent, 8f);
-			var sprite = item != null ? Icons.OfItem(item) : Icons.Of(template);
-			UiKit.Icon(row, sprite, UiKit.Unit * 2.2f, name);
+			if (item != null)
+			{
+				ItemIcon(row, item, UiKit.Unit * 2.2f, name);
+			}
+			else
+			{
+				TemplateIcon(row, template, UiKit.Unit * 2.2f, name);
+			}
+
 			UiKit.Label(row, name, 0.9f, Ui.Text, flex: true);
 			int generic = AmmoStep.Spare.Setting.Target;
 			int now = AmmoStep.StacksOf(template);

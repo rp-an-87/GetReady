@@ -222,6 +222,18 @@ namespace GetReady
 			image.raycastTarget = false;
 		}
 
+		// While a drag is going on the tooltips stay quiet (they would cover what is dragged over)
+		private static bool _tipsHushed;
+
+		internal static void HideTips(bool hush)
+		{
+			_tipsHushed = hush;
+			if (hush)
+			{
+				ItemUiContext.Instance?.Tooltip?.Close();
+			}
+		}
+
 		// The game's tooltip while the mouse is over the piece (it needs a picture to be hit, which every box and icon here has)
 		internal static void Tip(Component part, string text)
 		{
@@ -242,7 +254,13 @@ namespace GetReady
 			graphic.raycastTarget = true;
 
 			var hover = part.GetComponent<HoverTrigger>() ?? part.gameObject.AddComponent<HoverTrigger>();
-			hover.OnHoverStart += _ => ItemUiContext.Instance?.Tooltip?.Show(text, null, 0.25f, null);
+			hover.OnHoverStart += _ =>
+			{
+				if (!_tipsHushed)
+				{
+					ItemUiContext.Instance?.Tooltip?.Show(text, null, 0.25f, null);
+				}
+			};
 			hover.OnHoverEnd += _ => ItemUiContext.Instance?.Tooltip?.Close();
 		}
 
@@ -273,22 +291,23 @@ namespace GetReady
 
 		private static Sprite _dashAcross, _dashDown;
 
-		// A strip of dashes that is repeated along an edge: 5 on, 4 off
+		// A strip of dots that is repeated along an edge: 3 on, 3 off, one unit thick (the sprite is 100 pixels to the unit, like the canvas,
+		// or one tile would be 100 units long and the line would look solid)
 		private static Sprite Dashes(bool across)
 		{
-			int length = 9, thickness = 2;
+			int length = 6, thickness = 1;
 			var texture = new Texture2D(across ? length : thickness, across ? thickness : length, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point };
 			for (int x = 0; x < texture.width; x++)
 			{
 				for (int y = 0; y < texture.height; y++)
 				{
 					int along = across ? x : y;
-					texture.SetPixel(x, y, along < 5 ? Color.white : new Color(1f, 1f, 1f, 0f));
+					texture.SetPixel(x, y, along < 3 ? Color.white : new Color(1f, 1f, 1f, 0f));
 				}
 			}
 
 			texture.Apply();
-			return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 1f, 0, SpriteMeshType.FullRect);
+			return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
 		}
 
 		// A dotted frame inside a box, hidden until it is shown (the places something can be dropped on)
@@ -303,10 +322,10 @@ namespace GetReady
 			var frame = Node("Dotted Frame", box);
 			frame.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
 			Stretch(frame, 0f, 0f, 0f, 0f);
-			EdgeLine(frame, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 2f), _dashAcross, color);
-			EdgeLine(frame, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 2f), _dashAcross, color);
-			EdgeLine(frame, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(2f, 0f), _dashDown, color);
-			EdgeLine(frame, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f), new Vector2(2f, 0f), _dashDown, color);
+			EdgeLine(frame, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 1f), _dashAcross, color);
+			EdgeLine(frame, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 1f), _dashAcross, color);
+			EdgeLine(frame, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(1f, 0f), _dashDown, color);
+			EdgeLine(frame, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f), new Vector2(1f, 0f), _dashDown, color);
 			frame.gameObject.SetActive(false);
 			return frame.gameObject;
 		}

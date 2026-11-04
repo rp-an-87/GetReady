@@ -156,7 +156,7 @@ namespace GetReady
 		}
 
 		// Items you haven't examined show as a question mark, like in the stash
-		private static bool IsExamined(string template)
+		internal static bool IsExamined(string template)
 		{
 			bool known;
 			if (!Examined.TryGetValue(template, out known))

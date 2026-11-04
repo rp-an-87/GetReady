@@ -48,6 +48,7 @@ namespace GetReady
 		public void OnBeginDrag(PointerEventData eventData)
 		{
 			_active = this;
+			UiKit.HideTips(true);
 			_target = -1;
 			CursorSwitcher.SetCursor(ECursorType.Hand);
 			Light(this, false);
@@ -87,6 +88,7 @@ namespace GetReady
 			int target = _target;
 			_target = -1;
 			_active = null;
+			UiKit.HideTips(false);
 			Dim(Rows[Index], 1f);
 			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
 			Light(this, _over);

@@ -28,10 +28,20 @@ namespace GetReady
 			for (int i = 0; i < defs.Count; i += 2)
 			{
 				var row = UiKit.HBox(parent, 8f, null, null, true);
+				var widthRow = row.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+				widthRow.childForceExpandWidth = true;
 				for (int k = i; k < Math.Min(i + 2, defs.Count); k++)
 				{
 					var card = GroupCard(row, defs[k], true);
-					UiKit.Size(card, flexWidth: 1f);
+					// The same width asked for, and the room shared out equally, so the two cards are the same width
+					UiKit.Size(card, width: 1f, flexWidth: 1f);
+				}
+
+				if (defs.Count - i == 1)
+				{
+					// An odd one out keeps the width of a card: the other half stays empty
+					var empty = UiKit.Node("Empty", row);
+					UiKit.Size(empty, width: 1f, flexWidth: 1f);
 				}
 			}
 		}
@@ -46,7 +56,7 @@ namespace GetReady
 			if (def.Entries.Length > 0)
 			{
 				var shown = active.FirstOrDefault() ?? def.Entries[0];
-				UiKit.Icon(top, Icons.Of(shown.Template), UiKit.Unit * 3f, shown.Name);
+				TemplateIcon(top, shown.Template, UiKit.Unit * 3f, shown.Name);
 			}
 			else if (def.IsQuota)
 			{
@@ -87,7 +97,7 @@ namespace GetReady
 			}
 
 			// The key and the items button, on the right of the amount
-			var side = UiKit.HBox(top, 6f);
+			var side = UiKit.HBox(compact ? (Transform)column : top, 6f);
 			if (def.Bindable)
 			{
 				string key = def.HotkeyChoice;
@@ -119,9 +129,10 @@ namespace GetReady
 			// The places: only when it is wanted
 			if (on)
 			{
-				var places = UiKit.HBox(card, 10f);
-				UiKit.HelpMark(places, "Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).");
-				UiKit.Label(places, "Bring to", 0.85f, Ui.Dim);
+				var places = compact ? (Transform)UiKit.VBox(card, 4f) : UiKit.HBox(card, 10f);
+				var title = compact ? (Transform)UiKit.HBox(places, 8f) : places;
+				UiKit.HelpMark(title, "Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).");
+				UiKit.Label(title, "Bring to", 0.85f, Ui.Dim);
 				PlacePicker(places, def, compact ? 3 : 5);
 			}
 
@@ -149,7 +160,7 @@ namespace GetReady
 					UiKit.Grip(row);
 				}
 
-				UiKit.Icon(row, Icons.Of(entry.Template), UiKit.Unit * 2f, entry.Name);
+				TemplateIcon(row, entry.Template, UiKit.Unit * 2f, entry.Name);
 				UiKit.Label(row, off ? "× " + entry.Name : entry.Name, 0.9f, off ? Ui.Dim : Ui.Text, flex: true);
 				if (!def.Random)
 				{

@@ -22,6 +22,9 @@ namespace GetReady
 		private static string _signature = "";
 		private static float _checkedAt;
 		private static int _pending;
+
+		// An icon that is not there yet: the page is drawn again shortly
+		internal static void IconPending() => _pending++;
 		private static int _pendingRounds;
 		private static bool _dumped;
 
@@ -310,7 +313,10 @@ namespace GetReady
 
 			// What the tabs, the footer, the spacing and a little of the page need, so the body always fits the window
 			float minHeight = Mathf.Max(_captionHeight, 30f) + 20f + UiKit.Unit * 2f + UiKit.Unit * 2.4f + 16f + ScrollMin;
-			UiResize.SetMin(frame, new Vector2(520f, minHeight));
+			// The Setup page has two cards side by side, which need room: its minimum is wider
+			float minWidth = _tab == 1 ? 2f * (UiKit.Unit * 15.5f + 36f) + 90f : 520f;
+			UiResize.SetMin(frame, new Vector2(minWidth, minHeight));
+			_width = Mathf.Max(_width, minWidth);
 			_height = Mathf.Max(_height, minHeight);
 			_signature = "";
 			Rebuild();

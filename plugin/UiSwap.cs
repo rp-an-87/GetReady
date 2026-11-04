@@ -8,7 +8,8 @@ using UnityEngine.UI;
 namespace GetReady
 {
 	// A chip that is clicked to switch (a normal button click) and dragged onto another chip to swap places with it. The hand cursor shows
-	// it can be dragged, the chip it would swap with gets a gold frame, and it does not have to be dropped exactly on it: near it is enough.
+	// it can be dragged. While it is dragged, the chips it can be dropped on swap their edge for a 1 px dotted one and the one it would swap
+	// with gets a solid gold one. It does not have to be dropped exactly on a chip: near it is enough. The tooltips stay quiet meanwhile.
 	internal class SwapChip : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
 	{
 		internal string Key;
@@ -17,9 +18,17 @@ namespace GetReady
 		internal GameObject Dots;
 
 		private const float Reach = 14f;
+		private static readonly Color Gold = new Color(0.8f, 0.72f, 0.45f);
+
 		private SwapChip _target;
 		private bool _over, _dragging;
 		private int _dragEndFrame = -1;
+
+		// The chip's own edge, put back when the drag is over
+		private Outline _edge;
+		private Color _edgeColor;
+		private Vector2 _edgeDistance;
+		private bool _hadEdge, _captured;
 
 		// Letting go of a drag over the chip it started on would also click it: a click that comes with a drag is not meant
 		internal bool JustDragged => _dragging || _dragEndFrame == Time.frameCount;
@@ -44,10 +53,16 @@ namespace GetReady
 		public void OnBeginDrag(PointerEventData eventData)
 		{
 			_dragging = true;
+			UiKit.HideTips(true);
 			CursorSwitcher.SetCursor(ECursorType.Hand);
 			Dim(0.5f);
-			// The places it can be dropped on show a dotted frame
-			ShowDots(true);
+			foreach (var peer in Peers)
+			{
+				if (peer != null && peer != this)
+				{
+					peer.Show(State.Droppable);
+				}
+			}
 		}
 
 		public void OnDrag(PointerEventData eventData)
@@ -55,9 +70,9 @@ namespace GetReady
 			var next = Nearest(eventData);
 			if (next != _target)
 			{
-				Mark(_target, false);
+				_target?.Show(State.Droppable);
 				_target = next;
-				Mark(_target, true);
+				_target?.Show(State.Target);
 			}
 		}
 
@@ -65,15 +80,66 @@ namespace GetReady
 		{
 			_dragging = false;
 			_dragEndFrame = Time.frameCount;
+			UiKit.HideTips(false);
 			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
 			Dim(1f);
-			ShowDots(false);
-			Mark(_target, false);
+			foreach (var peer in Peers)
+			{
+				if (peer != null)
+				{
+					peer.Show(State.Normal);
+				}
+			}
+
 			var target = _target;
 			_target = null;
 			if (target != null)
 			{
 				OnSwap(Key, target.Key);
+			}
+		}
+
+		private enum State { Normal, Droppable, Target }
+
+		// Normal: its own edge. Droppable: a dotted edge in place of it. Target: a solid gold edge.
+		private void Show(State state)
+		{
+			if (!_captured)
+			{
+				_captured = true;
+				_edge = GetComponent<Outline>();
+				_hadEdge = _edge != null;
+				if (_edge == null)
+				{
+					_edge = gameObject.AddComponent<Outline>();
+					_edge.effectColor = new Color(0.3f, 0.31f, 0.3f);
+					_edge.effectDistance = new Vector2(1f, 1f);
+				}
+
+				_edgeColor = _edge.effectColor;
+				_edgeDistance = _edge.effectDistance;
+			}
+
+			if (Dots != null)
+			{
+				Dots.SetActive(state == State.Droppable);
+			}
+
+			switch (state)
+			{
+				case State.Normal:
+					_edge.enabled = _hadEdge;
+					_edge.effectColor = _edgeColor;
+					_edge.effectDistance = _edgeDistance;
+					break;
+				case State.Droppable:
+					_edge.enabled = false;
+					break;
+				default:
+					_edge.enabled = true;
+					_edge.effectColor = Gold;
+					_edge.effectDistance = new Vector2(1f, 1f);
+					break;
 			}
 		}
 
@@ -110,34 +176,10 @@ namespace GetReady
 			return best;
 		}
 
-		private void ShowDots(bool on)
-		{
-			foreach (var peer in Peers)
-			{
-				if (peer != null && peer != this && peer.Dots != null)
-				{
-					peer.Dots.SetActive(on);
-				}
-			}
-		}
-
 		private void Dim(float alpha)
 		{
 			var group = GetComponent<CanvasGroup>() ?? gameObject.AddComponent<CanvasGroup>();
 			group.alpha = alpha;
-		}
-
-		private static void Mark(SwapChip chip, bool on)
-		{
-			if (chip == null)
-			{
-				return;
-			}
-
-			var outline = chip.GetComponent<Outline>() ?? chip.gameObject.AddComponent<Outline>();
-			outline.effectColor = new Color(0.8f, 0.72f, 0.45f);
-			outline.effectDistance = new Vector2(2f, 2f);
-			outline.enabled = on;
 		}
 	}
 }

@@ -21,6 +21,36 @@ namespace GetReady
 
 		internal static readonly Color InnerPanel = new Color(0.095f, 0.1f, 0.1f);
 
+		// The icon of an item template: its picture once the game has made it (the page is drawn again until then), or a "?" for one you have
+		// not inspected yet, as the stash shows it
+		internal static void TemplateIcon(Transform parent, string template, float size, string tip)
+		{
+			var sprite = Icons.Of(template);
+			bool unknown = sprite == null && !Icons.IsExamined(template);
+			if (sprite == null && !unknown)
+			{
+				ReadyUiWindow.IconPending();
+			}
+
+			UiKit.Icon(parent, sprite, size, tip);
+			if (unknown)
+			{
+				var mark = UiKit.Label(parent.GetChild(parent.childCount - 1), "?", size / Mathf.Max(UiKit.Unit, 1f) * 0.45f, Ui.Dim, align: TextAlignmentOptions.Center);
+				UiKit.Stretch(mark.rectTransform, 0f, 0f, 0f, 0f);
+			}
+		}
+
+		internal static void ItemIcon(Transform parent, EFT.InventoryLogic.Item item, float size, string tip)
+		{
+			var sprite = Icons.OfItem(item);
+			if (sprite == null)
+			{
+				ReadyUiWindow.IconPending();
+			}
+
+			UiKit.Icon(parent, sprite, size, tip);
+		}
+
 		// - text +
 		internal static void Stepper(Transform parent, string text, Color color, float width, Action minus, Action plus, string minusTip, string plusTip)
 		{
