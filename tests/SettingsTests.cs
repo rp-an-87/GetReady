@@ -45,7 +45,8 @@ namespace GetReady.Tests
 			settings.Repair.KeepDamaged.Add(new KeptItem { Id = "x", Name = "Armor" });
 			settings.FullAuto.Slots = new List<string> { "Holster" };
 			settings.Supplies.AllowOvershoot = false;
-			settings.Supplies.CashExclusions.Add(new CashExclusion());
+			settings.Cases.Cases.Add(new CaseEntry { CaseId = "c", Maps = new List<string> { "Woods" }, Money = new Dictionary<string, int> { { "RUB", 5 } } });
+			settings.Cases.AutoUpdate = false;
 
 			var read = SettingsStore.Parse(Write(settings));
 
@@ -58,7 +59,9 @@ namespace GetReady.Tests
 			read.Repair.KeepDamaged.Should().ContainSingle().Which.Id.Should().Be("x");
 			read.FullAuto.Slots.Should().Equal("Holster");
 			read.Supplies.AllowOvershoot.Should().BeFalse();
-			read.Supplies.CashExclusions.Should().HaveCount(1);
+			read.Cases.AutoUpdate.Should().BeFalse();
+			read.Cases.Cases.Should().ContainSingle().Which.Maps.Should().Equal("Woods");
+			read.Cases.Cases[0].Money["RUB"].Should().Be(5);
 		}
 
 		[Fact]
@@ -112,15 +115,6 @@ namespace GetReady.Tests
 
 			def.PlaceOrder().Should().Equal("Pockets", "Special slots", "Backpack", "Pouch", "Vest");
 			def.PlacesToTry().Should().Equal("Pockets", "Special slots", "Backpack", "Pouch");
-		}
-
-		[Fact]
-		public void A_file_from_before_places_were_a_list_still_works()
-		{
-			var read = SettingsStore.Parse("{ \"Supplies\": { \"Groups\": { \"g\": { \"Target\": 2, \"Destinations\": [\"Vest\", \"Pouch\"] } } } }");
-			SettingsStore.UseForTests(read);
-
-			new GroupDef { Id = "g" }.PlacesToTry().Should().Equal("Vest", "Pouch", "Pockets", "Backpack");
 		}
 
 		[Fact]

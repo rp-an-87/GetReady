@@ -79,7 +79,7 @@ namespace GetReady
 			switch (step)
 			{
 				case "Special slots": return EItemType.Special;
-				case "Injector case": return EItemType.Container;
+				case "Cases": return EItemType.Container;
 				case "Medicine to bring": return EItemType.Meds;
 				case "Treat injuries": return EItemType.Meds;
 				case "Grenades and flares": return EItemType.Grenade;
@@ -90,6 +90,9 @@ namespace GetReady
 				default: return null;
 			}
 		}
+
+		// Whether the step has an icon type (the sprite may still be missing; Step then draws nothing)
+		internal static bool HasStepIcon(string step) => TypeOfStep(step) != null;
 
 		// A small framed icon for a step's title, like the item slots (just the space when the game has none)
 		internal static void Step(Rect rect, string step)

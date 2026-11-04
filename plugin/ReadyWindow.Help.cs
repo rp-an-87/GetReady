@@ -26,8 +26,12 @@ namespace GetReady
 		}
 
 		// A button in the middle of a row's height
+		// A button width that fits its text: the given width, or more when the text needs it (the game font is wide)
+		private static float Fit(string text, GUIStyle style, float min) => Mathf.Max(min, style.CalcSize(new GUIContent(text)).x + 4f);
+
 		private static bool CenteredButton(GUIContent content, GUIStyle style, float width, float height = RowHeight)
 		{
+			width = Fit(content.text, style, width);
 			bool pressed = false;
 			Centered(() => pressed = GUILayout.Button(content, style, GUILayout.Width(width)), height, false, width);
 			return pressed;

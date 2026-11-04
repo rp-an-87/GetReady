@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using EFT.InventoryLogic;
 
 namespace GetReady
@@ -29,34 +30,32 @@ namespace GetReady
 		{
 			public InventoryController Controller;
 			public SuppliesSettings Settings;
-			public List<Item> Carried;           // on you, apart from what an injector case looks after
+			public List<Item> Carried;           // on you, apart from what the template of a case looks after
 			public List<Item> Stash;             // apart from what an earlier step has claimed
 			public HashSet<Item> Owned;          // in a special slot of the template: counted, never swapped here
 			public List<Item> Leaving;           // about to be swapped out of a special slot: no longer counted
 			public List<Item> Planned = new List<Item>(); // about to be brought by the groups above (the grenade total counts it)
-			public Func<string> CashBlockedBy;     // the case you carry that stops all cash, or null
+			public Func<string, CaseEntry> CashMuted; // the case you carry that takes this currency off the Cash step, or null
 			public Func<string, bool> PlaceExists = place => true; // whether you have this place (a wallet on you, a vest worn...)
-			public Func<string, string, bool> PlaceAllows = (place, template) => true; // whether a container of the place takes this money
 		}
 
 		public List<PlanLine> Plan(InventoryController controller)
 		{
 			var inventory = controller.Inventory;
-			return Plan(controller, Game.CarriedAndSecured(inventory).ToList(), Game.Stash(inventory), () => Game.CashBlockedBy(inventory), place => Game.HasPlace(inventory, place), (place, template) => Game.PlaceAllows(inventory, place, template));
+			return Plan(controller, Game.CarriedAndSecured(inventory).ToList(), Game.Stash(inventory), currency => CasesStep.CashMutedBy(inventory, currency), place => Game.HasPlace(inventory, place));
 		}
 
 		// The plan for what is on you (carried and in the secure container) and what is in the stash; the controller is only for the moves
-		internal List<PlanLine> Plan(InventoryController controller, List<Item> carriedAndSecured, List<Item> stash, Func<string> cashBlockedBy, Func<string, bool> placeExists = null, Func<string, string, bool> placeAllows = null)
+		internal List<PlanLine> Plan(InventoryController controller, List<Item> carriedAndSecured, List<Item> stash, Func<string, CaseEntry> cashMuted, Func<string, bool> placeExists = null)
 		{
 			var claimed = Steps.Claimed.ToList();
 			var context = new Context
 			{
 				Controller = controller,
-				CashBlockedBy = cashBlockedBy,
+				CashMuted = cashMuted,
 				PlaceExists = placeExists ?? (place => true),
-				PlaceAllows = placeAllows ?? ((place, template) => true),
 				Settings = SettingsStore.Current.Supplies,
-				Carried = carriedAndSecured.Where(item => !Game.InsideInjectorCase(item)).ToList(),
+				Carried = carriedAndSecured.Where(item => !Game.InsideTemplatedCase(item)).ToList(),
 				Stash = stash.Where(item => !claimed.Contains(item)).ToList(),
 				Owned = new HashSet<Item>(Steps.Owned),
 				Leaving = Steps.Leaving.ToList()
@@ -88,30 +87,33 @@ namespace GetReady
 			var places = def.PlacesToTry();
 			float bringing = Steps.Bringing.Sum(def.WeightOf);
 			float leaving = context.Leaving.Sum(def.WeightOf);
-			var progress = Steps.Progress(def.Name, context.Carried.Sum(def.WeightOf) - leaving + bringing, setting.Target, def.Unit, def.ActiveEntries().FirstOrDefault()?.Template);
+			// The money the cases you carry will hold counts toward the target; the Cash step brings only what is still missing
+			float inCases = def.Money ? Steps.Of(Steps.CaseMoney, def.Unit) : 0;
+			var progress = Steps.Progress(def.Name, context.Carried.Sum(def.WeightOf) + inCases - leaving + bringing, setting.Target, def.Unit, def.ActiveEntries().FirstOrDefault()?.Template);
 			lines.Add(progress);
+
+			if (def.Money)
+			{
+				var muted = context.CashMuted(def.Unit);
+				if (muted != null)
+				{
+					progress.Skipped = true;
+					progress.Note = CasesStep.CashMuteText(muted);
+					progress.By = muted;
+					float wanted = setting.Target - context.Carried.Sum(def.WeightOf) - inCases;
+					if (wanted > 0)
+					{
+						lines.Add(Steps.Info($"Would bring {Game.Amount(def.Unit, wanted)}, but the Cash step is skipped while you carry {CasesStep.LabelOf(muted)}"));
+					}
+
+					return;
+				}
+			}
 
 			if (places.Count == 0)
 			{
 				lines.Add(Steps.Problem(def.Name, "every place is switched off: switch at least one on in Setup", def.ActiveEntries().FirstOrDefault()?.Template));
 				return;
-			}
-
-			if (def.Money)
-			{
-				var blockedBy = context.CashBlockedBy();
-				if (blockedBy != null)
-				{
-					progress.Skipped = true;
-					progress.Note = $"no cash while you carry {blockedBy}";
-					float wanted = setting.Target - context.Carried.Sum(def.WeightOf);
-					if (wanted > 0)
-					{
-						lines.Add(Steps.Info($"Would bring {wanted:N0} {def.Unit}, but {blockedBy} stops all cash while you carry it (Setup > Cash)"));
-					}
-
-					return;
-				}
 			}
 
 			// A place you do not have (no wallet on you, no vest worn) cannot be brought to: the places left are the ones you have
@@ -123,28 +125,22 @@ namespace GetReady
 				return;
 			}
 
-			if (def.Money)
-			{
-				var moneyTemplate = def.Entries[0].Template;
-				places = places.Where(place => context.PlaceAllows(place, moneyTemplate)).ToList();
-				if (places.Count == 0)
-				{
-					lines.Add(Steps.Problem(def.Name, $"every place you have keeps this money out ({string.Join(", ", wanted_places)}): allow one in Setup", def.ActiveEntries().FirstOrDefault()?.Template));
-					return;
-				}
-			}
-
 			if (context.Settings.SwapWorse && !def.Stack)
 			{
 				float fixedWeight = context.Owned.Sum(def.WeightOf) - leaving;
 				PlanSwaps(def, context, fixedWeight, places, lines);
 			}
 
-			float need = setting.Target - context.Carried.Sum(def.WeightOf) + leaving - bringing;
+			float need = setting.Target - context.Carried.Sum(def.WeightOf) - inCases + leaving - bringing;
 			need = PlanBring(def, context, need, places, lines);
+			if (def.Money && need > 0)
+			{
+				need = PlanReleased(def, context, need, places, lines);
+			}
+
 			if (need > 0)
 			{
-				lines.Add(Steps.Problem(def.Name, $"Missing {need:N0} {def.Unit}: {WhyNoneLeft(def, context, need)}", def.ActiveEntries().FirstOrDefault()?.Template));
+				lines.Add(Steps.Problem(def.Name, $"Missing {Game.Amount(def.Unit, need)}: {WhyNoneLeft(def, context, need)}", def.ActiveEntries().FirstOrDefault()?.Template));
 			}
 		}
 
@@ -248,12 +244,53 @@ namespace GetReady
 				{
 					Template = moves[0].Key.TemplateId.ToString(),
 					Items = moves.Count,
-					Text = def.Money ? $"Bring {amount:N0} {def.Unit} to {places[0]}" : $"Bring {amount}x {group.Key}{over}",
+					Text = def.Money ? $"Bring {Game.Amount(def.Unit, amount)} to {places[0]}" : $"Bring {amount}x {group.Key}{over}",
 					Run = () => SupplyMoves.MoveAll(context.Controller, moves, places)
 				});
 			}
 
 			return need;
+		}
+
+		// Money a case gives up to the stash this pass (Take out the rest) is not in the stash yet when the plan is made, so it is brought on from
+		// there when the line runs, after the case's own moves: whichever stacks of the stash hold the money then. Returns what is still missing.
+		private static float PlanReleased(GroupDef def, Context context, float need, List<string> places, List<PlanLine> lines)
+		{
+			int amount = (int)Math.Min(need, Steps.Of(Steps.Released, def.Unit));
+			if (amount <= 0)
+			{
+				return need;
+			}
+
+			var template = CasesStep.TemplateOfCurrency(def.Unit);
+			lines.Add(new PlanLine
+			{
+				Template = template,
+				Items = 1,
+				Text = $"Bring {Game.Amount(def.Unit, amount)} to {places[0]}",
+				Run = () =>
+				{
+					var moves = new List<KeyValuePair<Item, int>>();
+					int left = amount;
+					foreach (var stack in Game.Stash(Game.InventoryOf(context.Controller)).Where(item => item.TemplateId.ToString() == template && item.PinLockState != EItemPinLockState.Locked))
+					{
+						if (left <= 0)
+						{
+							break;
+						}
+
+						int count = Math.Min(stack.StackObjectsCount, left);
+						left -= count;
+						moves.Add(new KeyValuePair<Item, int>(stack, count));
+					}
+
+					return left > 0
+						? Task.FromResult($"only {Game.Amount(def.Unit, amount - left)} of the {Game.Amount(def.Unit, amount)} reached the stash")
+						: SupplyMoves.MoveAll(context.Controller, moves, places);
+				}
+			});
+
+			return need - amount;
 		}
 
 		// Tops the grenades up to the total with random non-impact ones from the stash. Every grenade of the groups counts

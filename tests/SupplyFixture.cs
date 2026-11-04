@@ -26,12 +26,14 @@ namespace GetReady.Tests
 			Plugin.Log = BepInEx.Logging.Logger.CreateLogSource("GetReady.Tests");
 			SettingsStore.UseForTests(new Settings());
 			Steps.Claimed.Clear();
+			Steps.CaseMoney.Clear();
+			Steps.Released.Clear();
 			Steps.Owned.Clear();
 			Steps.Bringing.Clear();
 			Steps.Leaving.Clear();
 			Game.LongNames.Clear();
 			Game.IsInsideContainer = item => false;
-			Game.IsInsideInjectorCase = item => false;
+			Game.IsInsideTemplatedCase = item => false;
 			Game.RandomIndex = count => 0;
 			Game.Localize = key =>
 			{
@@ -43,7 +45,7 @@ namespace GetReady.Tests
 
 		// The plan of the step; nothing is kept out of any place
 		internal static List<PlanLine> Plan(SuppliesStep step, IEnumerable<Item> carried, IEnumerable<Item> stash) =>
-			step.Plan(null, carried.ToList(), stash.ToList(), () => null);
+			step.Plan(null, carried.ToList(), stash.ToList(), currency => null);
 
 		// Only this group has a target
 		internal static GroupDef Only(SuppliesStep step, string id, int target)

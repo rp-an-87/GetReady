@@ -140,7 +140,7 @@ namespace GetReady
 				{
 					setting = new GroupSetting { Target = DefaultTarget, Destinations = DefaultDestinations.ToList(), Off = DefaultOff.ToList() };
 					groups[Id] = setting;
-					StartPlaces(setting, false);
+					StartPlaces(setting);
 				}
 
 				return setting;
@@ -157,14 +157,13 @@ namespace GetReady
 
 		// Where the group can go: every place in the order the owner set (the first with room wins), the ones switched off skipped.
 		// A new group starts with the defaults first, then every other place, the pouch last, all on; a group with no fallback (cash)
-		// starts with the defaults only. A profile from before had only the places picked: those first and the pockets, vest and
-		// backpack on after them (as they were tried), the rest off.
+		// starts with the defaults only.
 		public List<string> PlaceOrder()
 		{
 			var setting = Setting;
 			if (setting.Places == null)
 			{
-				StartPlaces(setting, true);
+				StartPlaces(setting);
 			}
 
 			var pickable = PickablePlaces.ToList();
@@ -173,7 +172,7 @@ namespace GetReady
 			return order.Where(place => !setting.PlacesOff.Contains(place)).Concat(order.Where(place => setting.PlacesOff.Contains(place))).ToList(); // the ones off last
 		}
 
-		private void StartPlaces(GroupSetting setting, bool carriedOver)
+		private void StartPlaces(GroupSetting setting)
 		{
 			var pickable = PickablePlaces.ToList();
 			var picks = setting.Destinations.Where(place => pickable.Contains(place)).Distinct().ToList();
@@ -185,8 +184,7 @@ namespace GetReady
 			}
 
 			setting.Places = order;
-			var usual = new[] { "Pockets", "Vest", "Backpack" };
-			setting.PlacesOff = order.Where(place => !picks.Contains(place) && (NoFallback || (carriedOver && !usual.Contains(place)))).ToList();
+			setting.PlacesOff = order.Where(place => !picks.Contains(place) && NoFallback).ToList();
 		}
 
 		public bool PlaceOn(string place) => !Setting.PlacesOff.Contains(place);

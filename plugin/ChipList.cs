@@ -63,13 +63,10 @@ namespace GetReady
 				}
 
 				var chip = chips[i];
+				Rect? arrow = null;
 				if (i % perRow > 0 && chip.On && chips[i - 1].On)
 				{
-					var arrow = GUILayoutUtility.GetRect(ChipArrow, height, GUILayout.Width(ChipArrow), GUILayout.Height(height));
-					if (repaint)
-					{
-						DrawChevron(arrow);
-					}
+					arrow = GUILayoutUtility.GetRect(ChipArrow, height, GUILayout.Width(ChipArrow), GUILayout.Height(height));
 				}
 
 				if (i % perRow > 0 && !chip.On && chips[i - 1].On)
@@ -80,6 +77,12 @@ namespace GetReady
 				var style = chip.On ? Ui.PickOn : Ui.Pick;
 				var rect = GUILayoutUtility.GetRect(GUIContent.none, style, GUILayout.Width(width), GUILayout.Height(height));
 				rects.Add(rect);
+				if (repaint && arrow.HasValue)
+				{
+					// Centred on the chip beside it (the chip's margin puts it a little off the arrow's own box)
+					DrawChevron(new Rect(arrow.Value.x, rect.y, arrow.Value.width, rect.height));
+				}
+
 				if (repaint)
 				{
 					var old = GUI.color;

@@ -204,7 +204,7 @@ namespace GetReady.Tests
 		{
 			Only(_step, "grenadequota", 1);
 
-			var lines = _step.Plan(null, new List<Item>(), Items(M67).ToList(), () => null, place => false);
+			var lines = _step.Plan(null, new List<Item>(), Items(M67).ToList(), currency => null, place => false);
 
 			lines.Should().Contain(line => line.Problem && line.Detail != null && line.Detail.StartsWith("set to bring to"));
 			lines.Should().NotContain(line => line.Run != null);
@@ -239,11 +239,11 @@ namespace GetReady.Tests
 		{
 			Only(_step, "cash_rub", 25000);
 
-			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Should().Equal("Roubles: 0/25000 RUB", "Bring 25,000 RUB to Wallet");
+			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Should().Equal("Roubles: ₽ 0/25000", "Bring ₽ 25,000 to Pockets");
 		}
 
 		private System.Collections.Generic.List<PlanLine> PlanWithout(string missingPlace, params Item[] stash) =>
-			_step.Plan(null, new System.Collections.Generic.List<Item>(), stash.ToList(), () => null, place => place != missingPlace);
+			_step.Plan(null, new System.Collections.Generic.List<Item>(), stash.ToList(), currency => null, place => place != missingPlace);
 
 		// Exactly these places on, in this order
 		private static void PlacesOn(GroupDef def, params string[] on)
@@ -270,11 +270,11 @@ namespace GetReady.Tests
 		public void Money_for_a_place_you_do_not_have_is_a_problem_before_anything_runs()
 		{
 			var def = Only(_step, "cash_eur", 500);
-			PlacesOn(def, "Wallet");
+			PlacesOn(def, "Pockets");
 
-			var lines = PlanWithout("Wallet", Money(Euros, 1000));
+			var lines = PlanWithout("Pockets", Money(Euros, 1000));
 
-			lines.Should().Contain(line => line.Problem && line.Subject == "Euros" && line.Detail == "set to bring to Wallet, which you are not carrying: carry one, or add another place under \"Bring to\" in Setup");
+			lines.Should().Contain(line => line.Problem && line.Subject == "Euros" && line.Detail == "set to bring to Pockets, which you are not carrying: carry one, or add another place under \"Bring to\" in Setup");
 			lines.Should().NotContain(line => line.Run != null);
 		}
 
@@ -282,9 +282,9 @@ namespace GetReady.Tests
 		public void A_card_with_that_problem_is_red_not_amber()
 		{
 			var def = Only(_step, "cash_eur", 500);
-			PlacesOn(def, "Wallet");
+			PlacesOn(def, "Pockets");
 
-			var lines = PlanWithout("Wallet", Money(Euros, 1000));
+			var lines = PlanWithout("Pockets", Money(Euros, 1000));
 
 			ReadyWindow.StandingFor(lines, 0).ToString().Should().Be("Problem");
 		}
@@ -293,49 +293,26 @@ namespace GetReady.Tests
 		public void Money_goes_to_the_first_place_you_do_have_and_the_line_says_so()
 		{
 			var def = Only(_step, "cash_rub", 100000);
-			PlacesOn(def, "Wallet", "Pockets");
+			PlacesOn(def, "Vest", "Pockets");
 
-			var lines = PlanWithout("Wallet", Money(Roubles, 150000));
+			var lines = PlanWithout("Vest", Money(Roubles, 150000));
 
-			Texts(lines).Should().Equal("Roubles: 0/100000 RUB", "Bring 100,000 RUB to Pockets");
+			Texts(lines).Should().Equal("Roubles: ₽ 0/100000", "Bring ₽ 100,000 to Pockets");
 		}
 
 		[Fact]
 		public void One_card_can_be_fine_while_another_cannot()
 		{
 			var rub = Only(_step, "cash_rub", 100000);
-			PlacesOn(rub, "Wallet", "Pockets");
+			PlacesOn(rub, "Vest", "Pockets");
 			var eur = _step.Groups.First(group => group.Id == "cash_eur");
 			eur.Setting.Target = 500;
-			PlacesOn(eur, "Wallet");
+			PlacesOn(eur, "Vest");
 
-			var lines = PlanWithout("Wallet", Money(Roubles, 150000), Money(Euros, 1000));
+			var lines = PlanWithout("Vest", Money(Roubles, 150000), Money(Euros, 1000));
 
 			lines.Count(line => line.Run != null).Should().Be(1);
 			lines.Count(line => line.Problem).Should().Be(1);
-		}
-
-		[Fact]
-		public void Money_that_every_place_you_have_keeps_out_is_a_problem_not_a_line_that_fails()
-		{
-			var def = Only(_step, "cash_eur", 500);
-			PlacesOn(def, "Wallet");
-
-			var lines = _step.Plan(null, new System.Collections.Generic.List<Item>(), new[] { Money(Euros, 1000) }.ToList(), () => null, place => true, (place, template) => false);
-
-			lines.Should().Contain(line => line.Problem && line.Detail == "every place you have keeps this money out (Wallet): allow one in Setup");
-			lines.Should().NotContain(line => line.Run != null);
-		}
-
-		[Fact]
-		public void Money_goes_to_the_next_place_when_the_first_keeps_it_out()
-		{
-			var def = Only(_step, "cash_rub", 100000);
-			PlacesOn(def, "Wallet", "Pockets");
-
-			var lines = _step.Plan(null, new System.Collections.Generic.List<Item>(), new[] { Money(Roubles, 150000) }.ToList(), () => null, place => true, (place, template) => place != "Wallet");
-
-			Texts(lines).Should().Equal("Roubles: 0/100000 RUB", "Bring 100,000 RUB to Pockets");
 		}
 
 		[Fact]
@@ -343,7 +320,7 @@ namespace GetReady.Tests
 		{
 			Only(_step, "cash_rub", 25000);
 
-			var lines = _step.Plan(null, new System.Collections.Generic.List<Item> { Money(Roubles, 30000) }, new System.Collections.Generic.List<Item>(), () => "Wallet");
+			var lines = _step.Plan(null, new System.Collections.Generic.List<Item> { Money(Roubles, 30000) }, new System.Collections.Generic.List<Item>(), currency => new CaseEntry { CaseName = "Wallet", StopsCash = true });
 
 			lines.Should().ContainSingle().Which.Skipped.Should().BeTrue();
 		}
@@ -353,7 +330,7 @@ namespace GetReady.Tests
 		{
 			Only(_step, "cash_rub", 25000);
 
-			Texts(Plan(_step, new[] { Money(Roubles, 10000) }, new[] { Money(Roubles, 30000) })).Should().Equal("Roubles: 10000/25000 RUB", "Bring 15,000 RUB to Wallet");
+			Texts(Plan(_step, new[] { Money(Roubles, 10000) }, new[] { Money(Roubles, 30000) })).Should().Equal("Roubles: ₽ 10000/25000", "Bring ₽ 15,000 to Pockets");
 		}
 
 		[Fact]
@@ -361,7 +338,7 @@ namespace GetReady.Tests
 		{
 			Only(_step, "cash_rub", 25000);
 
-			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 10000), Money(Roubles, 20000) })).Should().Equal("Roubles: 0/25000 RUB", "Bring 25,000 RUB to Wallet");
+			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 10000), Money(Roubles, 20000) })).Should().Equal("Roubles: ₽ 0/25000", "Bring ₽ 25,000 to Pockets");
 		}
 
 		[Fact]
@@ -371,7 +348,7 @@ namespace GetReady.Tests
 
 			var lines = Plan(_step, new Item[0], new[] { Money(Roubles, 20000) });
 
-			Texts(lines).Should().Equal("Roubles: 0/25000 RUB", "Bring 20,000 RUB to Wallet", "Roubles: Missing 5,000 RUB: none left in the stash");
+			Texts(lines).Should().Equal("Roubles: ₽ 0/25000", "Bring ₽ 20,000 to Pockets", "Roubles: Missing ₽ 5,000: none left in the stash");
 		}
 
 		[Fact]
@@ -379,7 +356,7 @@ namespace GetReady.Tests
 		{
 			Only(_step, "cash_rub", 25000);
 
-			Plan(_step, new Item[0], new Item[0]).Last().Text.Should().Be("Roubles: Missing 25,000 RUB: none left in the stash");
+			Plan(_step, new Item[0], new Item[0]).Last().Text.Should().Be("Roubles: Missing ₽ 25,000: none left in the stash");
 		}
 
 		[Fact]
@@ -390,33 +367,33 @@ namespace GetReady.Tests
 
 			var lines = Plan(_step, new Item[0], new[] { Money(Roubles, 30000), Money(Euros, 1000) });
 
-			Texts(lines).Should().Equal("Roubles: 0/25000 RUB", "Bring 25,000 RUB to Wallet", "Euros: 0/500 EUR", "Bring 500 EUR to Wallet");
+			Texts(lines).Should().Equal("Roubles: ₽ 0/25000", "Bring ₽ 25,000 to Pockets", "Euros: € 0/500", "Bring € 500 to Pockets");
 		}
 
 		[Fact]
 		public void Money_goes_to_the_first_place_that_is_on()
 		{
 			var def = Only(_step, "cash_rub", 25000);
-			def.TogglePlace("WZ wallet");
+			def.TogglePlace("Vest");
 
-			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Last().Should().Be("Bring 25,000 RUB to Wallet");
+			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Last().Should().Be("Bring ₽ 25,000 to Pockets");
 		}
 
 		[Fact]
 		public void Money_goes_to_another_place_when_it_is_first_in_the_row()
 		{
 			var def = Only(_step, "cash_rub", 25000);
-			def.TogglePlace("WZ wallet");
-			def.SwapPlaces("Wallet", "WZ wallet");
+			def.TogglePlace("Vest");
+			def.SwapPlaces("Pockets", "Vest");
 
-			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Last().Should().Be("Bring 25,000 RUB to WZ wallet");
+			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Last().Should().Be("Bring ₽ 25,000 to Vest");
 		}
 
 		[Fact]
 		public void Money_with_no_place_switched_on_is_reported_not_a_crash()
 		{
 			var def = Only(_step, "cash_rub", 25000);
-			def.TogglePlace("Wallet");
+			def.TogglePlace("Pockets");
 
 			Plan(_step, new Item[0], new[] { Money(Roubles, 30000) }).Last().Problem.Should().BeTrue();
 		}
@@ -426,14 +403,108 @@ namespace GetReady.Tests
 		{
 			Only(_step, "cash_rub", 25000);
 
-			var lines = _step.Plan(null, new List<Item>(), new List<Item> { Money(Roubles, 30000) }, () => "Wallet");
+			var lines = _step.Plan(null, new List<Item>(), new List<Item> { Money(Roubles, 30000) }, currency => new CaseEntry { CaseName = "Wallet", CaseTemplate = Body.Wallet, StopsCash = true });
 
 			lines.Should().HaveCount(2);
 			lines[0].Skipped.Should().BeTrue();
-			lines[0].Note.Should().Be("no cash while you carry Wallet");
-			lines[1].Text.Should().Be("Would bring 25,000 RUB, but Wallet stops all cash while you carry it (Setup > Cash)");
+			lines[0].Note.Should().Be("Cash step skipped while you carry");
+			lines[0].By.CaseName.Should().Be("Wallet");
+			lines[1].Text.Should().Be("Would bring ₽ 25,000, but the Cash step is skipped while you carry Wallet");
 			lines[1].Problem.Should().BeFalse();
 			lines[1].Run.Should().BeNull();
+		}
+
+		[Fact]
+		public void A_skipped_cash_step_says_so_even_when_every_place_is_switched_off()
+		{
+			var def = Only(_step, "cash_rub", 25000);
+			foreach (var place in def.PlaceOrder().Where(def.PlaceOn).ToList())
+			{
+				def.TogglePlace(place);
+			}
+
+			var lines = _step.Plan(null, new List<Item>(), new List<Item> { Money(Roubles, 30000) }, currency => new CaseEntry { CaseName = "Wallet", StopsCash = true });
+
+			lines.Should().NotContain(line => line.Problem);
+			lines[0].Skipped.Should().BeTrue();
+		}
+
+		[Fact]
+		public void Without_a_skipping_case_no_place_switched_on_is_still_a_problem()
+		{
+			var def = Only(_step, "cash_rub", 25000);
+			foreach (var place in def.PlaceOrder().Where(def.PlaceOn).ToList())
+			{
+				def.TogglePlace(place);
+			}
+
+			Plan(_step, new Item[0], new[] { Money(Roubles, 30000) }).Should().Contain(line => line.Problem && line.Detail.StartsWith("every place is switched off"));
+		}
+
+		[Fact]
+		public void Money_is_shown_with_the_sign_the_game_uses_and_other_units_after_the_number()
+		{
+			Game.Amount("RUB", 75000).Should().Be("₽ 75,000");
+			Game.Amount("EUR", 250).Should().Be("€ 250");
+			Game.Amount("USD", 4324).Should().Be("$ 4,324");
+			Game.Amount("HP", 300).Should().Be("300 HP");
+			Game.Ratio(10, 25, "RUB").Should().Be("₽ 10/25");
+			Game.Ratio(2, 5, "bandage points").Should().Be("2/5 bandage points");
+			Game.Symbol("HP").Should().BeNull();
+		}
+
+		[Fact]
+		public void The_money_a_case_holds_counts_and_only_the_rest_is_brought()
+		{
+			Only(_step, "cash_rub", 100000);
+			Steps.CaseMoney["RUB"] = 77230;
+
+			var lines = Plan(_step, new Item[0], new[] { Money(Roubles, 150000) });
+
+			lines[0].Text.Should().Be("Roubles: ₽ 77230/100000");
+			lines[0].Skipped.Should().BeFalse();
+			lines.Last().Text.Should().Be("Bring ₽ 22,770 to Pockets");
+		}
+
+		[Fact]
+		public void A_case_that_holds_the_whole_target_leaves_nothing_to_bring()
+		{
+			Only(_step, "cash_rub", 100000);
+			Steps.CaseMoney["RUB"] = 100000;
+
+			Plan(_step, new Item[0], new[] { Money(Roubles, 150000) }).Should().ContainSingle().Which.Text.Should().Be("Roubles: ₽ 100000/100000");
+		}
+
+		[Fact]
+		public void The_money_a_case_holds_of_another_currency_is_not_counted()
+		{
+			Only(_step, "cash_rub", 25000);
+			Steps.CaseMoney["EUR"] = 900;
+
+			Texts(Plan(_step, new Item[0], new[] { Money(Roubles, 30000) })).Last().Should().Be("Bring ₽ 25,000 to Pockets");
+		}
+
+		[Fact]
+		public void Money_a_case_gives_up_is_brought_on_from_the_stash_in_the_same_run()
+		{
+			Only(_step, "cash_rub", 100000);
+			Steps.Released["RUB"] = 77230;
+
+			// the stash holds only 20,000 now: the rest is what the case is about to put there
+			var lines = Plan(_step, new Item[0], new[] { Money(Roubles, 20000) });
+
+			Texts(lines).Should().Equal("Roubles: ₽ 0/100000", "Bring ₽ 20,000 to Pockets", "Bring ₽ 77,230 to Pockets", "Roubles: Missing ₽ 2,770: none left in the stash");
+			lines[2].Run.Should().NotBeNull();
+			lines.Last().Problem.Should().BeTrue();
+		}
+
+		[Fact]
+		public void Released_money_is_brought_only_as_far_as_the_target_needs()
+		{
+			Only(_step, "cash_rub", 50000);
+			Steps.Released["RUB"] = 77230;
+
+			Texts(Plan(_step, new Item[0], new Item[0])).Should().Equal("Roubles: ₽ 0/50000", "Bring ₽ 50,000 to Pockets");
 		}
 
 		[Fact]
@@ -449,7 +520,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_message_about_places_you_do_not_carry_talks_about_what_was_set_up()
 		{
-			SuppliesStep.NoPlaceOnYou(new[] { "Wallet" }).Should().Be("set to bring to Wallet, which you are not carrying: carry one, or add another place under \"Bring to\" in Setup");
+			SuppliesStep.NoPlaceOnYou(new[] { "Pockets" }).Should().Be("set to bring to Pockets, which you are not carrying: carry one, or add another place under \"Bring to\" in Setup");
 			SuppliesStep.NoPlaceOnYou(new[] { "Vest", "Backpack" }).Should().Be("set to bring to Vest, Backpack, none of which you are carrying: carry one, or add another place under \"Bring to\" in Setup");
 		}
 	}

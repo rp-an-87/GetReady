@@ -38,7 +38,8 @@ namespace GetReady
 			var itemContext = uiContext?.CurrentItemContext;
 			var controller = uiContext == null ? null : ControllerField.GetValue(uiContext) as InventoryController;
 			var repairController = uiContext?.Session?.RepairController;
-			if (itemContext == null || controller == null || repairController == null || itemContext.Item is RepairKit)
+			// No stash on the controller means a raid: the key is for the stash only, as its hint says (IsApplicable)
+			if (itemContext == null || controller == null || controller.Inventory.Stash == null || repairController == null || itemContext.Item is RepairKit)
 			{
 				return;
 			}

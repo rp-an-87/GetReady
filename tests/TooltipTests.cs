@@ -82,14 +82,14 @@ namespace GetReady.Tests
 			Tooltips.Delay.Should().BeInRange(0f, 0.1f);
 		}
 
-		// ---- the injector template panels
+		// ---- the panels of the templates
 
-		private static SavedCase Holding(int cells)
+		private static CaseEntry Holding(int cells)
 		{
-			var saved = new SavedCase();
+			var saved = new CaseEntry();
 			for (int i = 0; i < cells; i++)
 			{
-				saved.Cells.Add(new CaseCell { X = i % 3, Y = i / 3, Template = "t" + i });
+				saved.Items.Add(new CaseItem { X = i % 3, Y = i / 3, Template = "t" + i });
 			}
 
 			return saved;
@@ -98,7 +98,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_panels_are_wide_enough_for_the_saved_empty_text_at_least()
 		{
-			ReadyWindow.PanelWidth(new SavedCase[0]).Should().Be(230);
+			ReadyWindow.PanelWidth(new CaseEntry[0]).Should().Be(230);
 			ReadyWindow.PanelWidth(new[] { Holding(0), Holding(1) }).Should().Be(230);
 		}
 

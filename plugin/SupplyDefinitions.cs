@@ -110,18 +110,18 @@ namespace GetReady
 		protected override GroupDef[] Defs => Definitions;
 	}
 
-	// Money to carry, and which case it goes in: roubles in a wallet early on, a docs or SICC case later, euros for coop extracts
+	// Money to carry loose: pockets, vest, backpack or pouch. Money in a case is set up with the case (Setup > Cases), which also turns this off.
 	internal class CashStep : SuppliesStep
 	{
 		public override string Name => "Cash";
 		public override bool Enabled { get => SettingsStore.Current.Supplies.CashEnabled; set => SettingsStore.Current.Supplies.CashEnabled = value; }
 
-		private static readonly string[] Places = { "Wallet", "WZ wallet", "Docs case", "SICC case", "Pockets", "Vest", "Backpack", "Pouch" };
+		private static readonly string[] Places = { "Pockets", "Vest", "Backpack", "Pouch" };
 
 		private static GroupDef Currency(string id, string name, string unit, string template, int step, int max) => new GroupDef
 		{
 			Id = id, Name = name, Unit = unit, Stack = true, Money = true, Bindable = false, NoFallback = true, DefaultTarget = 0, Max = max, Step = step,
-			DefaultDestinations = new[] { "Wallet" }, Locations = Places,
+			DefaultDestinations = new[] { "Pockets" }, Locations = Places,
 			Entries = new[] { Entry.Stack(template) }
 		};
 

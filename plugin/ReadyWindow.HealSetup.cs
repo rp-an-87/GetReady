@@ -18,7 +18,7 @@ namespace GetReady
 			GUILayout.BeginHorizontal();
 			Help("The most urgent injury is treated with the first item of the list that treats it, until you are healed. Put the dedicated items before the kits and a kit is only left for what is still hurt (a kit treats everything it can on a part at once). Runs last, so what Get ready just brought is left alone. The icons on each row show what the item treats.");
 			GUILayout.FlexibleSpace();
-			if (GUILayout.Button(new GUIContent("Reset", "The usual order and the usual items on"), Ui.Pick, GUILayout.Width(70)))
+			if (GUILayout.Button(new GUIContent("Reset", "The usual order and the usual items on"), Ui.Pick, GUILayout.Width(Fit("Reset", Ui.Pick, 70))))
 			{
 				HealMeStep.ResetAll();
 				changed = true;
@@ -41,7 +41,7 @@ namespace GetReady
 				GUILayout.BeginHorizontal();
 				Dnd.Grip(HealIcon, "item", "healme", entry.Template, entry.Name);
 				Icons.Slot(entry.Template, entry.Name, HealIcon);
-				GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.Width(HealName));
+				GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.Width(HealName), GUILayout.Height(HealIcon));
 				if (off)
 				{
 					StrikeLast(entry.Name, Ui.Muted);
@@ -61,7 +61,7 @@ namespace GetReady
 				}
 
 				GUILayout.FlexibleSpace();
-				if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(HealButton)))
+				if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.PickRow : Ui.PickOnRow, GUILayout.Width(Fit("Not used", Ui.PickOnRow, HealButton)), GUILayout.Height(HealIcon)))
 				{
 					def.ToggleEntry(entry.Template);
 					changed = true;

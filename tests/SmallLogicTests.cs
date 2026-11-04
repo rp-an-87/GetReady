@@ -88,7 +88,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_pages_show_the_steps_in_the_order_you_tweak_them_most()
 		{
-			Steps.DisplayOrder.Select(step => step.Name).Should().Equal("Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Injector case", "Repair", "Full auto", "Treat injuries", "Cash");
+			Steps.DisplayOrder.Select(step => step.Name).Should().Equal("Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair", "Full auto", "Treat injuries", "Cash");
 		}
 
 		[Fact]

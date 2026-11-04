@@ -41,9 +41,29 @@ namespace GetReady
 			}
 		}
 
-		private static void OnItemAdded(AddItemEventArgs args) => MarkDirty();
+		// What Get ready moves itself is not a change you made by hand, so it is not written into the records of the cases
+		private static void OnItemAdded(AddItemEventArgs args)
+		{
+			if (!_running)
+			{
+				CasesStep.OnItemEvent(args.To);
+			}
 
-		private static void OnItemRemoved(RemoveItemEventArgs args) => MarkDirty();
+			MarkDirty();
+		}
+
+		private static void OnItemRemoved(RemoveItemEventArgs args)
+		{
+			if (!_running)
+			{
+				CasesStep.OnItemEvent(args.From);
+			}
+
+			MarkDirty();
+		}
+
+		// Something outside the inventory changed what the plan shows (a tag on a case)
+		internal static void PlanChanged() => MarkDirty();
 
 		private static void MarkDirty()
 		{

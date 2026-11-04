@@ -115,7 +115,7 @@ namespace GetReady
 					icon(items[i], rect);
 				}
 
-				GUILayout.Label(keys[i], Ui.Body, GUILayout.ExpandWidth(true));
+				GUILayout.Label(keys[i], Ui.Body, GUILayout.ExpandWidth(true), GUILayout.Height(34));
 				GUILayout.EndHorizontal();
 				GUILayout.EndVertical();
 				rects.Add(GUILayoutUtility.GetLastRect());

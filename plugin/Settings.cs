@@ -13,13 +13,6 @@ namespace GetReady
 		public string Name;
 	}
 
-	// One cell of the injector case (the case is 3x3 and injectors are 1x1)
-	internal class CaseCell : ItemRef
-	{
-		public int X;
-		public int Y;
-	}
-
 	// One special slot of the pockets: the first of Templates that the stash has goes in (a second one is a fallback)
 	internal class SlotEntry
 	{
@@ -27,39 +20,6 @@ namespace GetReady
 		// How many of it the slot held when saved (a flare stack, say)
 		public int Count = 1;
 		public List<ItemRef> Templates = new List<ItemRef>();
-	}
-
-	// What one injector case should hold, cell for cell: a cell that is not in Cells must be empty (a case saved empty is kept empty)
-	internal class SavedCase
-	{
-		// The very case (item ids stay the same for the same item, so another case of the same type is left alone)
-		public string CaseId;
-		public string CaseTemplate;
-		public string CaseName;
-		public string Tag;
-		public int TagColor;
-		public List<CaseCell> Cells = new List<CaseCell>();
-	}
-
-	internal class InjectorCaseTemplate
-	{
-		public bool Enabled = true;
-		// One template per injector case
-		public List<SavedCase> Cases = new List<SavedCase>();
-		// The single template of the first version: it becomes the first of Cases when the file is read
-		public string CaseId;
-		public List<CaseCell> Cells = new List<CaseCell>();
-
-		internal void Migrate()
-		{
-			if (Cases.Count == 0 && !string.IsNullOrEmpty(CaseId) && Cells.Count > 0)
-			{
-				Cases.Add(new SavedCase { CaseId = CaseId, CaseTemplate = Game.InjectorCase, CaseName = "Injector case", Cells = Cells.ToList() });
-			}
-
-			CaseId = null;
-			Cells = new List<CaseCell>();
-		}
 	}
 
 	internal class SpecialSlotsTemplate
@@ -72,10 +32,10 @@ namespace GetReady
 	internal class GroupSetting
 	{
 		public int Target;
-		// The places picked before places were all on a list (kept to carry an old profile over, see GroupDef.PlaceOrder)
+		// The places a group starts with (see GroupDef.PlaceOrder)
 		public List<string> Destinations = new List<string>();
 		// Every place the group can go to, in the order they are tried (the first with room wins), and the ones switched off, which are
-		// skipped but keep their spot. Null in a profile from before: worked out from Destinations.
+		// skipped but keep their spot. Null until the group is first used: worked out from Destinations.
 		public List<string> Places;
 		public List<string> PlacesOff = new List<string>();
 		// The group's items by template, best first (empty = the default order), and the ones switched off
@@ -92,7 +52,6 @@ namespace GetReady
 		public bool HealingEnabled = true;
 		public bool GrenadesEnabled = true;
 		public bool CashEnabled = true;
-		public List<CashExclusion> CashExclusions = new List<CashExclusion>();
 		// Replace carried items by better ones from the stash (more resource, higher priority, non-FiR)
 		public bool SwapWorse = true;
 		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
@@ -101,23 +60,6 @@ namespace GetReady
 		// equals the loose one always goes first. Off: loose before in a container, whatever FiR is.
 		public bool NonFiRBeforeLoose = true;
 		public Dictionary<string, GroupSetting> Groups = new Dictionary<string, GroupSetting>();
-
-		// A case that was kept out for all three currencies used to stop all cash while you carried it: that is now its own switch
-		internal void Migrate()
-		{
-			foreach (var id in CashExclusions.Select(entry => entry.CaseId).Distinct().ToList())
-			{
-				var own = CashExclusions.Where(entry => entry.CaseId == id).ToList();
-				if (own.Any(entry => entry.Currency == CashExclusion.All) || !new[] { "RUB", "EUR", "USD" }.All(currency => own.Any(entry => entry.Currency == currency)))
-				{
-					continue;
-				}
-
-				var first = own[0];
-				CashExclusions.RemoveAll(entry => entry.CaseId == id);
-				CashExclusions.Add(new CashExclusion { CaseId = id, CaseTemplate = first.CaseTemplate, CaseName = first.CaseName, Tag = first.Tag, TagColor = first.TagColor, Currency = CashExclusion.All });
-			}
-		}
 	}
 
 	// The Ammo step (the rules for loading ammo are fixed and shared with the T key, see AmmoRules)
@@ -158,18 +100,6 @@ namespace GetReady
 		public string Name;
 	}
 
-	// A currency kept out of one very case or wallet you carry (that case, by item id, not its type)
-	internal class CashExclusion
-	{
-		public string CaseId;
-		public string CaseTemplate;
-		public string CaseName;
-		public string Tag;      // the tag on the case when it was saved, and its colour (for the list)
-		public int TagColor;
-		public string Currency; // RUB, EUR or USD, or All: while you carry this case no cash at all is brought
-		internal const string All = "ALL";
-	}
-
 	internal class RepairSettings
 	{
 		public bool Enabled;
@@ -197,6 +127,54 @@ namespace GetReady
 		public List<string> Slots = new List<string> { "FirstPrimaryWeapon", "SecondPrimaryWeapon" };
 	}
 
+	// One item of a case as it was recorded: what it is (by type), how many (a stack), and where it sat (grid, cell, rotation). The place is
+	// only used by a case set to exact positions.
+	internal class CaseItem : ItemRef
+	{
+		public int Count = 1;
+		public int Grid;
+		public int X;
+		public int Y;
+		public int Rotation;
+	}
+
+	// One container you carry (that very one, by item id), as you set it up in Setup > Cases. Recorded: the keys, cards and money it holds, so
+	// they are brought back and anything else is taken out. The rest is about the case itself: where it is for and what it does to the cash.
+	internal class CaseEntry
+	{
+		public string CaseId;
+		public string CaseTemplate;
+		public string CaseName;
+		public string Tag;
+		public int TagColor;
+		// The contents are recorded (a case with only maps or the cash switch set has none)
+		public bool Recorded;
+		// What it holds, apart from money, item by item
+		public List<CaseItem> Items = new List<CaseItem>();
+		// Each item goes back where it was recorded (grid, cell, rotation); off: only the type and the count matter
+		public bool Exact;
+		// What is not in the template is taken out to the stash, money too (a recorded amount keeps that much, the extra goes out); off: only what is missing is brought and nothing is taken out
+		public bool TakeOutRest = true;
+		// RUB, EUR and USD it holds
+		public Dictionary<string, int> Money = new Dictionary<string, int>();
+		// While you carry this case the Cash step does nothing
+		public bool StopsCash;
+		// The maps it is for (names of MapTags.Maps); none: any
+		public List<string> Maps = new List<string>();
+	}
+
+	internal class CasesSettings
+	{
+		public bool Enabled = true;
+		// A change you make by hand in the stash updates the recorded contents of a case that was recorded
+		public bool AutoUpdate = true;
+		// The map screen warns about a case you carry that is for other maps
+		public bool MapWarnings = true;
+		public List<CaseEntry> Cases = new List<CaseEntry>();
+		// The cases whose card is collapsed in Setup (by item id): it stays as you left it, also when the case is taken off and put on again
+		public List<string> Collapsed = new List<string>();
+	}
+
 	internal class Settings
 	{
 		// The size of the window and the check box, 1 = as designed (Setup > Options)
@@ -206,14 +184,13 @@ namespace GetReady
 		public RepairSettings Repair = new RepairSettings();
 		public AmmoSettings Ammo = new AmmoSettings();
 		public SuppliesSettings Supplies = new SuppliesSettings();
-		public InjectorCaseTemplate InjectorCase = new InjectorCaseTemplate();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();
+		public CasesSettings Cases = new CasesSettings();
 	}
 
 	// One settings file per profile: BepInEx\config\GetReady\profiles\<profile id>.json. The profile is known once the game is logged in
 	// (not when the plugin starts), so the file is picked on first use and again when another profile is logged in. Before that (no
-	// session) the defaults are used and nothing is saved. The old shared settings.json is no longer read; it was copied to the main
-	// profile's file by hand.
+	// session) the defaults are used and nothing is saved. 
 	internal static class SettingsStore
 	{
 		// (the folder, who is logged in and the clock can be replaced, so the tests can play logging in and out with files of their own)
@@ -302,8 +279,6 @@ namespace GetReady
 			// Files written while that was happening hold the lists twice over
 			settings.Ammo.Pointers = settings.Ammo.Pointers.Distinct().ToList();
 			settings.FullAuto.Slots = settings.FullAuto.Slots.Distinct().ToList();
-			settings.InjectorCase.Migrate();
-			settings.Supplies.Migrate();
 			return settings;
 		}
 

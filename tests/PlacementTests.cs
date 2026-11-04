@@ -107,6 +107,30 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public async Task Full_pockets_say_there_is_no_room_not_what_a_special_slot_filters()
+		{
+			try
+			{
+				while (true)
+				{
+					_body.OnYou(RealItems.Any(RealItems.ArmyBandage));
+				}
+			}
+			catch (System.InvalidOperationException)
+			{
+				// the pockets grid is full
+			}
+
+			var grenade = _body.InStash(RealItems.Any(RealItems.Rgd5));
+
+			var error = await MoveTo(grenade, "Pockets");
+
+			error.Should().NotBeNull();
+			error.Should().NotContain("filter");
+			_body.Moves.Should().BeEmpty();
+		}
+
+		[Fact]
 		public async Task The_vest_is_the_tactical_vest()
 		{
 			var vest = _body.Wear(EquipmentSlot.TacticalVest, NewContainer(Body.Vest));
@@ -138,47 +162,16 @@ namespace GetReady.Tests
 			Place(_body.Moves.Single()).Should().Be(Gear.Stash);
 		}
 
-		[Fact]
-		public async Task A_case_is_a_place_when_you_carry_it()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
-
-			(await MoveTo(money, "Wallet")).Should().BeNull();
-
-			Place(_body.Moves.Single()).Should().Be(Body.Wallet);
-			wallet.Should().NotBeNull();
-		}
-
-		[Fact]
-		public async Task A_case_in_the_stash_is_not_a_place()
-		{
-			NewContainer(Body.Wallet).In(_body.StashBox);
-			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
-
-			(await MoveTo(money, "Wallet")).Should().Be("no Wallet on you");
-		}
-
-		[Fact]
-		public async Task A_case_in_the_pouch_is_a_place()
-		{
-			var pouch = _body.Wear(EquipmentSlot.SecuredContainer, NewContainer(AlphaCase));
-			NewContainer(Body.Wallet).In(pouch);
-			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
-
-			(await MoveTo(money, "Wallet")).Should().BeNull();
-		}
-
 		// ---- adding to a stack
 
 		[Fact]
 		public async Task Money_is_added_to_a_stack_of_the_same_money_that_has_room()
 		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
+			var wallet = _backpack;
 			var existing = RealItems.Any(RealItems.Roubles, 5000).In(wallet);
 			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
 
-			(await MoveTo(money, "Wallet")).Should().BeNull();
+			(await MoveTo(money, "Backpack")).Should().BeNull();
 
 			_body.Moves.Should().BeEmpty("merging is not a move to a spot");
 			_body.Merges.Should().Equal(money);
@@ -188,38 +181,38 @@ namespace GetReady.Tests
 		[Fact]
 		public async Task Money_is_not_added_to_a_stack_that_is_locked()
 		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
+			var wallet = _backpack;
 			RealItems.Any(RealItems.Roubles, 5000).In(wallet).PinLockState = EItemPinLockState.Locked;
 			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
 
-			(await MoveTo(money, "Wallet")).Should().BeNull();
+			(await MoveTo(money, "Backpack")).Should().BeNull();
 
-			Place(_body.Moves.Single()).Should().Be(Body.Wallet);
+			Place(_body.Moves.Single()).Should().Be(ScavBackpack);
 		}
 
 		[Fact]
 		public async Task Money_is_not_added_to_a_stack_of_another_kind_of_money()
 		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
+			var wallet = _backpack;
 			RealItems.Any(RealItems.Euros, 5000).In(wallet);
 			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
 
-			(await MoveTo(money, "Wallet")).Should().BeNull();
+			(await MoveTo(money, "Backpack")).Should().BeNull();
 
-			Place(_body.Moves.Single()).Should().Be(Body.Wallet);
+			Place(_body.Moves.Single()).Should().Be(ScavBackpack);
 		}
 
 		[Fact]
 		public async Task A_stack_without_room_for_all_of_it_is_not_added_to()
 		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
+			var wallet = _backpack;
 			var full = RealItems.Any(RealItems.Roubles, 1).In(wallet);
 			full.StackObjectsCount = full.StackMaxSize - 500;
 			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
 
-			(await MoveTo(money, "Wallet")).Should().BeNull();
+			(await MoveTo(money, "Backpack")).Should().BeNull();
 
-			Place(_body.Moves.Single()).Should().Be(Body.Wallet);
+			Place(_body.Moves.Single()).Should().Be(ScavBackpack);
 		}
 
 		[Fact]
@@ -264,7 +257,7 @@ namespace GetReady.Tests
 			(await MoveTo(cms, "Backpack")).Should().Be("refused at " + ScavBackpack);
 		}
 
-		// ---- the cash exclusions
+		// ---- money
 
 		[Fact]
 		public void Money_is_told_apart_by_its_template()
@@ -273,187 +266,6 @@ namespace GetReady.Tests
 			Game.CurrencyOf(RealItems.Euros).Should().Be("EUR");
 			Game.CurrencyOf(RealItems.Dollars).Should().Be("USD");
 			Game.CurrencyOf(RealItems.Grizzly).Should().BeNull();
-		}
-
-		private void Exclude(CompoundItem container, string currency) =>
-			SettingsStore.Current.Supplies.CashExclusions.Add(new CashExclusion { CaseId = container.Id.ToString(), Currency = currency });
-
-		[Fact]
-		public void A_case_kept_out_for_a_currency_is_excluded_for_that_money_only()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(wallet, "USD");
-
-			Game.IsCashExcluded(RealItems.Dollars, wallet).Should().BeTrue();
-			Game.IsCashExcluded(RealItems.Roubles, wallet).Should().BeFalse();
-		}
-
-		[Fact]
-		public void Only_that_very_case_is_excluded()
-		{
-			var one = NewContainer(Body.Wallet).In(_backpack);
-			var two = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(one, "RUB");
-
-			Game.IsCashExcluded(RealItems.Roubles, two).Should().BeFalse();
-		}
-
-		[Fact]
-		public void Nothing_but_money_is_ever_excluded()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(wallet, "RUB");
-
-			Game.IsCashExcluded(RealItems.Grizzly, wallet).Should().BeFalse();
-		}
-
-		[Fact]
-		public async Task Money_does_not_go_into_a_case_it_is_kept_out_of()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(wallet, "RUB");
-			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
-
-			(await MoveTo(money, "Wallet")).Should().Be("Wallet keeps this money out");
-			_body.Moves.Should().BeEmpty();
-		}
-
-		[Fact]
-		public async Task When_every_case_of_the_first_place_keeps_the_money_out_the_next_place_is_tried()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(wallet, "RUB");
-			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
-
-			(await MoveTo(money, "Wallet", "Backpack")).Should().BeNull();
-
-			Place(_body.Moves.Single()).Should().Be(ScavBackpack);
-		}
-
-		[Fact]
-		public async Task Another_case_of_the_same_place_is_used_when_one_is_excluded()
-		{
-			var one = NewContainer(Body.Wallet).In(_backpack);
-			var two = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(one, "RUB");
-			var money = _body.InStash(RealItems.Any(RealItems.Roubles, 1000));
-
-			(await MoveTo(money, "Wallet")).Should().BeNull();
-
-			_body.Moves.Single().To.Container.ParentItem.Should().BeSameAs(two);
-		}
-
-		// ---- "No cash": a case that stops all cash while you carry it
-
-		[Fact]
-		public void A_case_you_carry_with_no_cash_on_is_named_by_its_tag()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			SettingsStore.Current.Supplies.CashExclusions.Add(new CashExclusion { CaseId = wallet.Id.ToString(), CaseName = "Wallet", Tag = "qwe", Currency = CashExclusion.All });
-
-			Game.CashBlockedBy(_body.Inventory).Should().Be("qwe");
-		}
-
-		[Fact]
-		public void Without_a_tag_it_is_named_by_its_name()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			SettingsStore.Current.Supplies.CashExclusions.Add(new CashExclusion { CaseId = wallet.Id.ToString(), CaseName = "Wallet", Currency = CashExclusion.All });
-
-			Game.CashBlockedBy(_body.Inventory).Should().Be("Wallet");
-		}
-
-		[Fact]
-		public void A_case_in_the_pouch_counts_too()
-		{
-			var pouch = _body.Wear(EquipmentSlot.SecuredContainer, NewContainer(AlphaCase));
-			var wallet = NewContainer(Body.Wallet).In(pouch);
-			SettingsStore.Current.Supplies.CashExclusions.Add(new CashExclusion { CaseId = wallet.Id.ToString(), CaseName = "Wallet", Currency = CashExclusion.All });
-
-			Game.CashBlockedBy(_body.Inventory).Should().Be("Wallet");
-		}
-
-		[Fact]
-		public void A_case_in_the_stash_stops_nothing()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_body.StashBox);
-			SettingsStore.Current.Supplies.CashExclusions.Add(new CashExclusion { CaseId = wallet.Id.ToString(), CaseName = "Wallet", Currency = CashExclusion.All });
-
-			Game.CashBlockedBy(_body.Inventory).Should().BeNull();
-		}
-
-		[Fact]
-		public void Keeping_a_currency_out_of_a_case_is_not_the_same_as_no_cash()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(wallet, "RUB");
-			Exclude(wallet, "EUR");
-			Exclude(wallet, "USD");
-
-			Game.CashBlockedBy(_body.Inventory).Should().BeNull();
-		}
-
-		[Fact]
-		public void Another_case_without_the_switch_stops_nothing()
-		{
-			var one = NewContainer(Body.Wallet).In(_backpack);
-			NewContainer(Body.Wallet).In(_backpack);
-			SettingsStore.Current.Supplies.CashExclusions.Add(new CashExclusion { CaseId = "somewhere-else", Currency = CashExclusion.All });
-
-			Game.CashBlockedBy(_body.Inventory).Should().BeNull();
-			one.Should().NotBeNull();
-		}
-
-		// ---- which places take the money
-
-		[Fact]
-		public void A_place_whose_cases_all_keep_the_money_out_does_not_take_it()
-		{
-			var wallet = NewContainer(Body.Wallet).In(_backpack);
-			Exclude(wallet, "RUB");
-
-			Game.PlaceAllows(_body.Inventory, "Wallet", RealItems.Roubles).Should().BeFalse();
-			Game.PlaceAllows(_body.Inventory, "Wallet", RealItems.Euros).Should().BeTrue();
-			Game.PlaceAllows(_body.Inventory, "Backpack", RealItems.Roubles).Should().BeTrue();
-		}
-
-		[Fact]
-		public void A_place_that_is_not_there_takes_nothing()
-		{
-			Game.PlaceAllows(_body.Inventory, "Wallet", RealItems.Roubles).Should().BeFalse();
-		}
-
-		[Fact]
-		public void A_second_case_that_allows_the_money_makes_the_place_take_it()
-		{
-			var one = NewContainer(Body.Wallet).In(_backpack);
-			NewContainer(Body.Wallet).In(_backpack);
-			Exclude(one, "RUB");
-
-			Game.PlaceAllows(_body.Inventory, "Wallet", RealItems.Roubles).Should().BeTrue();
-		}
-
-		// ---- the old single exclusion list becomes the new switches
-
-		[Fact]
-		public void A_case_kept_out_for_all_three_currencies_becomes_no_cash_when_the_file_is_read()
-		{
-			var json = "{\"Supplies\":{\"CashExclusions\":[{\"CaseId\":\"a\",\"Currency\":\"RUB\",\"Tag\":\"qwe\"},{\"CaseId\":\"a\",\"Currency\":\"EUR\"},{\"CaseId\":\"a\",\"Currency\":\"USD\"}]}}";
-
-			var list = SettingsStore.Parse(json).Supplies.CashExclusions;
-
-			list.Should().ContainSingle();
-			list[0].CaseId.Should().Be("a");
-			list[0].Currency.Should().Be(CashExclusion.All);
-			list[0].Tag.Should().Be("qwe");
-		}
-
-		[Fact]
-		public void A_case_kept_out_for_some_currencies_keeps_them()
-		{
-			var json = "{\"Supplies\":{\"CashExclusions\":[{\"CaseId\":\"a\",\"Currency\":\"RUB\"},{\"CaseId\":\"a\",\"Currency\":\"EUR\"},{\"CaseId\":\"b\",\"Currency\":\"USD\"}]}}";
-
-			SettingsStore.Parse(json).Supplies.CashExclusions.Select(entry => entry.CaseId + entry.Currency).Should().Equal("aRUB", "aEUR", "bUSD");
 		}
 
 		// ---- adding to a stack directly, and waiting
@@ -493,22 +305,6 @@ namespace GetReady.Tests
 		}
 
 		// ---- which places you have
-
-		[Fact]
-		public void A_wallet_in_the_stash_is_not_a_place_you_have()
-		{
-			NewContainer(Body.Wallet).In(_body.StashBox);
-
-			Game.HasPlace(_body.Inventory, "Wallet").Should().BeFalse();
-		}
-
-		[Fact]
-		public void A_wallet_you_carry_is_a_place_you_have()
-		{
-			NewContainer(Body.Wallet).In(_backpack);
-
-			Game.HasPlace(_body.Inventory, "Wallet").Should().BeTrue();
-		}
 
 		[Fact]
 		public void The_pockets_the_backpack_and_the_stash_are_places_you_have_and_an_unworn_vest_is_not()

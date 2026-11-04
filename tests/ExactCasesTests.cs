@@ -8,16 +8,16 @@ using static GetReady.Tests.SupplyFixture;
 
 namespace GetReady.Tests
 {
-	// The injector case: saving how it is filled, and putting the injectors back in the same cells.
-	public class InjectorCaseTests
+	// A case with exact positions (the injector case): saving how it is filled, and putting the items back in the same cells.
+	public class ExactCasesTests
 	{
 		private const string Propital = "5c0e530286f7747fa1419862", Adrenaline = "5c10c8fd86f7743d7d706df3", Morphine = "544fb3f34bdc2d03748b456a";
 
 		private readonly Body _body = new Body();
-		private readonly InjectorCaseStep _step = new InjectorCaseStep();
+		private readonly CasesStep _step = new CasesStep();
 		private readonly CompoundItem _case;
 
-		public InjectorCaseTests()
+		public ExactCasesTests()
 		{
 			Reset();
 			Names[Propital] = "Propital";
@@ -38,15 +38,15 @@ namespace GetReady.Tests
 			return item;
 		}
 
-		private static CaseCell Cell(int x, int y, string template) => new CaseCell { X = x, Y = y, Template = template, Name = Game.TemplateName(template) };
+		private static CaseItem Cell(int x, int y, string template) => new CaseItem { X = x, Y = y, Template = template, Name = Game.TemplateName(template) };
 
-		private SavedCase Saved(params CaseCell[] cells) => SavedFor(_case, cells);
+		private CaseEntry Saved(params CaseItem[] cells) => SavedFor(_case, cells);
 
-		private static SavedCase SavedFor(CompoundItem injectorCase, params CaseCell[] cells)
+		private static CaseEntry SavedFor(CompoundItem injectorCase, params CaseItem[] cells)
 		{
-			var saved = new SavedCase { CaseId = injectorCase.Id.ToString(), CaseTemplate = Body.InjectorCase, CaseName = "Injector case" };
-			saved.Cells.AddRange(cells);
-			SettingsStore.Current.InjectorCase.Cases.Add(saved);
+			var saved = new CaseEntry { CaseId = injectorCase.Id.ToString(), CaseTemplate = Body.InjectorCase, CaseName = "Injector case", Recorded = true, Exact = true };
+			saved.Items.AddRange(cells);
+			CasesStep.Entries.Add(saved);
 			return saved;
 		}
 
@@ -75,7 +75,7 @@ namespace GetReady.Tests
 			var second = NewContainer(Body.InjectorCase).In(pouch);
 			RealItems.Any(RealItems.Grizzly).In(_body.Container(EquipmentSlot.Backpack));
 
-			InjectorCaseStep.FindCases(_body.Inventory).Should().BeEquivalentTo(new[] { _case, second });
+			CasesStep.FindCases(_body.Inventory).Should().BeEquivalentTo(new[] { _case, second });
 		}
 
 		[Fact]
@@ -83,7 +83,7 @@ namespace GetReady.Tests
 		{
 			NewContainer(Body.InjectorCase).In(_body.StashBox);
 
-			InjectorCaseStep.FindCases(_body.Inventory).Should().Equal(_case);
+			CasesStep.FindCases(_body.Inventory).Should().Equal(_case);
 		}
 
 		[Fact]
@@ -92,7 +92,7 @@ namespace GetReady.Tests
 			var pouch = _body.Wear(EquipmentSlot.SecuredContainer, NewContainer(Gear.AlphaCase));
 			var inPouch = NewContainer(Body.InjectorCase).In(pouch);
 
-			InjectorCaseStep.FindCases(_body.Inventory).Should().Contain(inPouch);
+			CasesStep.FindCases(_body.Inventory).Should().Contain(inPouch);
 		}
 
 		[Fact]
@@ -102,9 +102,9 @@ namespace GetReady.Tests
 			var two = Inject(Adrenaline, 2, 1);
 			var grid = _case.Grids[0];
 
-			InjectorCaseStep.InCell(grid, 0, 0).Should().BeSameAs(one);
-			InjectorCaseStep.InCell(grid, 2, 1).Should().BeSameAs(two);
-			InjectorCaseStep.InCell(grid, 1, 1).Should().BeNull();
+			CasesStep.InCell(grid, 0, 0).Should().BeSameAs(one);
+			CasesStep.InCell(grid, 2, 1).Should().BeSameAs(two);
+			CasesStep.InCell(grid, 1, 1).Should().BeNull();
 		}
 
 		// ---- saving
@@ -115,11 +115,11 @@ namespace GetReady.Tests
 			Inject(Propital, 0, 0);
 			Inject(Adrenaline, 2, 1);
 
-			InjectorCaseStep.Capture(_case).Should().Be(2);
+			CasesStep.ItemCount(CasesStep.Record(_case)).Should().Be(2);
 
-			var template = SettingsStore.Current.InjectorCase.Cases.Single();
+			var template = CasesStep.Entries.Single();
 			template.CaseId.Should().Be(_case.Id.ToString());
-			template.Cells.Select(cell => (cell.X, cell.Y, cell.Template, cell.Name)).Should().BeEquivalentTo(new[]
+			template.Items.Select(cell => (cell.X, cell.Y, cell.Template, cell.Name)).Should().BeEquivalentTo(new[]
 			{
 				(0, 0, Propital, "Propital"), (2, 1, Adrenaline, "Adrenaline")
 			});
@@ -131,19 +131,19 @@ namespace GetReady.Tests
 			Saved(Cell(1, 1, Morphine));
 			Inject(Propital, 0, 0);
 
-			InjectorCaseStep.Capture(_case);
+			CasesStep.Record(_case);
 
-			SettingsStore.Current.InjectorCase.Cases.Should().ContainSingle().Which.Cells.Should().ContainSingle().Which.Template.Should().Be(Propital);
+			CasesStep.Entries.Should().ContainSingle().Which.Items.Should().ContainSingle().Which.Template.Should().Be(Propital);
 		}
 
 		[Fact]
 		public void Saving_an_empty_case_saves_an_empty_template()
 		{
-			InjectorCaseStep.Capture(_case).Should().Be(0);
+			CasesStep.ItemCount(CasesStep.Record(_case)).Should().Be(0);
 
-			var template = SettingsStore.Current.InjectorCase.Cases.Single();
+			var template = CasesStep.Entries.Single();
 			template.CaseId.Should().Be(_case.Id.ToString());
-			template.Cells.Should().BeEmpty();
+			template.Items.Should().BeEmpty();
 		}
 
 		// ---- the plan
@@ -151,21 +151,17 @@ namespace GetReady.Tests
 		[Fact]
 		public void With_nothing_saved_the_plan_says_so()
 		{
-			Plan().Should().ContainSingle().Which.Text.Should().StartWith("Nothing saved");
+			Plan().Should().BeEmpty();
 		}
 
 		[Fact]
 		public void A_saved_case_that_is_not_on_you_is_ignored_not_an_error()
 		{
 			Saved(Cell(0, 0, Propital));
-			SettingsStore.Current.InjectorCase.Cases[0].CaseId = "someothercase";
+			CasesStep.Entries[0].CaseId = "someothercase";
 			_body.InStash(RealItems.Any(Propital));
 
-			var lines = Plan();
-
-			lines.Should().ContainSingle().Which.Text.Should().Be("None of the saved injector cases is on you.");
-			lines[0].Problem.Should().BeFalse();
-			lines[0].Run.Should().BeNull();
+			Plan().Should().BeEmpty();
 		}
 
 		[Fact]
@@ -174,7 +170,7 @@ namespace GetReady.Tests
 			Inject(Propital, 0, 0);
 			Saved(Cell(0, 0, Propital));
 
-			Texts(Plan()).Should().Equal("Injectors: 1/1 in place");
+			Texts(Plan()).Should().Equal("Injector case: 1/1 in place");
 		}
 
 		[Fact]
@@ -185,12 +181,12 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Texts(lines).Should().Equal("Injectors: 0/1 in place", "Bring 1x Propital");
+			Texts(lines).Should().Equal("Injector case: 0/1 in place", "Bring 1x Propital");
 			RunAll(lines).Result.Should().BeNull();
 			var move = _body.Moves.Single();
 			move.Item.Should().BeSameAs(injector);
 			Body.Where(move).Should().Be(Body.InjectorCase);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 2).Should().BeSameAs(injector);
+			CasesStep.InCell(_case.Grids[0], 1, 2).Should().BeSameAs(injector);
 		}
 
 		[Fact]
@@ -202,7 +198,7 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Texts(lines).Should().Equal("Injectors: 0/2 in place", "Bring 2x Propital");
+			Texts(lines).Should().Equal("Injector case: 0/2 in place", "Bring 2x Propital");
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Should().HaveCount(2);
 		}
@@ -269,11 +265,11 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Texts(lines).Should().Equal("Injectors: 0/1 in place", "Bring 1x Propital (replaces Adrenaline)");
+			Texts(lines).Should().Equal("Injector case: 0/1 in place", "Bring 1x Propital (replaces Adrenaline)");
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Select(move => move.Item).Should().Equal(wrong, right);
 			Body.Where(_body.Moves[0]).Should().Be(Gear.Stash);
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(right);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(right);
 		}
 
 		[Fact]
@@ -349,12 +345,12 @@ namespace GetReady.Tests
 			var secondItem = RealItems.Any(Adrenaline);
 			second.Grids[0].Add(secondItem, new LocationInGrid(1, 1, ItemRotation.Horizontal), false);
 
-			InjectorCaseStep.Capture(_case);
-			InjectorCaseStep.Capture(second);
+			CasesStep.Record(_case);
+			CasesStep.Record(second);
 
-			SettingsStore.Current.InjectorCase.Cases.Select(saved => saved.CaseId).Should().Equal(_case.Id.ToString(), second.Id.ToString());
-			InjectorCaseStep.TemplateOf(_case.Id.ToString()).Cells.Single().Template.Should().Be(Propital);
-			InjectorCaseStep.TemplateOf(second.Id.ToString()).Cells.Single().Template.Should().Be(Adrenaline);
+			CasesStep.Entries.Select(saved => saved.CaseId).Should().Equal(_case.Id.ToString(), second.Id.ToString());
+			CasesStep.EntryOf(_case.Id.ToString()).Items.Single().Template.Should().Be(Propital);
+			CasesStep.EntryOf(second.Id.ToString()).Items.Single().Template.Should().Be(Adrenaline);
 		}
 
 		[Fact]
@@ -365,42 +361,42 @@ namespace GetReady.Tests
 			SavedFor(second, Cell(2, 2, Morphine));
 			Inject(Adrenaline, 1, 0);
 
-			InjectorCaseStep.Capture(_case);
+			CasesStep.Record(_case);
 
-			SettingsStore.Current.InjectorCase.Cases.Should().HaveCount(2);
-			InjectorCaseStep.TemplateOf(_case.Id.ToString()).Cells.Single().Template.Should().Be(Adrenaline);
-			InjectorCaseStep.TemplateOf(second.Id.ToString()).Cells.Single().Template.Should().Be(Morphine);
+			CasesStep.Entries.Should().HaveCount(2);
+			CasesStep.EntryOf(_case.Id.ToString()).Items.Single().Template.Should().Be(Adrenaline);
+			CasesStep.EntryOf(second.Id.ToString()).Items.Single().Template.Should().Be(Morphine);
 		}
 
 		[Fact]
 		public void The_template_remembers_the_name_and_tag_of_its_case()
 		{
-			InjectorCaseStep.Capture(_case);
+			CasesStep.Record(_case);
 
-			var saved = InjectorCaseStep.TemplateOf(_case.Id.ToString());
+			var saved = CasesStep.EntryOf(_case.Id.ToString());
 			saved.CaseTemplate.Should().Be(Body.InjectorCase);
 			saved.CaseName.Should().NotBeNullOrEmpty();
-			InjectorCaseStep.LabelOf(saved).Should().Be(saved.CaseName);
+			CasesStep.LabelOf(saved).Should().Be(saved.CaseName);
 		}
 
 		[Fact]
 		public void A_tag_is_what_the_case_is_called_when_it_has_one()
 		{
-			InjectorCaseStep.LabelOf(new SavedCase { CaseName = "Injector case", Tag = "labs" }).Should().Be("labs");
-			InjectorCaseStep.LabelOf(new SavedCase { CaseName = "Injector case" }).Should().Be("Injector case");
-			InjectorCaseStep.LabelOf(new SavedCase()).Should().Be("Injector case");
+			CasesStep.LabelOf(new CaseEntry { CaseName = "Injector case", Tag = "labs" }).Should().Be("labs");
+			CasesStep.LabelOf(new CaseEntry { CaseName = "Injector case" }).Should().Be("Injector case");
+			CasesStep.LabelOf(new CaseEntry()).Should().Be("Case");
 		}
 
 		[Fact]
 		public void A_template_is_deleted_by_its_case_even_when_the_case_is_not_on_you()
 		{
 			Saved(Cell(0, 0, Propital));
-			var gone = new SavedCase { CaseId = "case-in-the-stash", CaseName = "Injector case" };
-			SettingsStore.Current.InjectorCase.Cases.Add(gone);
+			var gone = new CaseEntry { CaseId = "case-in-the-stash", CaseName = "Injector case", Recorded = true };
+			CasesStep.Entries.Add(gone);
 
-			InjectorCaseStep.Delete("case-in-the-stash");
+			CasesStep.Forget("case-in-the-stash");
 
-			SettingsStore.Current.InjectorCase.Cases.Should().ContainSingle().Which.CaseId.Should().Be(_case.Id.ToString());
+			CasesStep.Entries.Should().ContainSingle().Which.CaseId.Should().Be(_case.Id.ToString());
 		}
 
 		[Fact]
@@ -409,10 +405,10 @@ namespace GetReady.Tests
 			var held = Inject(Propital, 0, 0);
 			Saved(Cell(0, 0, Propital));
 
-			InjectorCaseStep.Delete(_case.Id.ToString());
+			CasesStep.Forget(_case.Id.ToString());
 
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(held);
-			Plan().Should().ContainSingle().Which.Text.Should().StartWith("Nothing saved");
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(held);
+			Plan().Should().BeEmpty();
 		}
 
 		[Fact]
@@ -424,7 +420,7 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Lines(lines).Should().Equal("Injectors: 0/2 in place", "Take Propital out of Injector case to the stash", "Take Adrenaline out of Injector case to the stash");
+			Lines(lines).Should().Equal("Injector case: 0/2 in place", "Take Propital out of Injector case to the stash", "Take Adrenaline out of Injector case to the stash");
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Select(move => move.Item).Should().BeEquivalentTo(new[] { one, two });
 			_body.Moves.Select(move => Body.Where(move)).Should().OnlyContain(place => place == Gear.Stash);
@@ -435,7 +431,7 @@ namespace GetReady.Tests
 		{
 			Saved();
 
-			Lines(Plan()).Should().Equal("Injectors: 0/0 in place");
+			Lines(Plan()).Should().Equal("Injector case: 0/0 in place");
 		}
 
 		[Fact]
@@ -447,7 +443,7 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Lines(lines).Should().Equal("Injectors: 1/2 in place", "Take Adrenaline out of Injector case to the stash");
+			Lines(lines).Should().Equal("Injector case: 1/2 in place", "Take Adrenaline out of Injector case to the stash");
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Single().Item.Should().BeSameAs(extra);
 		}
@@ -473,7 +469,7 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			lines.Where(line => line.IsProgress).Select(line => line.Subject).Should().Equal("Injectors (Injector case)", "Injectors (Injector case)");
+			lines.Where(line => line.IsProgress).Select(line => line.Subject).Should().Equal("Injector case", "Injector case");
 			lines.Count(line => line.Run != null).Should().Be(2);
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Select(move => move.Item.TemplateId.ToString()).Should().BeEquivalentTo(new[] { Propital, Adrenaline });
@@ -488,7 +484,7 @@ namespace GetReady.Tests
 			var other = SavedFor(second, Cell(1, 1, Adrenaline));
 			other.Tag = "labs";
 
-			Plan().Where(line => line.IsProgress).Select(line => line.Subject).Should().Equal("Injectors (regular)", "Injectors (labs)");
+			Plan().Where(line => line.IsProgress).Select(line => line.Subject).Should().Equal("regular", "labs");
 		}
 
 		[Fact]
@@ -542,36 +538,6 @@ namespace GetReady.Tests
 			lines.Count(line => line.Problem).Should().Be(2);
 		}
 
-		[Fact]
-		public void The_template_of_the_first_version_becomes_the_first_template()
-		{
-			var json = "{\"InjectorCase\":{\"Enabled\":true,\"CaseId\":\"abc\",\"Cells\":[{\"X\":1,\"Y\":2,\"Template\":\"" + Propital + "\",\"Name\":\"Propital\"}]}}";
-
-			var settings = SettingsStore.Parse(json);
-
-			var saved = settings.InjectorCase.Cases.Single();
-			saved.CaseId.Should().Be("abc");
-			saved.Cells.Single().Template.Should().Be(Propital);
-			settings.InjectorCase.CaseId.Should().BeNull();
-			settings.InjectorCase.Cells.Should().BeEmpty();
-		}
-
-		[Fact]
-		public void A_file_that_already_has_templates_keeps_them_as_they_are()
-		{
-			var json = "{\"InjectorCase\":{\"Cases\":[{\"CaseId\":\"one\",\"Cells\":[]},{\"CaseId\":\"two\",\"Cells\":[]}]}}";
-
-			SettingsStore.Parse(json).InjectorCase.Cases.Select(saved => saved.CaseId).Should().Equal("one", "two");
-		}
-
-		[Fact]
-		public void An_old_template_with_no_cells_is_nothing_saved()
-		{
-			var json = "{\"InjectorCase\":{\"CaseId\":\"abc\",\"Cells\":[]}}";
-
-			SettingsStore.Parse(json).InjectorCase.Cases.Should().BeEmpty();
-		}
-
 		// ---- an injector in the wrong cell of the same case
 
 		[Fact]
@@ -582,11 +548,11 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Lines(lines).Should().Equal("Injectors: 0/1 in place", "Move Adrenaline to cell 0,0 of Injector case");
+			Lines(lines).Should().Equal("Injector case: 0/1 in place", "Move Adrenaline to cell 0,0 of Injector case");
 			lines.Should().NotContain(line => line.Problem);
 			RunAll(lines).Result.Should().BeNull();
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(held);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 0).Should().BeNull();
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(held);
+			CasesStep.InCell(_case.Grids[0], 1, 0).Should().BeNull();
 		}
 
 		[Fact]
@@ -598,7 +564,7 @@ namespace GetReady.Tests
 
 			RunAll(Plan()).Result.Should().BeNull();
 
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(held);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(held);
 			_body.Moves.Select(move => move.Item).Should().NotContain(spare);
 			Steps.Claimed.Should().NotContain(spare);
 		}
@@ -615,7 +581,7 @@ namespace GetReady.Tests
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Select(move => move.Item).Should().Equal(wrong, right);
 			Body.Where(_body.Moves[0]).Should().Be(Gear.Stash);
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(right);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(right);
 		}
 
 		[Fact]
@@ -627,7 +593,7 @@ namespace GetReady.Tests
 
 			var lines = Plan();
 
-			Lines(lines).Should().Equal("Injectors: 0/2 in place", "Move Adrenaline to cell 0,0 of Injector case", "Take Morphine out of Injector case to the stash");
+			Lines(lines).Should().Equal("Injector case: 0/2 in place", "Move Adrenaline to cell 0,0 of Injector case", "Take Morphine out of Injector case to the stash");
 			RunAll(lines).Result.Should().BeNull();
 			_body.Moves.Select(move => move.Item).Should().Contain(stray);
 		}
@@ -641,8 +607,8 @@ namespace GetReady.Tests
 
 			RunAll(Plan()).Result.Should().BeNull();
 
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(one);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(two);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(one);
+			CasesStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(two);
 			_body.Moves.Select(move => Body.Where(move)).Should().OnlyContain(place => place == Body.InjectorCase);
 		}
 
@@ -657,8 +623,8 @@ namespace GetReady.Tests
 
 			lines.Should().NotContain(line => line.Problem);
 			RunAll(lines).Result.Should().BeNull();
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(propital);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(adrenaline);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(propital);
+			CasesStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(adrenaline);
 		}
 
 		[Fact]
@@ -673,9 +639,9 @@ namespace GetReady.Tests
 
 			lines.Should().NotContain(line => line.Problem);
 			RunAll(lines).Result.Should().BeNull();
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(p);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(m);
-			InjectorCaseStep.InCell(_case.Grids[0], 2, 0).Should().BeSameAs(a);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(p);
+			CasesStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(m);
+			CasesStep.InCell(_case.Grids[0], 2, 0).Should().BeSameAs(a);
 		}
 
 		[Fact]
@@ -690,9 +656,9 @@ namespace GetReady.Tests
 
 			Lines(lines).Where(text => text.StartsWith("Move ")).Should().HaveCount(3);
 			RunAll(lines).Result.Should().BeNull();
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(a);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(p);
-			InjectorCaseStep.InCell(_case.Grids[0], 2, 0).Should().BeSameAs(m);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(a);
+			CasesStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(p);
+			CasesStep.InCell(_case.Grids[0], 2, 0).Should().BeSameAs(m);
 		}
 
 		[Fact]
@@ -704,8 +670,8 @@ namespace GetReady.Tests
 
 			RunAll(Plan()).Result.Should().BeNull();
 
-			InjectorCaseStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(fromStash);
-			InjectorCaseStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(adrenaline);
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(fromStash);
+			CasesStep.InCell(_case.Grids[0], 1, 0).Should().BeSameAs(adrenaline);
 		}
 
 		[Fact]
@@ -714,7 +680,7 @@ namespace GetReady.Tests
 			Inject(Adrenaline, 2, 2);
 			Saved(Cell(0, 0, Adrenaline));
 
-			Lines(Plan()).First().Should().Be("Injectors: 0/1 in place");
+			Lines(Plan()).First().Should().Be("Injector case: 0/1 in place");
 		}
 	}
 }

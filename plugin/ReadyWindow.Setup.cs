@@ -79,11 +79,11 @@ namespace GetReady
 					changed = true;
 				}
 
-				GUILayout.Label(def.Unit, Ui.Muted, GUILayout.Width(40));
+				GUILayout.Label(Game.Symbol(def.Unit) ?? def.Unit, Ui.Muted, GUILayout.Width(40));
 			}
 			else
 			{
-				GUILayout.Label(on ? $"{setting.Target} {def.Unit}" : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(compact ? (def.IsQuota ? 130 : 90) : 150));
+				GUILayout.Label(on ? Game.Amount(def.Unit, setting.Target) : "off", on ? Ui.Centered : Ui.Muted, GUILayout.Width(compact ? (def.IsQuota ? 180 : 110) : 170));
 			}
 
 			if (GUILayout.Button("+", Ui.Small) && setting.Target < def.Max)
@@ -105,7 +105,7 @@ namespace GetReady
 			if (def.Bindable)
 			{
 				string key = def.HotkeyChoice;
-				if (GUILayout.Button(new GUIContent(Hotkeys.Label(key), "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be)."), key == "" ? Ui.Pick : Ui.PickOn, GUILayout.Width(86)))
+				if (GUILayout.Button(new GUIContent(Hotkeys.Label(key), "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be)."), key == "" ? Ui.Pick : Ui.PickOn, GUILayout.Width(Fit(Hotkeys.Label(key), Ui.PickOn, 86))))
 				{
 					setting.Hotkey = Hotkeys.Next(key);
 					changed = true;
@@ -115,7 +115,7 @@ namespace GetReady
 			if (def.Entries.Length > 1)
 			{
 				bool open = Expanded.Contains(def.Id);
-				if (GUILayout.Button(new GUIContent(open ? "Items  ▲" : "Items  ▼", "Which items count for this and in what order they are used"), open ? Ui.PickOn : Ui.Pick, GUILayout.Width(86)))
+				if (GUILayout.Button(new GUIContent(open ? "Items  ▲" : "Items  ▼", "Which items count for this and in what order they are used"), open ? Ui.PickOn : Ui.Pick, GUILayout.Width(Fit("Items  ▼", Ui.PickOn, 86))))
 				{
 					if (open)
 					{
@@ -247,7 +247,7 @@ namespace GetReady
 			}
 
 			Icons.Slot(entry.Template, entry.Name, 30);
-			GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.ExpandWidth(true));
+			GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.ExpandWidth(true), GUILayout.Height(30));
 			if (off)
 			{
 				StrikeLast(entry.Name, Ui.Muted);
@@ -258,7 +258,7 @@ namespace GetReady
 				changed |= MaxControls(def, entry);
 			}
 
-			if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(90)))
+			if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.PickRow : Ui.PickOnRow, GUILayout.Width(Fit("Not used", Ui.PickOnRow, 90)), GUILayout.Height(30)))
 			{
 				def.ToggleEntry(entry.Template);
 				changed = true;
@@ -279,13 +279,13 @@ namespace GetReady
 			}
 
 			Icons.Slot(entry.Template, entry.Name, 28);
-			GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.ExpandWidth(true));
+			GUILayout.Label(entry.Name, off ? Ui.Muted : Ui.Body, GUILayout.ExpandWidth(true), GUILayout.Height(28));
 			if (off)
 			{
 				StrikeLast(entry.Name, Ui.Muted);
 			}
 
-			if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.Pick : Ui.PickOn, GUILayout.Width(76)))
+			if (GUILayout.Button(off ? "Not used" : "Used", off ? Ui.PickRow : Ui.PickOnRow, GUILayout.Width(Fit("Not used", Ui.PickOnRow, 76)), GUILayout.Height(28)))
 			{
 				def.ToggleEntry(entry.Template);
 				changed = true;
@@ -344,7 +344,23 @@ namespace GetReady
 		}
 
 		// The saved template as a row of item icons (hover for the name)
-		private static void TemplateStrip(IEnumerable<KeyValuePair<string, string>> items, string empty)
+		private static void TemplateStrip(IEnumerable<KeyValuePair<string, string>> items, string empty) =>
+			TemplateStrip(items.Select(item => new StripItem { Template = item.Key, Name = item.Value }), empty);
+
+		// One icon of a template strip: the item, what it is called, and a count drawn on it (a stack of money, a stack of items), or none
+		private class StripItem
+		{
+			public string Template;
+			public string Name;
+			public int Count;
+			// The short name drawn in the top right corner, as the game does (none for money)
+			public string Label;
+		}
+
+		private static GUIStyle _stackCount, _stackShadow, _shortName, _shortShadow;
+
+		// The icons of a template in a row; a stack shows its amount in the corner, as the game does
+		private static void TemplateStrip(IEnumerable<StripItem> items, string empty)
 		{
 			var list = items.ToList();
 			if (list.Count == 0)
@@ -353,10 +369,34 @@ namespace GetReady
 				return;
 			}
 
+			if (_stackCount == null)
+			{
+				_stackCount = new GUIStyle(Ui.Centered) { fontSize = 10, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerRight, padding = new RectOffset(0, 3, 0, 2), wordWrap = false };
+				_stackCount.normal.textColor = new Color(0.55f, 0.9f, 0.45f); // green, as the game draws a stack
+				_stackShadow = new GUIStyle(_stackCount);
+				_stackShadow.normal.textColor = new Color(0f, 0f, 0f, 0.9f);
+				_shortName = new GUIStyle(_stackCount) { fontSize = 9, alignment = TextAnchor.UpperRight, padding = new RectOffset(0, 2, 1, 0), clipping = TextClipping.Clip };
+				_shortName.normal.textColor = new Color(0.92f, 0.92f, 0.88f);
+				_shortShadow = new GUIStyle(_shortName);
+				_shortShadow.normal.textColor = new Color(0f, 0f, 0f, 0.9f);
+			}
+
 			GUILayout.BeginHorizontal();
 			foreach (var item in list)
 			{
-				Icons.Slot(item.Key, item.Value, 40);
+				Icons.Slot(item.Template, item.Name, 40);
+				var rect = GUILayoutUtility.GetLastRect();
+				if (!string.IsNullOrEmpty(item.Label))
+				{
+					GUI.Label(new Rect(rect.x + 1, rect.y + 1, rect.width, rect.height), item.Label, _shortShadow);
+					GUI.Label(rect, item.Label, _shortName);
+				}
+
+				if (item.Count > 1)
+				{
+					GUI.Label(new Rect(rect.x + 1, rect.y + 1, rect.width, rect.height), item.Count.ToString(), _stackShadow);
+					GUI.Label(rect, item.Count.ToString(), _stackCount);
+				}
 			}
 
 			GUILayout.FlexibleSpace();
@@ -392,7 +432,7 @@ namespace GetReady
 						RefreshSoon();
 					}
 
-					if (slots.Count > 0 && GUILayout.Button(new GUIContent("Clear", "Forgets the saved template (nothing moves)"), Ui.Button, GUILayout.Width(80)))
+					if (slots.Count > 0 && GUILayout.Button(new GUIContent("Clear", "Forgets the saved template (nothing moves)"), Ui.Button, GUILayout.Width(Fit("Clear", Ui.Button, 80))))
 					{
 						SpecialSlotsStep.Clear();
 						_status = "Cleared the special slots template.";
@@ -430,9 +470,9 @@ namespace GetReady
 						pointer => AmmoRules.PointerName(pointer), null, (pointer, step) => AmmoRules.MovePointer(pointer, step),
 						"The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
 				}
-				else if (step is InjectorCaseStep)
+				else if (step is CasesStep)
 				{
-					InjectorCaseSetup(controller);
+					changed |= CasesSetup(controller);
 				}
 				else if (step is HealMeStep)
 				{
@@ -465,11 +505,6 @@ namespace GetReady
 					changed |= SpareAmmoSetup(controller);
 				}
 
-				if (step is CashStep && controller != null)
-				{
-					changed |= CashExclusionsUi(controller);
-				}
-
 			}
 
 			GUILayout.EndVertical();
@@ -491,12 +526,16 @@ namespace GetReady
 		{
 			var supplies = SettingsStore.Current.Supplies;
 			bool changed = false;
+			var steps = Steps.DisplayOrder.ToList();
+			JumpStrip(steps.Select(step => new KeyValuePair<string, bool>(step.Name, step.Enabled)).Concat(new[] { new KeyValuePair<string, bool>("Options", true) }).ToList());
 			// No horizontal scrollbar at all: the window is widened to fit the cards instead
-			_scroll = GUILayout.BeginScrollView(_scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
-			foreach (var step in Steps.DisplayOrder)
+			_setupScroll = GUILayout.BeginScrollView(_setupScroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+			for (int index = 0; index < steps.Count; index++)
 			{
-				changed |= StepSection(step, controller);
+				changed |= StepSection(steps[index], controller);
+				NoteSection(index);
 			}
+
 
 			GUILayout.BeginVertical(Ui.Section);
 			GUILayout.Label("Options", Ui.SectionTitle);
@@ -522,6 +561,7 @@ namespace GetReady
 			bool overshoot = OptionRow(supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway");
 			bool nonFir = OptionRow(supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is");
 			GUILayout.EndVertical();
+			NoteSection(steps.Count);
 
 			if (swap != supplies.SwapWorse || overshoot != supplies.AllowOvershoot || nonFir != supplies.NonFiRBeforeLoose)
 			{
@@ -532,6 +572,11 @@ namespace GetReady
 			}
 
 			GUILayout.EndScrollView();
+			if (Event.current.type == EventType.Repaint)
+			{
+				_setupViewHeight = GUILayoutUtility.GetLastRect().height;
+			}
+
 			Dnd.DrawGhost();
 			return changed;
 		}

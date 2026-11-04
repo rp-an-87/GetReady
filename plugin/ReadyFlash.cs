@@ -46,6 +46,9 @@ namespace GetReady
 			return texture;
 		}
 
+		// The soft glow around a bar (also used by the map warning)
+		internal static Texture2D GlowTexture() => _barGlow ?? (_barGlow = Radial(distance => (1f - Smooth(0f, 0.85f, distance)) * 0.7f));
+
 		private static float Smooth(float edge0, float edge1, float value)
 		{
 			float t = Mathf.Clamp01((value - edge0) / (edge1 - edge0));
@@ -78,12 +81,14 @@ namespace GetReady
 			{
 				_vignette = Radial(distance => Smooth(0.35f, 1f, distance) * 0.3f);
 				_glow = Radial(distance => (1f - Smooth(0f, 0.8f, distance)) * 0.11f);
-				_barGlow = Radial(distance => (1f - Smooth(0f, 0.85f, distance)) * 0.7f);
-				_text = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = false, wordWrap = false };
-				if (Ui.Font != null)
-				{
-					_text.font = Ui.Font;
-				}
+				GlowTexture();
+				_text = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal, alignment = TextAnchor.MiddleCenter, richText = false, wordWrap = false };
+			}
+
+			Ui.Init();
+			if (Ui.Font != null && _text.font != Ui.Font)
+			{
+				_text.font = Ui.Font;
 			}
 
 			var screen = new Rect(0, 0, Screen.width, Screen.height);

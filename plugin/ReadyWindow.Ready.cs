@@ -49,7 +49,8 @@ namespace GetReady
 		}
 
 		// How a card stands: red when something is wrong, else green when it is complete, else amber when Get ready can make it complete
-		internal enum Standing { Done, Doable, Problem }
+		// Skipped: the step left this card out on purpose (cash while a no-cash case is carried), so it is neither good nor bad
+		internal enum Standing { Done, Doable, Problem, Skipped }
 
 		internal static Standing StandingOf(bool done, bool hasRun, bool hasProblem) =>
 			hasProblem ? Standing.Problem : done ? Standing.Done : hasRun ? Standing.Doable : Standing.Problem;
@@ -58,6 +59,11 @@ namespace GetReady
 		internal static Standing StandingFor(List<PlanLine> lines, int progressIndex)
 		{
 			var progress = lines[progressIndex];
+			if (progress.Skipped)
+			{
+				return Standing.Skipped;
+			}
+
 			bool hasRun = false, hasProblem = false;
 			for (int i = progressIndex + 1; i < lines.Count && !lines[i].IsProgress && !lines[i].Standalone; i++)
 			{
@@ -96,12 +102,30 @@ namespace GetReady
 			GUILayout.Label(subject, line.Skipped ? Ui.Muted : Ui.Body);
 			if (line.Skipped)
 			{
-				GUILayout.Label($"{line.Note}  ({line.Have:N0}/{line.Want:N0} {line.Unit})", Ui.ValueMuted);
+				// No numbers and no bar: 0 of a target says nothing when the step is not trying. The case behind it is shown as it is: icon, tag, name
+				GUILayout.FlexibleSpace();
+				GUILayout.Label(line.Note, Ui.PlainMuted);
+				if (line.By != null)
+				{
+					GUILayout.Space(6);
+					Icons.Slot(line.By.CaseTemplate, line.By.CaseName, 22);
+					GUILayout.Space(4);
+					if (!string.IsNullOrEmpty(line.By.Tag))
+					{
+						Centered(() => TagChip.Draw(line.By.Tag, line.By.TagColor), 22f);
+						GUILayout.Space(4);
+					}
+
+					GUILayout.Label(Game.TemplateName(line.By.CaseTemplate), Ui.PlainMuted);
+				}
+
+				GUILayout.EndHorizontal();
+				GUILayout.EndVertical();
+				GUILayout.EndHorizontal();
+				return;
 			}
-			else
-			{
-				GUILayout.Label($"{line.Have:N0}/{line.Want:N0} {line.Unit}", valueStyle);
-			}
+
+			GUILayout.Label(Game.Ratio(line.Have, line.Want, line.Unit), valueStyle);
 			GUILayout.EndHorizontal();
 			var bar = GUILayoutUtility.GetRect(10, 6, GUILayout.ExpandWidth(true), GUILayout.Height(6));
 			var previous = GUI.color;
@@ -114,7 +138,7 @@ namespace GetReady
 			GUILayout.EndHorizontal();
 		}
 
-		internal static Color StandingColor(Standing standing) => standing == Standing.Done ? Ui.Ok : standing == Standing.Doable ? Ui.Warn : Ui.Bad;
+		internal static Color StandingColor(Standing standing) => standing == Standing.Done ? Ui.Ok : standing == Standing.Doable ? Ui.Warn : standing == Standing.Skipped ? Ui.Dim : Ui.Bad;
 
 		// The end of a card: a thin stripe down its left edge in the colour of how it stands, so the page can be read down one line
 		private static void EndCard(Standing standing)

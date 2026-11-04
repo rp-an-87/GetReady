@@ -10,17 +10,7 @@ namespace GetReady
 	// Moving items: one way for everything.
 	internal static partial class Game
 	{
-		// ---- Placing items: one way for everything. A place is a name (Special slots, Pockets, Vest, Backpack, Pouch, Stash or one of
-		// the cases); it resolves to containers of yours, and an item goes to the first spot found in them.
-
-		// Cases that hold money, as places an item can go: carried or in the secured container (the pouch)
-		internal static readonly Dictionary<string, string> CasePlaces = new Dictionary<string, string>
-		{
-			{ "Wallet", "5783c43d2459774bbe137486" },
-			{ "WZ wallet", "60b0f6c058e0b0481a09ad11" },
-			{ "Docs case", "590c60fc86f77412b13fddcf" },
-			{ "SICC case", "5d235bb686f77443f4331278" }
-		};
+		// ---- Placing items: one way for everything. A place is a name (Special slots, Pockets, Vest, Backpack, Pouch or Stash); it resolves to containers of yours, and an item goes to the first spot found in them.
 
 		// A container of yours and which of its parts an item may go into
 		private class Target
@@ -32,12 +22,6 @@ namespace GetReady
 
 		private static List<Target> TargetsOf(Inventory inventory, string place)
 		{
-			string caseTemplate;
-			if (CasePlaces.TryGetValue(place, out caseTemplate))
-			{
-				return CarriedAndSecured(inventory).OfType<CompoundItem>().Where(container => container.TemplateId.ToString() == caseTemplate).Select(container => new Target { Container = container }).ToList();
-			}
-
 			switch (place)
 			{
 				case "Special slots":
@@ -61,7 +45,7 @@ namespace GetReady
 		internal static IEnumerable<Item> ItemsInPlace(Inventory inventory, string place) =>
 			TargetsOf(inventory, place).SelectMany(target => target.Container.GetAllItems().Where(item => item != target.Container));
 
-		// Whether you have this place: the wallet or case is carried, the vest or backpack is worn, the stash is there
+		// Whether you have this place: the vest or backpack is worn, the stash is there
 		internal static bool HasPlace(Inventory inventory, string place) => TargetsOf(inventory, place).Count > 0;
 
 		private static List<Target> One(CompoundItem container, bool grids, bool slots) =>
@@ -94,7 +78,7 @@ namespace GetReady
 			return operation.Failed ? operation.Error.ToString() : await Run(controller, operation);
 		}
 
-		// To an exact address (a cell of the injector case, a special slot). Returns null, or why it failed.
+		// To an exact address (a cell of a case with exact positions, a special slot). Returns null, or why it failed.
 		internal static async Task<string> PlaceAt(InventoryController controller, Item item, int count, ItemAddress address)
 		{
 			var operation = Simulate(controller, item, count, address);
@@ -154,11 +138,19 @@ namespace GetReady
 							continue;
 						}
 
-						operation = Simulate(controller, item, count, slot.CreateItemAddress());
-						planned = true;
-						if (operation.Succeeded)
+						var attempt = Simulate(controller, item, count, slot.CreateItemAddress());
+						if (attempt.Succeeded)
 						{
+							operation = attempt;
+							planned = true;
 							break;
+						}
+
+						// A slot that does not take the item (its filter) is no reason to show, unless slots are all this place has
+						if (!target.Grids)
+						{
+							operation = attempt;
+							planned = true;
 						}
 					}
 				}
@@ -191,42 +183,17 @@ namespace GetReady
 		internal const string Euros = "569668774bdc2da2298b4568";
 		internal const string Dollars = "5696686a4bdc2da3298b456a";
 
+		// The sign the game shows for a currency code (null for anything else: HP, grenades...)
+		internal static string Symbol(string unit) => unit == "RUB" ? "₽" : unit == "EUR" ? "€" : unit == "USD" ? "$" : null;
+
+		// An amount as the game's header shows money (the sign first), else the number and its unit
+		internal static string Amount(string unit, float amount) => Symbol(unit) is string sign ? $"{sign} {amount:N0}" : $"{amount:N0} {unit}";
+
+		// "have/want" of a progress line, in the same style
+		internal static string Ratio(float have, float want, string unit) => Symbol(unit) is string sign ? $"{sign} {have:N0}/{want:N0}" : $"{have:N0}/{want:N0} {unit}";
+
 		internal static string CurrencyOf(string template) =>
 			template == Roubles ? "RUB" : template == Euros ? "EUR" : template == Dollars ? "USD" : null;
-
-		// The money of this template is kept out of this very case (the cash exclusions of the Setup page)
-		internal static bool IsCashExcluded(string template, CompoundItem container)
-		{
-			var currency = CurrencyOf(template);
-			var id = container.Id.ToString();
-			return currency != null && SettingsStore.Current.Supplies.CashExclusions.Any(excluded => excluded.CaseId == id && excluded.Currency == currency);
-		}
-
-		// A case of yours with "No cash" on stops all cash while you carry it: returns what it is called, or null when there is none
-		internal static string CashBlockedBy(Inventory inventory)
-		{
-			var blocking = SettingsStore.Current.Supplies.CashExclusions.Where(entry => entry.Currency == CashExclusion.All).ToList();
-			if (blocking.Count == 0)
-			{
-				return null;
-			}
-
-			foreach (var item in CarriedAndSecured(inventory))
-			{
-				var id = item.Id.ToString();
-				var entry = blocking.FirstOrDefault(candidate => candidate.CaseId == id);
-				if (entry != null)
-				{
-					return !string.IsNullOrEmpty(entry.Tag) ? entry.Tag : string.IsNullOrEmpty(entry.CaseName) ? NameOf(item) : entry.CaseName;
-				}
-			}
-
-			return null;
-		}
-
-		// Whether a container of this place takes this money (a case kept out for the currency does not; a place you do not have does not)
-		internal static bool PlaceAllows(Inventory inventory, string place, string template) =>
-			TargetsOf(inventory, place).Any(target => !IsCashExcluded(template, target.Container));
 
 		// Moves the item (count of it, or all) to the first of the places that takes it. Returns null, or why the last one refused.
 		internal static async Task<string> MoveTo(InventoryController controller, Item item, IEnumerable<string> places, int count = 0)
@@ -246,15 +213,7 @@ namespace GetReady
 					continue;
 				}
 
-				// Cases this money is kept out of are not used; when that leaves none, the next place is tried
-				var allowed = targets.Where(target => !IsCashExcluded(item.TemplateId.ToString(), target.Container)).ToList();
-				if (allowed.Count == 0)
-				{
-					last = $"{place} keeps this money out";
-					continue;
-				}
-
-				var error = await PlaceInto(controller, item, count, allowed);
+				var error = await PlaceInto(controller, item, count, targets);
 				if (error == null)
 				{
 					return null;
@@ -265,6 +224,18 @@ namespace GetReady
 			}
 
 			return last;
+		}
+
+		// Into this very container (a case): added to a stack of the same item when there is room, else a free spot of its grids. Returns null,
+		// or why it failed.
+		internal static Task<string> MoveInto(InventoryController controller, Item item, int count, CompoundItem container)
+		{
+			if (count <= 0 || count > item.StackObjectsCount)
+			{
+				count = item.StackObjectsCount;
+			}
+
+			return PlaceInto(controller, item, count, new List<Target> { new Target { Container = container } });
 		}
 
 		// Waits up to a second for the item to leave the stash (to be on you, or merged into a stack there)

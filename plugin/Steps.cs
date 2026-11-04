@@ -38,6 +38,8 @@ namespace GetReady
 		// A progress line that is left out on purpose: drawn grey with the note instead of the numbers (not a failure)
 		public bool Skipped;
 		public string Note;
+		// The case behind a skipped line (the one that turns the cash off): its icon, tag and name are drawn after the note
+		public CaseEntry By;
 
 		// The line heals you with medicine (counted apart in the notification)
 		public bool Heal;
@@ -132,7 +134,7 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new InjectorCaseStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep(), new FullAutoStep(), new HealMeStep()
+			new SpecialSlotsStep(), new CasesStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep(), new FullAutoStep(), new HealMeStep()
 		};
 
 		// The order of the Ready and Setup pages (what you tweak most first). Running order is All: Heal me must stay last and the special slots
@@ -141,25 +143,45 @@ namespace GetReady
 		{
 			get
 			{
-				string[] order = { "Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Injector case", "Repair", "Full auto", "Treat injuries", "Cash" };
+				string[] order = { "Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair", "Full auto", "Treat injuries", "Cash" };
 				return All.OrderBy(step => { int index = Array.IndexOf(order, step.Name); return index < 0 ? order.Length : index; });
 			}
 		}
 
 		// Stash items an earlier step has already planned to bring this pass, so a later step doesn't bring them a second time
-		// (a Propital for the injector case also counts for the Propital supply). Cleared before every planning pass.
+		// (a Propital for a case's template also counts for the Propital supply). Cleared before every planning pass.
 		internal static readonly List<Item> Claimed = new List<Item>();
 
 		// Items already in a special slot of the template (managed by that step, so the supplies leave them alone but count
 		// them) and the ones it is about to swap out (which stop counting)
 		internal static readonly List<Item> Owned = new List<Item>();
 
-		// What the special slots step brings: it counts for the supplies (an injector case's contents don't, it keeps its own)
+		// What the special slots step brings: it counts for the supplies (what a case's template looks after doesn't, it keeps its own)
 		internal static readonly List<Item> Bringing = new List<Item>();
 		internal static readonly List<Item> Leaving = new List<Item>();
 
+		// The money the cases you carry will hold after this pass, by currency (RUB, EUR, USD): it counts toward the Cash step's target, which
+		// brings only what is still missing
+		internal static readonly Dictionary<string, int> CaseMoney = new Dictionary<string, int>();
+
+		// The money the cases give up to the stash this pass, by currency: the Cash step can bring it on from there
+		internal static readonly Dictionary<string, int> Released = new Dictionary<string, int>();
+
+		internal static int Of(Dictionary<string, int> money, string currency)
+		{
+			int amount;
+			return money.TryGetValue(currency, out amount) ? amount : 0;
+		}
+
+		internal static void Add(Dictionary<string, int> money, string currency, int amount)
+		{
+			money[currency] = Of(money, currency) + amount;
+		}
+
 		internal static void NewPass()
 		{
+			CaseMoney.Clear();
+			Released.Clear();
 			Claimed.Clear();
 			Bringing.Clear();
 			Owned.Clear();
@@ -174,7 +196,7 @@ namespace GetReady
 		}
 
 		internal static PlanLine Progress(string subject, float have, float want, string unit, string template = null) =>
-			new PlanLine { Text = $"{subject}: {have:0}/{want:0} {unit}", Subject = subject, Have = have, Want = want, Unit = unit, Template = template, IsProgress = true };
+			new PlanLine { Text = Game.Symbol(unit) is string sign ? $"{subject}: {sign} {have:0}/{want:0}" : $"{subject}: {have:0}/{want:0} {unit}", Subject = subject, Have = have, Want = want, Unit = unit, Template = template, IsProgress = true };
 
 		internal static PlanLine Problem(string text) => new PlanLine { Text = text, Problem = true };
 

@@ -196,23 +196,6 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void An_old_group_keeps_its_picks_first_and_the_usual_three_on_after_them()
-		{
-			var def = Old("Vest", "Pouch");
-
-			def.PlacesToTry().Should().Equal("Vest", "Pouch", "Pockets", "Backpack");
-		}
-
-		[Fact]
-		public void An_old_group_has_the_places_it_never_used_switched_off_at_the_end()
-		{
-			var def = Old("Vest", "Pouch");
-
-			def.PlaceOrder().Should().Equal("Vest", "Pouch", "Pockets", "Backpack", "Special slots");
-			def.PlaceOn("Special slots").Should().BeFalse();
-		}
-
-		[Fact]
 		public void An_old_group_with_no_fallback_only_uses_what_it_had_picked()
 		{
 			var def = new GroupDef
@@ -225,12 +208,5 @@ namespace GetReady.Tests
 			def.PlacesToTry().Should().Equal("Docs case");
 		}
 
-		[Fact]
-		public void An_old_group_with_nothing_picked_uses_the_usual_three()
-		{
-			var def = Old();
-
-			def.PlacesToTry().Should().Equal("Pockets", "Vest", "Backpack");
-		}
 	}
 }

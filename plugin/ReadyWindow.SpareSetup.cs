@@ -66,7 +66,7 @@ namespace GetReady
 			foreach (var mode in PickModes)
 			{
 				bool on = ammo.SparePick == mode[0];
-				if (GUILayout.Button(new GUIContent(mode[1], mode[2]), on ? Ui.PickOn : Ui.Pick, GUILayout.Width(80)) && !on)
+				if (GUILayout.Button(new GUIContent(mode[1], mode[2]), on ? Ui.PickOn : Ui.Pick, GUILayout.Width(Fit(mode[1], Ui.PickOn, 80))) && !on)
 				{
 					ammo.SparePick = mode[0];
 					changed = true;

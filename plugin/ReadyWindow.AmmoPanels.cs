@@ -193,7 +193,7 @@ namespace GetReady
 			Centered(() => GUILayout.Label(panel.Name, Ui.Plain, GUILayout.ExpandWidth(false)), 34);
 			if (!string.IsNullOrEmpty(panel.Slot))
 			{
-				Centered(() => GUILayout.Label("· " + panel.Slot, Ui.Muted, GUILayout.ExpandWidth(false)), 34);
+				Centered(() => GUILayout.Label("· " + panel.Slot, Ui.PlainMuted, GUILayout.ExpandWidth(false)), 34);
 			}
 
 			GUILayout.FlexibleSpace();

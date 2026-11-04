@@ -135,6 +135,16 @@ namespace GetReady
 			}
 
 			BlockGameInput();
+			// Cases changed by hand are recorded again once the moving has settled (a drag is a remove and an add)
+			if (shown && !_running && CasesStep.Pending.Count > 0 && Time.unscaledTime - _dirtyAt > 0.3f)
+			{
+				var controller = Game.Controller();
+				if (controller != null && CasesStep.SyncPending(controller.Inventory) > 0)
+				{
+					MarkDirty();
+				}
+			}
+
 			if (ReadyButtonPatch.StashShown && _dirty && !_running && Time.unscaledTime - _dirtyAt > 0.3f)
 			{
 				Refresh();
@@ -144,22 +154,65 @@ namespace GetReady
 		internal static void Draw()
 		{
 			Ui.Init();
+			TextWeight.Active = true;
+			try
+			{
+				DrawWindows();
+			}
+			finally
+			{
+				TextWeight.Active = false;
+			}
+		}
+
+		// Unity runs a window's function after Draw has returned, so the text weight are switched on inside it
+		private static void WeightedContents(int id)
+		{
+			var was = TextWeight.Active;
+			TextWeight.Active = true;
+			try
+			{
+				Contents(id);
+			}
+			finally
+			{
+				TextWeight.Active = was;
+			}
+		}
+
+		private static void WeightedAlertContents(int id)
+		{
+			var was = TextWeight.Active;
+			TextWeight.Active = true;
+			try
+			{
+				AlertContents(id);
+			}
+			finally
+			{
+				TextWeight.Active = was;
+			}
+		}
+
+		private static void DrawWindows()
+		{
 			var matrix = GUI.matrix;
 			GUI.matrix = Matrix4x4.Scale(new Vector3(Scale, Scale, 1f));
 			if (_open)
 			{
 				_rect.width = Mathf.Max(_rect.width, MinWindowWidth);
-				_rect = GUILayout.Window(WindowId, _rect, Contents, GUIContent.none, Ui.Window);
+				_rect = GUILayout.Window(WindowId, _rect, WeightedContents, GUIContent.none, Ui.Window);
 				Tooltips.Draw(Scale);
 			}
 			else
 			{
 				Tooltips.Reset();
+				ResetSetup();
 			}
 
 			if (Alerts.Count > 0)
 			{
-				_alertRect = GUILayout.Window(AlertId, _alertRect, AlertContents, GUIContent.none, Ui.Alert);
+				_alertRect = GUILayout.Window(AlertId, _alertRect, WeightedAlertContents, GUIContent.none, Ui.Alert);
 				GUI.BringWindowToFront(AlertId);
 			}
 
@@ -197,6 +250,12 @@ namespace GetReady
 
 			GUILayout.EndHorizontal();
 			GUILayout.Box(GUIContent.none, Ui.Divider);
+
+			// Setup is measured while it is shown: leaving it, or closing the window, throws that away so it comes back from the top
+			if (_tab != 1)
+			{
+				ResetSetup();
+			}
 
 			if (_tab == 0)
 			{

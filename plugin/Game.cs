@@ -14,8 +14,6 @@ namespace GetReady
 	// is in Game.Placement.cs and what a medical item treats in Game.Medical.cs.
 	internal static partial class Game
 	{
-		internal const string InjectorCase = "619cbf7d23893217ec30b689";
-
 		private static readonly FieldInfo ControllerField = typeof(ItemUiContext).GetField("_inventoryController", BindingFlags.Instance | BindingFlags.NonPublic);
 
 		// The controller the stash panel was last shown with (set by the button's patch)
@@ -124,22 +122,24 @@ namespace GetReady
 
 		internal static string NameOf(Item item) => TemplateName(item.TemplateId.ToString());
 
-		// Inside an injector case, which the injector case template looks after
-		internal static bool InsideInjectorCase(Item item) => IsInsideInjectorCase(item);
+		// Inside a case that has a template (at any depth), which that template looks after: the supplies do not count it
+		internal static bool InsideTemplatedCase(Item item) => IsInsideTemplatedCase(item);
 
 		// (replaceable, so the tests don't need items with a place in an inventory)
-		internal static Func<Item, bool> IsInsideInjectorCase = item =>
+		internal static Func<Item, bool> IsInsideTemplatedCase = InTemplatedCase;
+
+		internal static bool InTemplatedCase(Item item)
 		{
 			var parent = item.Parent?.Container?.ParentItem;
 			for (int depth = 0; parent != null && depth < 12; depth++, parent = parent.Parent?.Container?.ParentItem)
 			{
-				if (parent.TemplateId.ToString() == InjectorCase)
+				if (CasesStep.EntryOf(parent.Id.ToString())?.Recorded == true)
 				{
 					return true;
 				}
 			}
 
 			return false;
-		};
+		}
 	}
 }
