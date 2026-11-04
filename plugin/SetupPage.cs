@@ -52,6 +52,14 @@ namespace GetReady
 			{
 				AmmoSetup(section, controller);
 			}
+			else if (step is GrenadesStep)
+			{
+				GroupGrid(section, step.Groups);
+			}
+			else if (step is HealingStep)
+			{
+				GroupList(section, step.Groups);
+			}
 			else
 			{
 				NotYet(section);

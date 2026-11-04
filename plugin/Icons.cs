@@ -143,7 +143,8 @@ namespace GetReady
 			try
 			{
 				var factory = Comfort.Common.Singleton<ItemFactory>.Instance;
-				item = factory?.CreateItem(factory.NextId.ToString(), template, null);
+				// The game's default build of the template (a weapon with its usual mods), or a bare item when it has none
+				item = factory?.GetPresetItem(template);
 			}
 			catch (Exception e)
 			{

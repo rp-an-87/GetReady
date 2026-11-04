@@ -159,7 +159,7 @@ namespace GetReady
 		}
 
 		// The entries of a group in the order they are shown: the ones in use in their order, then the ones switched off
-		private static List<Entry> ShownEntries(GroupDef def)
+		internal static List<Entry> ShownEntries(GroupDef def)
 		{
 			var off = def.Setting.Off;
 			var all = def.OrderedEntries();
@@ -167,7 +167,7 @@ namespace GetReady
 		}
 
 		// A row dragged from one place of a group's list to another: writes the order out in full
-		private static void ReorderEntries(GroupDef def, List<Entry> shown, int from, int to)
+		internal static void ReorderEntries(GroupDef def, List<Entry> shown, int from, int to)
 		{
 			var order = shown.Select(entry => entry.Template).ToList();
 			var key = order[from];
