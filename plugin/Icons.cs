@@ -91,6 +91,13 @@ namespace GetReady
 			}
 		}
 
+		// The game's small icon for a step (null when it has none)
+		internal static Sprite StepSprite(string step)
+		{
+			var type = TypeOfStep(step);
+			return type == null ? null : TypeSprite(type.Value);
+		}
+
 		// Whether the step has an icon type (the sprite may still be missing; Step then draws nothing)
 		internal static bool HasStepIcon(string step) => TypeOfStep(step) != null;
 

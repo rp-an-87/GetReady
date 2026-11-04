@@ -31,7 +31,7 @@ namespace GetReady
 			ShowFlash = Config.Bind("1. General", "3. READY flash after a successful run", true,
 				"A light green vignette and a green READY on screen for a moment when Get ready has brought everything. Just for show.");
 			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
-				"Opens a test window made from a copy of a game window, to try whether windows of ours can look and behave like the game's own. Empty by default.");
+				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
 				"Hover a magazine in the stash or in a raid inventory and press this to fill it up. It uses the ammo the magazine already holds, or else the highest-penetration ammo it accepts, taken from the stash and your gear. In a raid it is the normal timed load. Unassign the key to turn the feature off.");
 			RepairHotkey = Config.Bind("2. Quick actions", "2. Repair with kit hotkey", new KeyboardShortcut(KeyCode.R),
@@ -51,9 +51,10 @@ namespace GetReady
 			ReadyWindow.Tick();
 			MagazineTopUp.Update();
 			RepairWithKit.Update();
+			ReadyUiWindow.Update();
 			if (SpikeHotkey.Value.MainKey != KeyCode.None && SpikeHotkey.Value.IsDown())
 			{
-				UiWindowSpike.Toggle();
+				ReadyUiWindow.Toggle();
 			}
 
 			if (OpenHotkey.Value.MainKey != KeyCode.None && OpenHotkey.Value.IsDown())

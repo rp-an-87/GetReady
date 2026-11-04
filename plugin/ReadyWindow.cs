@@ -31,6 +31,18 @@ namespace GetReady
 			}
 		}
 
+		// Opens the IMGUI window on its Setup page (the new window has no Setup page yet)
+		internal static void ShowSetup()
+		{
+			if (!_open)
+			{
+				_open = true;
+				Refresh();
+			}
+
+			_tab = 1;
+		}
+
 		private static EventSystem _blocked;
 
 		// Whether the mouse button that is down now went down on our window (a click or a drag that is ours), else it belongs to the game

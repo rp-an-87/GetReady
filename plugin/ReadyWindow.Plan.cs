@@ -73,6 +73,9 @@ namespace GetReady
 
 		private static bool _loggedFirst;
 
+		// For the window made from a game window: read the plan now, and whether it has changed since
+		internal static void RefreshNow() => Refresh();
+
 		private static void Refresh()
 		{
 			Plan.Clear();
