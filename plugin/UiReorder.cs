@@ -16,6 +16,7 @@ namespace GetReady
 		internal int Index;
 		internal Action<int, int> OnMove;
 		internal RectTransform Bar;
+		internal Image Backdrop;
 
 		private int _at = -1;
 		private bool _over, _dragging;
@@ -24,6 +25,7 @@ namespace GetReady
 		{
 			_over = true;
 			CursorSwitcher.SetCursor(ECursorType.Hand);
+			Light(true);
 		}
 
 		public void OnPointerExit(PointerEventData eventData)
@@ -32,6 +34,7 @@ namespace GetReady
 			if (!_dragging)
 			{
 				CursorSwitcher.SetCursor(ECursorType.Idle);
+				Light(false);
 			}
 		}
 
@@ -66,6 +69,7 @@ namespace GetReady
 		{
 			_dragging = false;
 			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
+			Light(_over);
 			Dim(Rows[Index], 1f);
 			Bar.gameObject.SetActive(false);
 			if (_at >= 0)
@@ -95,6 +99,15 @@ namespace GetReady
 			return above;
 		}
 
+		// The row under the mouse, and the one being dragged, are lit
+		private void Light(bool on)
+		{
+			if (Backdrop != null)
+			{
+				Backdrop.color = on ? new Color(0.8f, 0.72f, 0.45f, 0.12f) : new Color(0f, 0f, 0f, 0f);
+			}
+		}
+
 		private static void Dim(RectTransform row, float alpha)
 		{
 			var group = row.GetComponent<CanvasGroup>() ?? row.gameObject.AddComponent<CanvasGroup>();
@@ -122,7 +135,15 @@ namespace GetReady
 					clear.raycastTarget = true;
 				}
 
+				var backdrop = UiKit.Node("Hover", rows[i]);
+				backdrop.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+				UiKit.Stretch(backdrop, -4f, -2f, -4f, -2f);
+				var light = backdrop.gameObject.AddComponent<Image>();
+				light.color = new Color(0f, 0f, 0f, 0f);
+				light.raycastTarget = false;
+				backdrop.SetAsFirstSibling();
 				var handle = rows[i].gameObject.AddComponent<ReorderGrip>();
+				handle.Backdrop = light;
 				handle.Container = container;
 				handle.Rows = rows;
 				handle.Index = i;
