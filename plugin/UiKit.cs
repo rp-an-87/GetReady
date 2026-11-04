@@ -275,6 +275,8 @@ namespace GetReady
 			var area = Node("Sliding Area", track);
 			Stretch(area, 1f, 1f, 1f, 1f);
 			var handle = Node("Handle", area);
+			// A new object is 100 x 100: the scroll bar sets the handle along its own direction only, so the width is set here
+			Stretch(handle, 0f, 0f, 0f, 0f);
 			var image = Fill(handle, new Color(0.42f, 0.43f, 0.41f), true);
 			var bar = track.gameObject.AddComponent<Scrollbar>();
 			bar.handleRect = handle;
