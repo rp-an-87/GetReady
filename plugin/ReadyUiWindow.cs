@@ -128,7 +128,8 @@ namespace GetReady
 			for (int i = 0; i < frame.childCount; i++)
 			{
 				var child = frame.GetChild(i);
-				if (caption != null && (child == caption || caption.IsChildOf(child)))
+				// The caption stays, and so does the grey border every game window has
+				if (child.name == "Border" || (caption != null && (child == caption || caption.IsChildOf(child))))
 				{
 					continue;
 				}
