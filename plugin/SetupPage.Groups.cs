@@ -72,8 +72,34 @@ namespace GetReady
 			var amount = UiKit.HBox(column, 6f);
 			if (def.Money)
 			{
-				// Typed in, which is the Cash section's: not built here yet
-				UiKit.Label(amount, Game.Amount(def.Unit, setting.Target), 0.9f, Ui.Text);
+				// Typed in: the amounts are too big to click up to
+				UiKit.PushButton(amount, "-", () =>
+				{
+					if (setting.Target > 0)
+					{
+						setting.Target = Math.Max(0, setting.Target - def.Step);
+						Changed();
+					}
+				}, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				UiKit.NumberField(amount, setting.Target.ToString(), UiKit.Unit * 7f, UiKit.Unit * 1.7f, typed =>
+				{
+					int parsed;
+					if (int.TryParse(typed == "" ? "0" : typed, out parsed) && Math.Max(0, Math.Min(def.Max, parsed)) != setting.Target)
+					{
+						setting.Target = Math.Max(0, Math.Min(def.Max, parsed));
+						Changed();
+					}
+				});
+				var sign = UiKit.Label(amount, Game.Symbol(def.Unit) ?? def.Unit, 0.9f, Ui.Dim, align: TextAlignmentOptions.Center);
+				UiKit.Size(sign, UiKit.Unit * 1.5f);
+				UiKit.PushButton(amount, "+", () =>
+				{
+					if (setting.Target < def.Max)
+					{
+						setting.Target = Math.Min(def.Max, setting.Target + def.Step);
+						Changed();
+					}
+				}, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			}
 			else
 			{

@@ -388,6 +388,32 @@ namespace GetReady
 			Fill(fill, color);
 		}
 
+		// A box to type a whole number in. The value is handed over when the typing ends (Enter, Tab or a click elsewhere), not on every key:
+		// the page is drawn again then, which would take the box away in the middle of typing.
+		internal static TMP_InputField NumberField(Transform parent, string text, float width, float height, Action<string> done)
+		{
+			var rect = Node("Field", parent);
+			var image = Fill(rect, InnerColor, true);
+			Edge(rect, SectionEdge);
+			rect.gameObject.SetActive(false);
+			var viewport = Node("Viewport", rect);
+			Stretch(viewport, 8f, 2f, 8f, 2f);
+			viewport.gameObject.AddComponent<RectMask2D>();
+			var label = Label(viewport, text, 0.9f, Ui.Text, align: TextAlignmentOptions.Right);
+			Stretch(label.rectTransform, 0f, 0f, 0f, 0f);
+			var field = rect.gameObject.AddComponent<TMP_InputField>();
+			field.targetGraphic = image;
+			field.textViewport = viewport;
+			field.textComponent = label;
+			field.contentType = TMP_InputField.ContentType.IntegerNumber;
+			field.characterLimit = 9;
+			field.text = text;
+			field.onEndEdit.AddListener(value => done(value));
+			rect.gameObject.SetActive(true);
+			Size(rect, width, height);
+			return field;
+		}
+
 		internal static Button PushButton(Transform parent, string text, Action click, Color background, Color hover, Color textColor, float width = -1f, float height = -1f, Color? edge = null)
 		{
 			var rect = Node("Button", parent);

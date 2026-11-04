@@ -122,6 +122,18 @@ namespace GetReady
 			{
 				GroupList(section, step.Groups);
 			}
+			else if (step is CashStep)
+			{
+				GroupList(section, step.Groups);
+			}
+			else if (step is SpecialSlotsStep)
+			{
+				SpecialSlots(section, controller);
+			}
+			else if (step is FullAutoStep)
+			{
+				FullAuto(section);
+			}
 			else
 			{
 				NotYet(section);
