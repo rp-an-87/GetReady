@@ -314,10 +314,11 @@ namespace GetReady
 			Fill(fill, color);
 		}
 
-		internal static Button PushButton(Transform parent, string text, Action click, Color background, Color hover, Color textColor, float width = -1f, float height = -1f)
+		internal static Button PushButton(Transform parent, string text, Action click, Color background, Color hover, Color textColor, float width = -1f, float height = -1f, Color? edge = null)
 		{
 			var rect = Node("Button", parent);
 			var image = Fill(rect, background, true);
+			Edge(rect, edge);
 			var button = rect.gameObject.AddComponent<Button>();
 			button.targetGraphic = image;
 			var colors = button.colors;

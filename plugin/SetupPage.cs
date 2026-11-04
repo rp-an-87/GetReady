@@ -65,15 +65,15 @@ namespace GetReady
 		{
 			var row = UiKit.HBox(parent, 10f);
 			UiKit.Label(row, "This section is still in the old window.", 0.85f, Ui.Dim, flex: true);
-			UiKit.PushButton(row, "Open it", ReadyWindow.ShowSetup, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, height: UiKit.Unit * 1.7f);
+			UiKit.PushButton(row, "Open it", ReadyWindow.ShowSetup, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 		}
 
 		// The ON / OFF switch of a section or of an option
 		internal static void Switch(Transform parent, bool on, Action toggle)
 		{
 			var button = on
-				? UiKit.PushButton(parent, "ON", toggle, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f)
-				: UiKit.PushButton(parent, "OFF", toggle, new Color(0.16f, 0.165f, 0.165f), new Color(0.27f, 0.28f, 0.27f), Ui.Dim, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f);
+				? UiKit.PushButton(parent, "ON", toggle, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f, edge: new Color(0.5f, 0.62f, 0.38f))
+				: UiKit.PushButton(parent, "OFF", toggle, new Color(0.16f, 0.165f, 0.165f), new Color(0.27f, 0.28f, 0.27f), Ui.Dim, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f, edge: PickEdge);
 			button.GetComponentInChildren<TMP_Text>().fontStyle = FontStyles.Bold;
 		}
 
@@ -129,10 +129,10 @@ namespace GetReady
 
 			var size = UiKit.HBox(section, 8f);
 			UiKit.Tip(UiKit.Label(size, "Window size", 0.9f, Ui.Text), "Scales the text and pictures in this window and the red check box. Handy on a big screen. The window itself is resized by dragging its edges.");
-			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f);
+			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			var percent = UiKit.Label(size, $"{Mathf.RoundToInt(ReadyWindow.Scale * 100f)}%", 0.9f, Ui.Text, align: TextAlignmentOptions.Center);
 			UiKit.Size(percent, UiKit.Unit * 3.5f);
-			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f);
+			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 
 			OptionRow(section, supplies.SwapWorse, "Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one", value => supplies.SwapWorse = value);
 			OptionRow(section, supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway", value => supplies.AllowOvershoot = value);

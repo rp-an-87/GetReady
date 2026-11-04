@@ -16,23 +16,26 @@ namespace GetReady
 		private static readonly Color PickOnFill = new Color(0.25f, 0.23f, 0.15f), PickOnHover = new Color(0.31f, 0.29f, 0.19f);
 		private static readonly Color PickOnText = new Color(0.95f, 0.9f, 0.72f);
 
+		// The thin edges of the old window's buttons: grey, and sand for the one that is lit
+		internal static readonly Color ButtonEdge = new Color(0.38f, 0.39f, 0.37f), PickEdge = new Color(0.3f, 0.31f, 0.3f), PickOnEdge = new Color(0.72f, 0.65f, 0.42f);
+
 		internal static readonly Color InnerPanel = new Color(0.095f, 0.1f, 0.1f);
 
 		// - text +
 		internal static void Stepper(Transform parent, string text, Color color, float width, Action minus, Action plus, string minusTip, string plusTip)
 		{
-			var less = UiKit.PushButton(parent, "-", minus, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f);
+			var less = UiKit.PushButton(parent, "-", minus, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			UiKit.Tip(less, minusTip);
 			var label = UiKit.Label(parent, text, 0.9f, color, align: TextAlignmentOptions.Center);
 			UiKit.Size(label, UiKit.Unit * width);
-			var more = UiKit.PushButton(parent, "+", plus, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f);
+			var more = UiKit.PushButton(parent, "+", plus, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			UiKit.Tip(more, plusTip);
 		}
 
 		// One choice of a row: lit when it is the one chosen
 		internal static void Pick(Transform parent, string text, bool on, Action choose, string tip, float width = -1f)
 		{
-			var button = UiKit.PushButton(parent, text, choose, on ? PickOnFill : PickFill, on ? PickOnHover : PickHover, on ? PickOnText : Ui.Text, width: width, height: UiKit.Unit * 1.7f);
+			var button = UiKit.PushButton(parent, text, choose, on ? PickOnFill : PickFill, on ? PickOnHover : PickHover, on ? PickOnText : Ui.Text, width: width, height: UiKit.Unit * 1.7f, edge: on ? PickOnEdge : PickEdge);
 			UiKit.Tip(button, tip);
 		}
 
@@ -77,7 +80,7 @@ namespace GetReady
 					{
 						toggle(key);
 					}
-				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * 6.5f, height: UiKit.Unit * 1.7f);
+				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * 6.5f, height: UiKit.Unit * 1.7f, edge: chip.On ? PickOnEdge : PickEdge);
 				UiKit.Tip(button, chip.Tip);
 				swapChip = button.gameObject.AddComponent<SwapChip>();
 				swapChip.Key = key;
