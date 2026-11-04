@@ -75,6 +75,8 @@ namespace GetReady
 			public string Label;
 			public bool On;
 			public string Tip;
+			// A picture instead of the name (the name is in the tooltip); null shows the name
+			public Sprite Icon;
 		}
 
 		// Chips in the order of use: where the first that has room wins. A ">" between the ones that are on shows the order; one that is off is
@@ -104,13 +106,18 @@ namespace GetReady
 
 				string key = chip.Key;
 				SwapChip swapChip = null;
-				var button = UiKit.PushButton(row, chip.On ? chip.Label : "× " + chip.Label, () =>
+				var button = UiKit.PushButton(row, chip.Icon != null ? "" : chip.On ? chip.Label : "× " + chip.Label, () =>
 				{
 					if (swapChip == null || !swapChip.JustDragged)
 					{
 						toggle(key);
 					}
-				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * 6.5f, height: UiKit.Unit * 1.7f, edge: chip.On ? PickOnEdge : PickEdge);
+				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * (chip.Icon != null ? 3.6f : 6.5f), height: UiKit.Unit * (chip.Icon != null ? 2.4f : 1.7f), edge: chip.On ? PickOnEdge : PickEdge);
+				if (chip.Icon != null)
+				{
+					ChipPicture(button.transform, chip);
+				}
+
 				UiKit.Tip(button, chip.Tip);
 				swapChip = button.gameObject.AddComponent<SwapChip>();
 				swapChip.Key = key;
@@ -125,6 +132,25 @@ namespace GetReady
 			}
 		}
 
+		// The picture on a chip: bright when the place is used, dim with a small red cross when it is not
+		private static void ChipPicture(Transform button, ChipData chip)
+		{
+			var glyph = UiKit.Node("Glyph", button);
+			glyph.gameObject.AddComponent<UnityEngine.UI.LayoutElement>().ignoreLayout = true;
+			UiKit.Stretch(glyph, 6f, 4f, 6f, 4f);
+			var image = glyph.gameObject.AddComponent<UnityEngine.UI.Image>();
+			image.sprite = chip.Icon;
+			image.preserveAspect = true;
+			image.raycastTarget = false;
+			image.color = chip.On ? new Color(0.95f, 0.9f, 0.72f) : new Color(0.62f, 0.63f, 0.6f, 0.5f);
+			if (!chip.On)
+			{
+				var cross = UiKit.Label(button, "×", 0.9f, new Color(0.86f, 0.3f, 0.27f), true, TextAlignmentOptions.TopRight);
+				cross.gameObject.AddComponent<UnityEngine.UI.LayoutElement>().ignoreLayout = true;
+				UiKit.Stretch(cross.rectTransform, 0f, 0f, 3f, 0f);
+			}
+		}
+
 		// The places of a group as chips
 		internal static void PlacePicker(Transform parent, GroupDef def, int perRow)
 		{
@@ -133,7 +159,8 @@ namespace GetReady
 				Key = place,
 				Label = place == "Special slots" ? "Special" : place,
 				On = def.PlaceOn(place),
-				Tip = def.PlaceOn(place) ? "On: used, in the order of the arrows. Click to switch it off, drag it onto another place to swap them." : "Off: not used. Click to switch it on, or drag it onto a place that is on to take its spot."
+				Icon = PlaceIcons.Of(place),
+				Tip = place + "\n" + (def.PlaceOn(place) ? "On: used, in the order of the arrows. Click to switch it off, drag it onto another place to swap them." : "Off: not used. Click to switch it on, or drag it onto a place that is on to take its spot.")
 			}).ToList();
 			ChipPicker(parent, chips, perRow, place =>
 			{
