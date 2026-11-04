@@ -154,11 +154,6 @@ namespace GetReady
 			image.preserveAspect = true;
 			image.raycastTarget = false;
 			image.color = chip.On ? new Color(0.95f, 0.9f, 0.72f) : new Color(0.62f, 0.63f, 0.6f, 0.5f);
-			// The drawn trousers are a flat white, brighter than the game's shaded pictures: toned down to sit with them
-			if (chip.Key == "Pockets")
-			{
-				image.color = new Color(image.color.r * 0.62f, image.color.g * 0.62f, image.color.b * 0.62f, image.color.a);
-			}
 			if (!chip.On)
 			{
 				var cross = UiKit.Label(button, "×", 0.9f, new Color(0.86f, 0.3f, 0.27f), true, TextAlignmentOptions.TopRight);
