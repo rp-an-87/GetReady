@@ -21,11 +21,30 @@ namespace GetReady
 		private static TextMeshProUGUI _status;
 		private static string _signature = "";
 		private static float _checkedAt;
-		private static int _pending;
+		// What the page is waiting for: the pictures it asked for that the game has not made yet (each says whether it is there now). The page
+		// holds on a "Loading" note and is drawn once they are, not again and again as they come.
+		private static readonly List<Func<bool>> WaitFor = new List<Func<bool>>();
+		private static bool _loading, _giveUp, _deferred;
+		private static float _loadSince;
+		private static int _deferredSection = -1;
+		private static TextMeshProUGUI _loadingNote;
+		private const float LoadingMost = 8f;
 
 		// An icon that is not there yet: the page is drawn again shortly
-		internal static void IconPending() => _pending++;
-		private static int _pendingRounds;
+		internal static void IconPending(Func<bool> isThere) => WaitFor.Add(isThere);
+
+		private static bool AllThere()
+		{
+			foreach (var isThere in WaitFor)
+			{
+				if (!isThere())
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
 		private static bool _dumped;
 
 		// Which page shows: 0 = Ready, 1 = Setup
@@ -74,7 +93,8 @@ namespace GetReady
 				};
 				_window = window;
 				_signature = "";
-				_pendingRounds = 0;
+				_loading = false;
+				_deferred = false;
 				ReadyPlan.Refresh();
 				Rebuild();
 				Plugin.Log.LogInfo("Get ready window: opened");
@@ -114,13 +134,37 @@ namespace GetReady
 			ApplyScale();
 			try
 			{
+				// Holding for pictures: look cheaply, and draw once when they are all there (or when it has taken too long)
+				if (_loading || _deferred)
+				{
+					bool there = AllThere();
+					if (there || Time.unscaledTime - _loadSince > LoadingMost)
+					{
+						bool whole = _loading;
+						_loading = false;
+						_deferred = false;
+						_giveUp = !there;
+						if (whole)
+						{
+							Rebuild();
+						}
+						else if (_tab == 1 && _content != null)
+						{
+							SetupPage.RefreshSection(_content, _deferredSection);
+						}
+
+						_giveUp = false;
+					}
+
+					return;
+				}
+
 				string signature = Signature();
 				// The Ready page shows the plan, so it follows it; Setup only follows icons that were still loading (what changes on Setup is
 				// drawn where it changed)
 				bool planChanged = signature != _signature && _tab == 0;
-				if (planChanged || (_pending > 0 && _pendingRounds < 25))
+				if (planChanged)
 				{
-					_pendingRounds = planChanged ? 0 : _pendingRounds + 1;
 					_signature = signature;
 					Rebuild();
 				}
@@ -261,9 +305,22 @@ namespace GetReady
 		{
 			SettingsStore.Save();
 			ReadyPlan.RefreshSoon();
-			if (_tab == 1 && _content != null && SetupPage.Refresh(_content))
+			if (_tab == 1 && _content != null)
 			{
-				return;
+				WaitFor.Clear();
+				int section = SetupPage.Refresh(_content);
+				if (section >= 0)
+				{
+					// New pictures for that section: it is drawn once more when they are there
+					if (WaitFor.Count > 0 && !AllThere())
+					{
+						_deferred = true;
+						_deferredSection = section;
+						_loadSince = Time.unscaledTime;
+					}
+
+					return;
+				}
 			}
 
 			Rebuild();
@@ -313,6 +370,10 @@ namespace GetReady
 			}
 
 			_scroll = UiKit.Scroll(root, out _content);
+			_loadingNote = UiKit.Label(_scroll.transform, "Loading…", 1.1f, Ui.Dim, align: TextAlignmentOptions.Center);
+			_loadingNote.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+			UiKit.Stretch(_loadingNote.rectTransform, 0f, 0f, 0f, 0f);
+			_loadingNote.gameObject.SetActive(false);
 			var scrollSize = UiKit.Size(_scroll, flexWidth: 1f, flexHeight: 1f);
 			scrollSize.minHeight = ScrollMin;
 			scrollSize.preferredHeight = 400f;
@@ -365,7 +426,7 @@ namespace GetReady
 				UnityEngine.Object.Destroy(_content.GetChild(i).gameObject);
 			}
 
-			_pending = 0;
+			WaitFor.Clear();
 			if (_tab == 1)
 			{
 				SetupPage.Build(_content);
@@ -382,6 +443,17 @@ namespace GetReady
 
 			LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
 			_content.anchoredPosition = new Vector2(0f, scroll);
+
+			// Pictures still to come: the page is kept out of sight behind a note until they are all there
+			_loading = WaitFor.Count > 0 && !_giveUp && !AllThere();
+			_loadSince = _loading ? Time.unscaledTime : _loadSince;
+			var group = _content.GetComponent<CanvasGroup>() ?? _content.gameObject.AddComponent<CanvasGroup>();
+			group.alpha = _loading ? 0f : 1f;
+			group.blocksRaycasts = !_loading;
+			if (_loadingNote != null)
+			{
+				_loadingNote.gameObject.SetActive(_loading);
+			}
 		}
 
 		private static Sprite SpriteOf(PlanLine line)
@@ -402,7 +474,9 @@ namespace GetReady
 
 			if (sprite == null)
 			{
-				_pending++;
+				var item = line.Item;
+				string template = line.Template;
+				IconPending(() => item != null ? Icons.OfItem(item) != null : Icons.Of(template) != null || !Icons.IsExamined(template));
 			}
 
 			return sprite;

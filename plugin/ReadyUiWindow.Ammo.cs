@@ -24,7 +24,7 @@ namespace GetReady
 			var sprite = Icons.Of(template);
 			if (sprite == null)
 			{
-				_pending++;
+				IconPending(() => Icons.Of(template) != null || !Icons.IsExamined(template));
 			}
 
 			return sprite;

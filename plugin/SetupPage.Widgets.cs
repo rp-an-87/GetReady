@@ -29,7 +29,7 @@ namespace GetReady
 			bool unknown = sprite == null && !Icons.IsExamined(template);
 			if (sprite == null && !unknown)
 			{
-				ReadyUiWindow.IconPending();
+				ReadyUiWindow.IconPending(() => Icons.Of(template) != null || !Icons.IsExamined(template));
 			}
 
 			UiKit.Icon(parent, sprite, size, tip);
@@ -45,7 +45,7 @@ namespace GetReady
 			var sprite = Icons.OfItem(item);
 			if (sprite == null)
 			{
-				ReadyUiWindow.IconPending();
+				ReadyUiWindow.IconPending(() => Icons.OfItem(item) != null);
 			}
 
 			UiKit.Icon(parent, sprite, size, tip);
@@ -137,7 +137,7 @@ namespace GetReady
 			var sprite = PlaceIcons.Of(place);
 			if (sprite == null && PlaceIcons.Pending(place))
 			{
-				ReadyUiWindow.IconPending();
+				ReadyUiWindow.IconPending(() => !PlaceIcons.Pending(place));
 			}
 
 			return sprite;

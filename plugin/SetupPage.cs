@@ -41,12 +41,18 @@ namespace GetReady
 			Fillers.Add(fillOptions);
 		}
 
-		// A setting changed: draw the section it is in again (the one the mouse is over), or the whole page when that is not clear.
-		// Only that section is made again: the rest of the page, and where it is scrolled to, stay as they are.
-		internal static bool Refresh(RectTransform content)
+		// A setting changed: draw the section it is in again (the one the mouse is over; -1 when that is not clear, and the whole page is
+		// drawn instead). Only that section is made again: the rest of the page, and where it is scrolled to, stay as they are.
+		internal static int Refresh(RectTransform content)
 		{
 			int index = SectionUnderMouse();
-			if (index < 0 || index >= Fillers.Count)
+			return RefreshSection(content, index) ? index : -1;
+		}
+
+		// One section made again
+		internal static bool RefreshSection(RectTransform content, int index)
+		{
+			if (index < 0 || index >= Fillers.Count || Sections[index] == null)
 			{
 				return false;
 			}
