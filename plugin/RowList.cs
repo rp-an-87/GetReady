@@ -116,6 +116,7 @@ namespace GetReady
 				}
 
 				GUILayout.Label(keys[i], Ui.Body, GUILayout.ExpandWidth(true), GUILayout.Height(34));
+				LogAlignmentOnce(Dnd.LastGrip, GUILayoutUtility.GetLastRect());
 				GUILayout.EndHorizontal();
 				GUILayout.EndVertical();
 				rects.Add(GUILayoutUtility.GetLastRect());
@@ -132,6 +133,29 @@ namespace GetReady
 
 			Dnd.RowBar(title, rects);
 			return changed;
+		}
+
+		private static bool _alignLogged;
+
+		// A one-time measurement for the grip/text alignment: where the grip and the label are, and how the font sits in its line
+		private static void LogAlignmentOnce(Rect grip, Rect label)
+		{
+			if (_alignLogged || Event.current.type != EventType.Repaint)
+			{
+				return;
+			}
+
+			_alignLogged = true;
+			var font = Ui.Body.font;
+			CharacterInfo info = default(CharacterInfo);
+			bool ok = false;
+			if (font != null)
+			{
+				font.RequestCharactersInTexture("H", Ui.Body.fontSize);
+				ok = font.GetCharacterInfo('H', out info, Ui.Body.fontSize);
+			}
+
+			Plugin.Log.LogInfo($"Alignment: grip {grip}, label {label}, label padding {Ui.Body.padding}, margin {Ui.Body.margin}, size {Ui.Body.fontSize}, font {(font != null ? font.name : "none")} ascent {(font != null ? font.ascent : 0)} lineHeight {(font != null ? font.lineHeight : 0)} fontSize {(font != null ? font.fontSize : 0)}, H minY {(ok ? info.minY : 0)} maxY {(ok ? info.maxY : 0)}");
 		}
 
 		// The entries of a group in the order they are shown: the ones in use in their order, then the ones switched off

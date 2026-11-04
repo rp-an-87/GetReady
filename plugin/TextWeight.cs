@@ -64,8 +64,9 @@ namespace GetReady
 	{
 		protected override MethodBase GetTargetMethod() => typeof(GUI).GetMethod("Button", new[] { typeof(Rect), typeof(GUIContent), typeof(GUIStyle) });
 
-		[PatchPrefix]
-		private static void Prefix(Rect position, GUIContent content, GUIStyle style)
+		// After the button, not before: its picture would cover the extra text
+		[PatchPostfix]
+		private static void Postfix(Rect position, GUIContent content, GUIStyle style)
 		{
 			TextWeight.Before(style, position, content);
 		}

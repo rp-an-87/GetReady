@@ -150,10 +150,13 @@ namespace GetReady
 			GUI.color = old;
 		}
 
+		internal static Rect LastGrip;
+
 		// A grip to grab a row by, in the layout
 		internal static bool Grip(float height, string kind, string group, string key, string ghost)
 		{
 			var rect = GUILayoutUtility.GetRect(28, height, GUILayout.Width(28), GUILayout.Height(height));
+			LastGrip = rect;
 			if (Event.current.type == EventType.Repaint)
 			{
 				DrawGrip(rect, rect.Contains(Event.current.mousePosition) || IsDragging(kind, group, key));
