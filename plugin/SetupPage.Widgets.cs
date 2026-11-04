@@ -84,6 +84,7 @@ namespace GetReady
 				UiKit.Tip(button, chip.Tip);
 				swapChip = button.gameObject.AddComponent<SwapChip>();
 				swapChip.Key = key;
+				swapChip.Dots = UiKit.DottedFrame((RectTransform)button.transform, new Color(0.8f, 0.72f, 0.45f));
 				swapChip.Peers = made;
 				swapChip.OnSwap = (from, to) =>
 				{

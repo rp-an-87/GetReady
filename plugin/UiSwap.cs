@@ -14,6 +14,7 @@ namespace GetReady
 		internal string Key;
 		internal List<SwapChip> Peers;
 		internal Action<string, string> OnSwap;
+		internal GameObject Dots;
 
 		private const float Reach = 14f;
 		private SwapChip _target;
@@ -45,6 +46,8 @@ namespace GetReady
 			_dragging = true;
 			CursorSwitcher.SetCursor(ECursorType.Hand);
 			Dim(0.5f);
+			// The places it can be dropped on show a dotted frame
+			ShowDots(true);
 		}
 
 		public void OnDrag(PointerEventData eventData)
@@ -64,6 +67,7 @@ namespace GetReady
 			_dragEndFrame = Time.frameCount;
 			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
 			Dim(1f);
+			ShowDots(false);
 			Mark(_target, false);
 			var target = _target;
 			_target = null;
@@ -104,6 +108,17 @@ namespace GetReady
 			}
 
 			return best;
+		}
+
+		private void ShowDots(bool on)
+		{
+			foreach (var peer in Peers)
+			{
+				if (peer != null && peer != this && peer.Dots != null)
+				{
+					peer.Dots.SetActive(on);
+				}
+			}
 		}
 
 		private void Dim(float alpha)

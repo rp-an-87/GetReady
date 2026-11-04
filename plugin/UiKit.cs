@@ -271,6 +271,61 @@ namespace GetReady
 			return grip;
 		}
 
+		private static Sprite _dashAcross, _dashDown;
+
+		// A strip of dashes that is repeated along an edge: 5 on, 4 off
+		private static Sprite Dashes(bool across)
+		{
+			int length = 9, thickness = 2;
+			var texture = new Texture2D(across ? length : thickness, across ? thickness : length, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point };
+			for (int x = 0; x < texture.width; x++)
+			{
+				for (int y = 0; y < texture.height; y++)
+				{
+					int along = across ? x : y;
+					texture.SetPixel(x, y, along < 5 ? Color.white : new Color(1f, 1f, 1f, 0f));
+				}
+			}
+
+			texture.Apply();
+			return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 1f, 0, SpriteMeshType.FullRect);
+		}
+
+		// A dotted frame inside a box, hidden until it is shown (the places something can be dropped on)
+		internal static GameObject DottedFrame(RectTransform box, Color color)
+		{
+			if (_dashAcross == null)
+			{
+				_dashAcross = Dashes(true);
+				_dashDown = Dashes(false);
+			}
+
+			var frame = Node("Dotted Frame", box);
+			frame.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
+			Stretch(frame, 0f, 0f, 0f, 0f);
+			EdgeLine(frame, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, 2f), _dashAcross, color);
+			EdgeLine(frame, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 2f), _dashAcross, color);
+			EdgeLine(frame, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(0f, 0.5f), new Vector2(2f, 0f), _dashDown, color);
+			EdgeLine(frame, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(1f, 0.5f), new Vector2(2f, 0f), _dashDown, color);
+			frame.gameObject.SetActive(false);
+			return frame.gameObject;
+		}
+
+		private static void EdgeLine(RectTransform frame, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 size, Sprite dashes, Color color)
+		{
+			var line = Node("Edge", frame);
+			line.anchorMin = anchorMin;
+			line.anchorMax = anchorMax;
+			line.pivot = pivot;
+			line.sizeDelta = size;
+			line.anchoredPosition = Vector2.zero;
+			var image = line.gameObject.AddComponent<Image>();
+			image.sprite = dashes;
+			image.type = Image.Type.Tiled;
+			image.color = color;
+			image.raycastTarget = false;
+		}
+
 		private static Sprite _helpSprite, _helpHoverSprite;
 
 		private static Sprite DiscSprite(Color fill, Color edge)
