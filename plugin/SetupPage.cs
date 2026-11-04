@@ -19,20 +19,48 @@ namespace GetReady
 		// What fills each section, so one section can be made again without the rest of the page
 		private static readonly List<Action> Fillers = new List<Action>();
 
-		// What a section shows of what you wear, to notice when that changes while the window is open (a piece taken off, a weapon swapped)
-		private static readonly Dictionary<int, KeyValuePair<Func<string>, string>> Watched = new Dictionary<int, KeyValuePair<Func<string>, string>>();
+		// The sections that show what you wear, and the slots of your equipment that tell when it changes (a piece taken off, a weapon swapped):
+		// the game says so itself, so nothing is looked at again and again. The change is only noted; the window draws it on its next look.
+		private static readonly HashSet<int> GearSections = new HashSet<int>(), GearStale = new HashSet<int>();
+		private static List<Slot> _watching = new List<Slot>();
 
-		// The section whose gear changed since it was drawn (and is now remembered as seen), or -1
+		private static void GearChanged(Item item) => GearStale.UnionWith(GearSections);
+
+		private static void Watch(InventoryController controller)
+		{
+			StopWatching();
+			if (controller?.Inventory?.Equipment == null)
+			{
+				return;
+			}
+
+			_watching = controller.Inventory.Equipment.Slots.ToList();
+			foreach (var slot in _watching)
+			{
+				slot.OnAddOrRemoveItem += GearChanged;
+			}
+		}
+
+		// When the window closes
+		internal static void StopWatching()
+		{
+			foreach (var slot in _watching)
+			{
+				slot.OnAddOrRemoveItem -= GearChanged;
+			}
+
+			_watching.Clear();
+			GearSections.Clear();
+			GearStale.Clear();
+		}
+
+		// The section whose gear changed since it was drawn, or -1
 		internal static int Outdated()
 		{
-			foreach (var index in Watched.Keys.ToList())
+			foreach (var index in GearStale)
 			{
-				string now = Watched[index].Key();
-				if (now != Watched[index].Value)
-				{
-					Watched[index] = new KeyValuePair<Func<string>, string>(Watched[index].Key, now);
-					return index;
-				}
+				GearStale.Remove(index);
+				return index;
 			}
 
 			return -1;
@@ -42,20 +70,19 @@ namespace GetReady
 		{
 			Sections.Clear();
 			Fillers.Clear();
-			Watched.Clear();
+			GearSections.Clear();
+			GearStale.Clear();
 			var controller = Game.Controller();
+			Watch(controller);
 			foreach (var step in Steps.DisplayOrder)
 			{
 				var current = step;
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 				Action fill = () => FillStep(section, current, controller);
 				fill();
-				if (controller != null && (step is RepairStep || step is AmmoStep))
+				if (step is RepairStep || step is AmmoStep)
 				{
-					Func<string> gear = step is RepairStep
-						? (Func<string>)(() => string.Join(",", RepairStep.EquippedGear(controller.Inventory).Select(item => item.Id.ToString())))
-						: () => string.Join(",", AmmoRules.EquippedWeapons(controller.Inventory).Select(weapon => weapon.Id.ToString()));
-					Watched[Sections.Count] = new KeyValuePair<Func<string>, string>(gear, gear());
+					GearSections.Add(Sections.Count);
 				}
 
 				Sections.Add(section);

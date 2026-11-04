@@ -87,6 +87,7 @@ namespace GetReady
 					}
 
 					_window = null;
+					SetupPage.StopWatching();
 					_content = null;
 					_scroll = null;
 					_status = null;
