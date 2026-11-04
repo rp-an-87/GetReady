@@ -20,6 +20,7 @@ namespace GetReady
 		private static ScrollRect _scroll;
 		private static TextMeshProUGUI _status;
 		private static string _signature = "";
+		private static int _seenVersion = -1;
 		private static float _checkedAt;
 		// What the page is waiting for: the pictures it asked for that the game has not made yet (each says whether it is there now). The page
 		// holds on a "Loading" note and is drawn once they are, not again and again as they come.
@@ -173,17 +174,19 @@ namespace GetReady
 					}
 				}
 
-				string signature = Signature();
-				// The Ready page shows the plan, so it follows it; Setup only follows icons that were still loading (what changes on Setup is
-				// drawn where it changed)
-				bool planChanged = signature != _signature && _tab == 0;
-				if (planChanged)
+				// The plan was read again (the plan says so itself): the Ready page follows it, but is only drawn again when what it shows is
+				// different. Setup does not follow the plan (what changes on Setup is drawn where it changed).
+				if (ReadyPlan.Version != _seenVersion)
 				{
+					_seenVersion = ReadyPlan.Version;
+					string signature = Signature();
+					bool planChanged = signature != _signature && _tab == 0;
 					_signature = signature;
-					Rebuild();
+					if (planChanged)
+					{
+						Rebuild();
+					}
 				}
-
-				_signature = signature;
 			}
 			catch (Exception e)
 			{

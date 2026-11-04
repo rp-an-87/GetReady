@@ -11,7 +11,23 @@ namespace GetReady
 	{
 		internal static readonly List<KeyValuePair<IStep, List<PlanLine>>> Plan = new List<KeyValuePair<IStep, List<PlanLine>>>();
 
-		internal static string _status = "";
+		// What the window listens to: raised whenever the plan is read again or the status text changes, so the window looks at them only then
+		internal static int Version { get; private set; }
+
+		private static string _statusText = "";
+
+		internal static string _status
+		{
+			get => _statusText;
+			set
+			{
+				if (value != _statusText)
+				{
+					_statusText = value;
+					Version++;
+				}
+			}
+		}
 
 		// The plan is read again shortly after the inventory changes (an item moved in the stash, say)
 		internal static InventoryController _watched;
@@ -113,6 +129,7 @@ namespace GetReady
 
 			_loggedFirst = true;
 			UpdateBadge();
+			Version++;
 		}
 
 		// The count on the stash button, and the text of its tooltip
