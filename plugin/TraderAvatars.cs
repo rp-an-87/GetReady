@@ -14,6 +14,11 @@ namespace GetReady
 		private static readonly Dictionary<string, Sprite> Loaded = new Dictionary<string, Sprite>();
 		private static readonly HashSet<string> Loading = new HashSet<string>();
 
+		// The portrait for the new window; null until the game has made it
+		internal static Sprite Picture(Trader trader) => Of(trader);
+
+		internal static bool Pending(Trader trader) => !Loaded.ContainsKey(trader.Id);
+
 		private static Sprite Of(Trader trader)
 		{
 			Sprite sprite;

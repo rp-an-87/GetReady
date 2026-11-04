@@ -134,6 +134,14 @@ namespace GetReady
 			{
 				FullAuto(section);
 			}
+			else if (step is RepairStep)
+			{
+				RepairSetup(section, controller);
+			}
+			else if (step is HealMeStep)
+			{
+				HealMe(section);
+			}
 			else
 			{
 				NotYet(section);
@@ -183,7 +191,7 @@ namespace GetReady
 
 		// The standard priority list: rows in the order of use, moved by dragging the grip. label gives the text of an item; move gets the
 		// item and how many places up (negative) or down it went.
-		internal static void PriorityList<T>(Transform parent, string title, IList<T> items, Func<T, string> label, Action<T, int> move, string help, bool numbered = false)
+		internal static void PriorityList<T>(Transform parent, string title, IList<T> items, Func<T, string> label, Action<T, int> move, string help, bool numbered = false, Action<Transform, T> picture = null)
 		{
 			var box = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), new Color(0.095f, 0.1f, 0.1f), UiKit.InnerEdge);
 			if (string.IsNullOrEmpty(help))
@@ -206,6 +214,7 @@ namespace GetReady
 				}
 
 				UiKit.Grip(row);
+				picture?.Invoke(row, items[i]);
 				UiKit.Label(row, label(items[i]), 0.9f, Ui.Text, flex: true);
 				rows.Add(row);
 			}

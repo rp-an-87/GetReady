@@ -31,6 +31,13 @@ namespace GetReady
 		// the status icon of the health screen; the health factor (HP) is the game's health icon.
 		internal static void DrawEffect(Rect rect, object trouble, string name)
 		{
+			var sprite = EffectSprite(trouble);
+			GUI.Box(rect, GUIContent.none, Ui.Inner);
+			DrawSprite(rect, sprite, name);
+		}
+
+		internal static Sprite EffectSprite(object trouble)
+		{
 			Sprite sprite;
 			if (!EffectSprites.TryGetValue(trouble, out sprite))
 			{
@@ -56,8 +63,7 @@ namespace GetReady
 				EffectSprites[trouble] = sprite;
 			}
 
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			DrawSprite(rect, sprite, name);
+			return sprite;
 		}
 
 		// The game's own small icon for a kind of item (the one the stash button uses), null when it has none
