@@ -26,6 +26,17 @@ namespace GetReady
 
 		private static void GearChanged(Item item) => GearStale.UnionWith(GearSections);
 
+		private static int _casesSection = -1;
+
+		// Raised by the plan when an item moved, grew, shrank or was used
+		private static void ItemsChanged()
+		{
+			if (_casesSection >= 0)
+			{
+				GearStale.Add(_casesSection);
+			}
+		}
+
 		private static void Watch(InventoryController controller)
 		{
 			StopWatching();
@@ -34,6 +45,7 @@ namespace GetReady
 				return;
 			}
 
+			ReadyPlan.InventoryChanged += ItemsChanged;
 			_watching = controller.Inventory.Equipment.Slots.ToList();
 			foreach (var slot in _watching)
 			{
@@ -44,6 +56,8 @@ namespace GetReady
 		// When the window closes
 		internal static void StopWatching()
 		{
+			ReadyPlan.InventoryChanged -= ItemsChanged;
+			_casesSection = -1;
 			foreach (var slot in _watching)
 			{
 				slot.OnAddOrRemoveItem -= GearChanged;
@@ -83,6 +97,12 @@ namespace GetReady
 				if (step is RepairStep || step is AmmoStep)
 				{
 					GearSections.Add(Sections.Count);
+				}
+
+				// The cases you carry change with any move of an item, so that section follows the items
+				if (step is CasesStep)
+				{
+					_casesSection = Sections.Count;
 				}
 
 				Sections.Add(section);
@@ -188,6 +208,10 @@ namespace GetReady
 			else if (step is FullAutoStep)
 			{
 				FullAuto(section);
+			}
+			else if (step is CasesStep)
+			{
+				CasesSetup(section, controller);
 			}
 			else if (step is RepairStep)
 			{

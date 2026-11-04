@@ -67,6 +67,7 @@ namespace GetReady
 				CasesStep.OnItemEvent(args.To);
 			}
 
+			InventoryChanged?.Invoke();
 			MarkDirty();
 		}
 
@@ -77,12 +78,20 @@ namespace GetReady
 				CasesStep.OnItemEvent(args.From);
 			}
 
+			InventoryChanged?.Invoke();
 			MarkDirty();
 		}
 
 		// An item changed without moving: a stack grew or shrank (rounds loaded, items merged or split), a piece was repaired, a kit was
 		// used. The game raises this for each of them.
-		private static void OnItemRefreshed(RefreshItemEventArgs args) => MarkDirty();
+		private static void OnItemRefreshed(RefreshItemEventArgs args)
+		{
+			InventoryChanged?.Invoke();
+			MarkDirty();
+		}
+
+		// Something in the inventory changed (for the Setup page, which shows what you carry)
+		internal static event Action InventoryChanged;
 
 		// Something outside the inventory changed what the plan shows (a tag on a case)
 		internal static void PlanChanged() => MarkDirty();
