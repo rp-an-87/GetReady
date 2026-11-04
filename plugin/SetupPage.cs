@@ -19,10 +19,30 @@ namespace GetReady
 		// What fills each section, so one section can be made again without the rest of the page
 		private static readonly List<Action> Fillers = new List<Action>();
 
+		// What a section shows of what you wear, to notice when that changes while the window is open (a piece taken off, a weapon swapped)
+		private static readonly Dictionary<int, KeyValuePair<Func<string>, string>> Watched = new Dictionary<int, KeyValuePair<Func<string>, string>>();
+
+		// The section whose gear changed since it was drawn (and is now remembered as seen), or -1
+		internal static int Outdated()
+		{
+			foreach (var index in Watched.Keys.ToList())
+			{
+				string now = Watched[index].Key();
+				if (now != Watched[index].Value)
+				{
+					Watched[index] = new KeyValuePair<Func<string>, string>(Watched[index].Key, now);
+					return index;
+				}
+			}
+
+			return -1;
+		}
+
 		internal static void Build(RectTransform content)
 		{
 			Sections.Clear();
 			Fillers.Clear();
+			Watched.Clear();
 			var controller = Game.Controller();
 			foreach (var step in Steps.DisplayOrder)
 			{
@@ -30,6 +50,14 @@ namespace GetReady
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 				Action fill = () => FillStep(section, current, controller);
 				fill();
+				if (controller != null && (step is RepairStep || step is AmmoStep))
+				{
+					Func<string> gear = step is RepairStep
+						? (Func<string>)(() => string.Join(",", RepairStep.EquippedGear(controller.Inventory).Select(item => item.Id.ToString())))
+						: () => string.Join(",", AmmoRules.EquippedWeapons(controller.Inventory).Select(weapon => weapon.Id.ToString()));
+					Watched[Sections.Count] = new KeyValuePair<Func<string>, string>(gear, gear());
+				}
+
 				Sections.Add(section);
 				Fillers.Add(fill);
 			}

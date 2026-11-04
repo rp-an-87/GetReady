@@ -159,6 +159,19 @@ namespace GetReady
 					return;
 				}
 
+				int stale = _tab == 1 ? SetupPage.Outdated() : -1;
+				if (stale >= 0)
+				{
+					WaitFor.Clear();
+					SetupPage.RefreshSection(_content, stale);
+					if (WaitFor.Count > 0 && !AllThere())
+					{
+						_deferred = true;
+						_deferredSection = stale;
+						_loadSince = Time.unscaledTime;
+					}
+				}
+
 				string signature = Signature();
 				// The Ready page shows the plan, so it follows it; Setup only follows icons that were still loading (what changes on Setup is
 				// drawn where it changed)
