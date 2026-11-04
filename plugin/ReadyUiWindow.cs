@@ -94,6 +94,7 @@ namespace GetReady
 					_status = null;
 				};
 				_window = window;
+				ApplyDragFade();
 				_signature = "";
 				_loading = false;
 				_deferred = false;
@@ -315,6 +316,26 @@ namespace GetReady
 			float top = -RectTransformUtility.CalculateRelativeRectTransformBounds(_content, SetupPage.Sections[index]).max.y;
 			float most = Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height);
 			_content.anchoredPosition = new Vector2(0f, Mathf.Clamp(top - 8f, 0f, most));
+		}
+
+		// While an item is dragged in the stash the window is faded or hidden (see DragFade); it lets the mouse through then, so the item can
+		// be dropped on what is behind it
+		internal static void ApplyDragFade()
+		{
+			if (_window == null)
+			{
+				return;
+			}
+
+			var frame = _window.WindowTransform;
+			if (frame == null)
+			{
+				return;
+			}
+
+			var group = frame.GetComponent<CanvasGroup>() ?? frame.gameObject.AddComponent<CanvasGroup>();
+			group.alpha = DragFade.Active ? DragFade.Alpha : 1f;
+			group.blocksRaycasts = !DragFade.Active;
 		}
 
 		// A setting was changed on the Setup page: keep it, plan again, and draw the page again

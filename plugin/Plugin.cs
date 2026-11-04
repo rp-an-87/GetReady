@@ -17,6 +17,8 @@ namespace GetReady
 		internal static ConfigEntry<KeyboardShortcut> OpenHotkey;
 		internal static ConfigEntry<bool> ShowFlash;
 		internal static ConfigEntry<KeyboardShortcut> SpikeHotkey;
+		internal static ConfigEntry<DragFadeMode> DragFadeMode;
+		internal static ConfigEntry<float> DragFadeOpacity;
 		internal static ConfigEntry<KeyboardShortcut> TopUpHotkey;
 		internal static ConfigEntry<KeyboardShortcut> RepairHotkey;
 
@@ -30,6 +32,10 @@ namespace GetReady
 				"Opens and closes the window without the button. Empty by default.");
 			ShowFlash = Config.Bind("1. General", "3. READY flash after a successful run", true,
 				"A light green vignette and a green READY on screen for a moment when Get ready has brought everything. Just for show.");
+			DragFadeMode = Config.Bind("1. General", "4. While dragging an item", GetReady.DragFadeMode.Fade,
+				"What the new Get ready window does while you drag an item in the stash: Off leaves it as it is, Fade makes it see-through (and lets the mouse through, so you can drop the item on what is behind it), Hide takes it away until you drop.");
+			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.15f,
+				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
 			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
 				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
@@ -41,6 +47,8 @@ namespace GetReady
 			new HideoutOverlayEscapePatch().Enable();
 			new MapScreenPatch().Enable();
 			new TextWeightPatch().Enable();
+			new DragStartPatch().Enable();
+			new DragEndPatch().Enable();
 			new TextWeightButtonPatch().Enable();
 			new TagChangedPatch().Enable();
 			Log.LogInfo($"GetReady {PluginVersion} loaded");
