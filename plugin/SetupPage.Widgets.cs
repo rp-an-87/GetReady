@@ -112,7 +112,7 @@ namespace GetReady
 					{
 						toggle(key);
 					}
-				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * (chip.Icon != null ? 3.6f : 6.5f), height: UiKit.Unit * (chip.Icon != null ? 2.4f : 1.7f), edge: chip.On ? PickOnEdge : PickEdge);
+				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * (chip.Icon != null ? 2.7f : 6.5f), height: UiKit.Unit * (chip.Icon != null ? 2f : 1.7f), edge: chip.On ? PickOnEdge : PickEdge);
 				if (chip.Icon != null)
 				{
 					ChipPicture(button.transform, chip);
@@ -137,7 +137,7 @@ namespace GetReady
 		{
 			var glyph = UiKit.Node("Glyph", button);
 			glyph.gameObject.AddComponent<UnityEngine.UI.LayoutElement>().ignoreLayout = true;
-			UiKit.Stretch(glyph, 6f, 4f, 6f, 4f);
+			UiKit.Stretch(glyph, 5f, 3f, 5f, 3f);
 			var image = glyph.gameObject.AddComponent<UnityEngine.UI.Image>();
 			image.sprite = chip.Icon;
 			image.preserveAspect = true;

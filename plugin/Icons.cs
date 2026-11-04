@@ -61,7 +61,7 @@ namespace GetReady
 		}
 
 		// The game's own small icon for a kind of item (the one the stash button uses), null when it has none
-		private static Sprite TypeSprite(EItemType type)
+		internal static Sprite TypeSprite(EItemType type)
 		{
 			try
 			{

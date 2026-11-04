@@ -1,77 +1,25 @@
-using System.Collections.Generic;
-using EFT.UI.DragAndDrop;
 using UnityEngine;
 
 namespace GetReady
 {
-	// The small picture of a place (where something is brought to): the game's own picture of its equipment slot (the one shown behind an
-	// empty slot in the inventory), read from the slot views the game has loaded, so it is the same whatever you are wearing. The game has
-	// none for the pockets, so that one is drawn here. Null when the picture is not available (then the chip shows the name).
+	// The small picture of a place (where something is brought to): the game's own icon of the kind of item that goes there, the ones the
+	// traders and the barter windows use (rig for the vest, backpack, container for the pouch, the special icon for the special slots). The
+	// game has none for the pockets, so that one is drawn here. Null when the game has not got the picture (then the chip shows the name).
 	internal static class PlaceIcons
 	{
-		private static readonly Dictionary<string, Sprite> Cache = new Dictionary<string, Sprite>();
 		private static Sprite _pockets;
 
 		internal static Sprite Of(string place)
 		{
-			if (place == "Pockets")
-			{
-				return _pockets ?? (_pockets = DrawPockets());
-			}
-
-			Sprite sprite;
-			if (Cache.TryGetValue(place, out sprite) && sprite != null)
-			{
-				return sprite;
-			}
-
-			sprite = FromSlot(place);
-			if (sprite != null)
-			{
-				Cache[place] = sprite;
-			}
-
-			return sprite;
-		}
-
-		// The slot of the game the place stands for (the id begins with it)
-		private static string SlotOf(string place)
-		{
 			switch (place)
 			{
-				case "Vest": return "TacticalVest";
-				case "Backpack": return "Backpack";
-				case "Pouch": return "SecuredContainer";
-				case "Special slots": return "SpecialSlot";
+				case "Pockets": return _pockets ?? (_pockets = DrawPockets());
+				case "Vest": return Icons.TypeSprite(EItemType.Rig);
+				case "Backpack": return Icons.TypeSprite(EItemType.Backpack);
+				case "Pouch": return Icons.TypeSprite(EItemType.Container);
+				case "Special slots": return Icons.TypeSprite(EItemType.Special);
 				default: return null;
 			}
-		}
-
-		private static Sprite FromSlot(string place)
-		{
-			string slot = SlotOf(place);
-			if (slot == null)
-			{
-				return null;
-			}
-
-			try
-			{
-				foreach (var view in Resources.FindObjectsOfTypeAll<SlotView>())
-				{
-					var id = view.Slot?.ID;
-					if (id != null && id.StartsWith(slot) && view.SlotBackImage != null && view.SlotBackImage.sprite != null)
-					{
-						return view.SlotBackImage.sprite;
-					}
-				}
-			}
-			catch (System.Exception e)
-			{
-				Plugin.Log.LogWarning($"No slot picture for {place}: {e.Message}");
-			}
-
-			return null;
 		}
 
 		// A pocket: a rounded outline, the flap across the top and a button, white on transparent like the other pictures
