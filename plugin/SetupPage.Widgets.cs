@@ -192,7 +192,7 @@ namespace GetReady
 		// What is said where a list has nothing: in the middle of its width, with some room round it, so it is not mistaken for a row
 		internal static void EmptyNote(Transform parent, string text)
 		{
-			var row = UiKit.HBox(parent, 0f, new RectOffset(0, 0, 8, 8));
+			var row = UiKit.HBox(parent, 0f, new RectOffset(4, 4, 8, 8));
 			UiKit.Label(row, text, 0.85f, Ui.Dim, align: TMPro.TextAlignmentOptions.Center, wrap: true, flex: true);
 		}
 
