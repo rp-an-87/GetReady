@@ -95,8 +95,8 @@ namespace GetReady
 			// Waist, outer edges, the hems and the crotch
 			var outline = new[]
 			{
-				new Vector2(15f, 42f), new Vector2(33f, 42f), new Vector2(32f, 6f), new Vector2(26.5f, 6f),
-				new Vector2(24f, 21f), new Vector2(21.5f, 6f), new Vector2(16f, 6f)
+				new Vector2(9f, 40f), new Vector2(39f, 40f), new Vector2(38f, 8f), new Vector2(27f, 8f),
+				new Vector2(24f, 24f), new Vector2(21f, 8f), new Vector2(10f, 8f)
 			};
 			for (int x = 0; x < size; x++)
 			{
@@ -115,10 +115,10 @@ namespace GetReady
 							}
 
 							covered++;
-							bool belt = Mathf.Abs(point.y - 37f) < 0.7f;
-							bool fly = Mathf.Abs(point.x - 24f) < 0.45f && point.y < 37f && point.y > 25f;
-							bool slitLeft = Near(point, new Vector2(17.5f, 35.5f), new Vector2(20.5f, 30f), 0.7f);
-							bool slitRight = Near(point, new Vector2(30.5f, 35.5f), new Vector2(27.5f, 30f), 0.7f);
+							bool belt = Mathf.Abs(point.y - 36.5f) < 1.3f;
+							bool fly = Mathf.Abs(point.x - 24f) < 0.8f && point.y < 36.5f && point.y > 26f;
+							bool slitLeft = Near(point, new Vector2(12f, 35f), new Vector2(17f, 28f), 1.1f);
+							bool slitRight = Near(point, new Vector2(36f, 35f), new Vector2(31f, 28f), 1.1f);
 							if (belt || fly || slitLeft || slitRight)
 							{
 								detail++;
@@ -133,8 +133,8 @@ namespace GetReady
 					}
 
 					// Lighter at the top, darker down the legs; the details darker still
-					float body = Mathf.Lerp(0.62f, 0.95f, Mathf.Clamp01((y - 6f) / 36f));
-					float grey = Mathf.Lerp(body, 0.32f, detail / (float)covered);
+					float body = Mathf.Lerp(0.7f, 0.95f, Mathf.Clamp01((y - 8f) / 32f));
+					float grey = Mathf.Lerp(body, 0.22f, detail / (float)covered);
 					texture.SetPixel(x, y, new Color(grey, grey, grey, covered / 9f));
 				}
 			}
