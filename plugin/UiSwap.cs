@@ -18,6 +18,10 @@ namespace GetReady
 		private const float Reach = 14f;
 		private SwapChip _target;
 		private bool _over, _dragging;
+		private int _dragEndFrame = -1;
+
+		// Letting go of a drag over the chip it started on would also click it: a click that comes with a drag is not meant
+		internal bool JustDragged => _dragging || _dragEndFrame == Time.frameCount;
 
 		private RectTransform Rect => (RectTransform)transform;
 
@@ -57,6 +61,7 @@ namespace GetReady
 		public void OnEndDrag(PointerEventData eventData)
 		{
 			_dragging = false;
+			_dragEndFrame = Time.frameCount;
 			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
 			Dim(1f);
 			Mark(_target, false);

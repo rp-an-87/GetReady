@@ -70,9 +70,16 @@ namespace GetReady
 				}
 
 				string key = chip.Key;
-				var button = UiKit.PushButton(row, chip.On ? chip.Label : "× " + chip.Label, () => toggle(key), chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * 6.5f, height: UiKit.Unit * 1.7f);
+				SwapChip swapChip = null;
+				var button = UiKit.PushButton(row, chip.On ? chip.Label : "× " + chip.Label, () =>
+				{
+					if (swapChip == null || !swapChip.JustDragged)
+					{
+						toggle(key);
+					}
+				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * 6.5f, height: UiKit.Unit * 1.7f);
 				UiKit.Tip(button, chip.Tip);
-				var swapChip = button.gameObject.AddComponent<SwapChip>();
+				swapChip = button.gameObject.AddComponent<SwapChip>();
 				swapChip.Key = key;
 				swapChip.Peers = made;
 				swapChip.OnSwap = (from, to) =>
