@@ -84,7 +84,7 @@ namespace GetReady
 		// A grenade type; a type with several templates takes whichever the stash has, at random
 		private static GroupDef Grenade(string id, string name, bool impact, params string[] templates) => new GroupDef
 		{
-			Id = id, Name = name, Unit = "grenades", Impact = impact, AllowPouch = false, Random = templates.Length > 1, DefaultTarget = 0,
+			Id = id, Name = name, Unit = "grenades", Impact = impact, AllowPouch = false, Random = templates.Length > 1, DefaultTarget = 0, Bindable = false,
 			Entries = templates.Select(Entry.Count).ToArray()
 		};
 

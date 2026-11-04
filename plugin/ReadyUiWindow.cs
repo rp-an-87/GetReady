@@ -115,12 +115,17 @@ namespace GetReady
 			try
 			{
 				string signature = Signature();
-				if (signature != _signature || (_pending > 0 && _pendingRounds < 25))
+				// The Ready page shows the plan, so it follows it; Setup only follows icons that were still loading (what changes on Setup is
+				// drawn where it changed)
+				bool planChanged = signature != _signature && _tab == 0;
+				if (planChanged || (_pending > 0 && _pendingRounds < 25))
 				{
-					_pendingRounds = signature != _signature ? 0 : _pendingRounds + 1;
+					_pendingRounds = planChanged ? 0 : _pendingRounds + 1;
 					_signature = signature;
 					Rebuild();
 				}
+
+				_signature = signature;
 			}
 			catch (Exception e)
 			{
@@ -256,6 +261,11 @@ namespace GetReady
 		{
 			SettingsStore.Save();
 			ReadyPlan.RefreshSoon();
+			if (_tab == 1 && _content != null && SetupPage.Refresh(_content))
+			{
+				return;
+			}
+
 			Rebuild();
 		}
 		private const float ScrollMin = 200f;
@@ -340,7 +350,7 @@ namespace GetReady
 			}
 		}
 
-		private static void Rebuild()
+		internal static void Rebuild()
 		{
 			if (_content == null)
 			{
@@ -350,6 +360,8 @@ namespace GetReady
 			float scroll = _content.anchoredPosition.y;
 			for (int i = _content.childCount - 1; i >= 0; i--)
 			{
+				// Switched off at once: a destroyed object stays until the end of the frame, and the page would be twice as tall for that frame
+				_content.GetChild(i).gameObject.SetActive(false);
 				UnityEngine.Object.Destroy(_content.GetChild(i).gameObject);
 			}
 

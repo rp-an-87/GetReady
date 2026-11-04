@@ -34,14 +34,14 @@ namespace GetReady
 				{
 					var card = GroupCard(row, defs[k], true);
 					// The same width asked for, and the room shared out equally, so the two cards are the same width
-					UiKit.Size(card, width: 1f, flexWidth: 1f);
+					UiKit.Size(card, width: 1f, flexWidth: 1f).minWidth = 0f;
 				}
 
 				if (defs.Count - i == 1)
 				{
 					// An odd one out keeps the width of a card: the other half stays empty
 					var empty = UiKit.Node("Empty", row);
-					UiKit.Size(empty, width: 1f, flexWidth: 1f);
+					UiKit.Size(empty, width: 1f, flexWidth: 1f).minWidth = 0f;
 				}
 			}
 		}
@@ -97,7 +97,8 @@ namespace GetReady
 			}
 
 			// The key and the items button, on the right of the amount
-			var side = UiKit.HBox(compact ? (Transform)column : top, 6f);
+			// Beside the amount when there is no key to take room (grenades), else under it in a narrow card
+			Transform side = compact ? (def.Bindable ? (Transform)UiKit.HBox(column, 6f) : amount) : UiKit.HBox(top, 6f);
 			if (def.Bindable)
 			{
 				string key = def.HotkeyChoice;

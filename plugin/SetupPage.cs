@@ -16,24 +16,80 @@ namespace GetReady
 
 		internal static List<string> Names() => Steps.DisplayOrder.Select(step => step.Name).Concat(new[] { "Options" }).ToList();
 
+		// What fills each section, so one section can be made again without the rest of the page
+		private static readonly List<Action> Fillers = new List<Action>();
+
 		internal static void Build(RectTransform content)
 		{
 			Sections.Clear();
+			Fillers.Clear();
 			var controller = Game.Controller();
 			foreach (var step in Steps.DisplayOrder)
 			{
-				Sections.Add(StepSection(content, step, controller));
+				var current = step;
+				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
+				Action fill = () => FillStep(section, current, controller);
+				fill();
+				Sections.Add(section);
+				Fillers.Add(fill);
 			}
 
-			Sections.Add(Options(content));
+			var options = UiKit.VBox(content, 8f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
+			Action fillOptions = () => FillOptions(options);
+			fillOptions();
+			Sections.Add(options);
+			Fillers.Add(fillOptions);
 		}
 
-		// A setting changed: keep it, plan again, and draw the page again
+		// A setting changed: draw the section it is in again (the one the mouse is over), or the whole page when that is not clear.
+		// Only that section is made again: the rest of the page, and where it is scrolled to, stay as they are.
+		internal static bool Refresh(RectTransform content)
+		{
+			int index = SectionUnderMouse();
+			if (index < 0 || index >= Fillers.Count)
+			{
+				return false;
+			}
+
+			var section = Sections[index];
+			for (int i = section.childCount - 1; i >= 0; i--)
+			{
+				var child = section.GetChild(i);
+				// Switched off at once: a destroyed object stays until the end of the frame and would still take room in the layout
+				child.gameObject.SetActive(false);
+				UnityEngine.Object.Destroy(child.gameObject);
+			}
+
+			Fillers[index]();
+			UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+			return true;
+		}
+
+		private static int SectionUnderMouse()
+		{
+			for (int i = 0; i < Sections.Count; i++)
+			{
+				if (Sections[i] == null)
+				{
+					continue;
+				}
+
+				var canvas = Sections[i].GetComponentInParent<Canvas>();
+				var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+				if (RectTransformUtility.RectangleContainsScreenPoint(Sections[i], Input.mousePosition, camera))
+				{
+					return i;
+				}
+			}
+
+			return -1;
+		}
+
+		// A setting changed: keep it, plan again, and draw what changed again
 		internal static void Changed() => ReadyUiWindow.SettingChanged();
 
-		private static RectTransform StepSection(RectTransform parent, IStep step, InventoryController controller)
+		private static void FillStep(RectTransform section, IStep step, InventoryController controller)
 		{
-			var section = UiKit.VBox(parent, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 			var head = UiKit.HBox(section, 8f);
 			Switch(head, step.Enabled, () =>
 			{
@@ -44,7 +100,7 @@ namespace GetReady
 			UiKit.Label(head, step.Name, 1f, Ui.Heading, bold: true);
 			if (!step.Enabled)
 			{
-				return section;
+				return;
 			}
 
 			UiKit.Line(section);
@@ -64,8 +120,6 @@ namespace GetReady
 			{
 				NotYet(section);
 			}
-
-			return section;
 		}
 
 		// For a section that is still only in the old window
@@ -94,7 +148,11 @@ namespace GetReady
 				set(!value);
 				Changed();
 			});
-			UiKit.Tip(UiKit.Label(row, text, 0.9f, Ui.Text, flex: true), tip);
+			var label = UiKit.Label(row, text, 0.9f, Ui.Text, flex: true);
+			if (!string.IsNullOrEmpty(tip))
+			{
+				UiKit.Tip(label, tip);
+			}
 		}
 
 		// A title with the round "?" before it
@@ -107,14 +165,28 @@ namespace GetReady
 
 		// The standard priority list: rows in the order of use, moved by dragging the grip. label gives the text of an item; move gets the
 		// item and how many places up (negative) or down it went.
-		internal static void PriorityList<T>(Transform parent, string title, IList<T> items, Func<T, string> label, Action<T, int> move, string help)
+		internal static void PriorityList<T>(Transform parent, string title, IList<T> items, Func<T, string> label, Action<T, int> move, string help, bool numbered = false)
 		{
 			var box = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), new Color(0.095f, 0.1f, 0.1f), UiKit.InnerEdge);
-			HelpTitle(box, title, help, true);
+			if (string.IsNullOrEmpty(help))
+			{
+				UiKit.Label(box, title, 0.85f, Ui.Dim);
+			}
+			else
+			{
+				HelpTitle(box, title, help, true);
+			}
+
 			var rows = new List<RectTransform>();
 			for (int i = 0; i < items.Count; i++)
 			{
 				var row = UiKit.HBox(box, 8f);
+				if (numbered)
+				{
+					var number = UiKit.Label(row, (i + 1).ToString(), 0.85f, Ui.Dim, align: TextAlignmentOptions.Center);
+					UiKit.Size(number, UiKit.Unit * 1.2f);
+				}
+
 				UiKit.Grip(row);
 				UiKit.Label(row, label(items[i]), 0.9f, Ui.Text, flex: true);
 				rows.Add(row);
@@ -128,10 +200,9 @@ namespace GetReady
 			});
 		}
 
-		private static RectTransform Options(RectTransform parent)
+		private static void FillOptions(RectTransform section)
 		{
 			var supplies = SettingsStore.Current.Supplies;
-			var section = UiKit.VBox(parent, 8f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 			UiKit.Label(section, "Options", 1f, Ui.Heading, bold: true);
 			UiKit.Line(section);
 
@@ -145,7 +216,6 @@ namespace GetReady
 			OptionRow(section, supplies.SwapWorse, "Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one", value => supplies.SwapWorse = value);
 			OptionRow(section, supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway", value => supplies.AllowOvershoot = value);
 			OptionRow(section, supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is", value => supplies.NonFiRBeforeLoose = value);
-			return section;
 		}
 
 		private static void Resize(float step)
