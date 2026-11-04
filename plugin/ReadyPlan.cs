@@ -47,6 +47,7 @@ namespace GetReady
 			{
 				_watched.AddItemEvent -= OnItemAdded;
 				_watched.RemoveItemEvent -= OnItemRemoved;
+				_watched.RefreshItemEvent -= OnItemRefreshed;
 			}
 
 			_watched = controller;
@@ -54,6 +55,7 @@ namespace GetReady
 			{
 				controller.AddItemEvent += OnItemAdded;
 				controller.RemoveItemEvent += OnItemRemoved;
+				controller.RefreshItemEvent += OnItemRefreshed;
 			}
 		}
 
@@ -77,6 +79,10 @@ namespace GetReady
 
 			MarkDirty();
 		}
+
+		// An item changed without moving: a stack grew or shrank (rounds loaded, items merged or split), a piece was repaired, a kit was
+		// used. The game raises this for each of them.
+		private static void OnItemRefreshed(RefreshItemEventArgs args) => MarkDirty();
 
 		// Something outside the inventory changed what the plan shows (a tag on a case)
 		internal static void PlanChanged() => MarkDirty();
