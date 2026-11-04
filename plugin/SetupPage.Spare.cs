@@ -52,10 +52,7 @@ namespace GetReady
 			// Where the ammo goes (also when the number above is 0 but a weapon model asks for its own)
 			if (setting.Target > 0 || anyOwn)
 			{
-				var places = UiKit.HBox(card, 10f);
-				UiKit.HelpMark(places, "Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).");
-				UiKit.Label(places, "Bring to", 0.85f, Ui.Dim);
-				PlacePicker(places, def, 5);
+				PlacesPanel(card, def);
 			}
 
 			// Which kind, when a caliber has several in use

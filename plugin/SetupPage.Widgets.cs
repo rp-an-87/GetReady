@@ -132,6 +132,17 @@ namespace GetReady
 			}
 		}
 
+		private static Sprite PlaceIconOf(string place)
+		{
+			var sprite = PlaceIcons.Of(place);
+			if (sprite == null && PlaceIcons.Pending(place))
+			{
+				ReadyUiWindow.IconPending();
+			}
+
+			return sprite;
+		}
+
 		// The picture on a chip: bright when the place is used, dim with a small red cross when it is not
 		private static void ChipPicture(Transform button, ChipData chip)
 		{
@@ -151,6 +162,14 @@ namespace GetReady
 			}
 		}
 
+		// "Bring to" in a dark panel: its heading, then every place as a chip in one row
+		internal static void PlacesPanel(Transform parent, GroupDef def)
+		{
+			var panel = UiKit.VBox(parent, 6f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
+			HelpTitle(panel, "Bring to", "Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).", true);
+			PlacePicker(panel, def, 99);
+		}
+
 		// The places of a group as chips
 		internal static void PlacePicker(Transform parent, GroupDef def, int perRow)
 		{
@@ -159,7 +178,7 @@ namespace GetReady
 				Key = place,
 				Label = place == "Special slots" ? "Special" : place,
 				On = def.PlaceOn(place),
-				Icon = PlaceIcons.Of(place),
+				Icon = PlaceIconOf(place),
 				Tip = place + "\n" + (def.PlaceOn(place) ? "On: used, in the order of the arrows. Click to switch it off, drag it onto another place to swap them." : "Off: not used. Click to switch it on, or drag it onto a place that is on to take its spot.")
 			}).ToList();
 			ChipPicker(parent, chips, perRow, place =>

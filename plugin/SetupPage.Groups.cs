@@ -130,11 +130,7 @@ namespace GetReady
 			// The places: only when it is wanted
 			if (on)
 			{
-				var places = compact ? (Transform)UiKit.VBox(card, 4f) : UiKit.HBox(card, 10f);
-				var title = compact ? (Transform)UiKit.HBox(places, 8f) : places;
-				UiKit.HelpMark(title, "Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).");
-				UiKit.Label(title, "Bring to", 0.85f, Ui.Dim);
-				PlacePicker(places, def, compact ? 3 : 5);
+				PlacesPanel(card, def);
 			}
 
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))

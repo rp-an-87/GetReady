@@ -1,24 +1,88 @@
+using System.Collections.Generic;
+using EFT;
+using EFT.UI;
 using UnityEngine;
 
 namespace GetReady
 {
-	// The small picture of a place (where something is brought to): the game's own icon of the kind of item that goes there, the ones the
-	// traders and the barter windows use (rig for the vest, backpack, container for the pouch, the special icon for the special slots). The
-	// game has none for the pockets, so that one is drawn here. Null when the game has not got the picture (then the chip shows the name).
+	// The small picture of a place (where something is brought to): the pictures the traders and the handbook show for the same kind of gear
+	// (rigs, backpacks, secured containers, special equipment), which the game fetches from the server as images and which are fetched here the
+	// same way, once. The game has none for the pockets, so that one is drawn here. Null until a picture has arrived (the chip shows the name
+	// meanwhile).
 	internal static class PlaceIcons
 	{
 		private static Sprite _pockets;
+		private static readonly Dictionary<string, Sprite> Loaded = new Dictionary<string, Sprite>();
+		private static readonly HashSet<string> Loading = new HashSet<string>(), Failed = new HashSet<string>();
 
-		internal static Sprite Of(string place)
+		private static string PathOf(string place)
 		{
 			switch (place)
 			{
-				case "Pockets": return _pockets ?? (_pockets = DrawPockets());
-				case "Vest": return Icons.TypeSprite(EItemType.Rig);
-				case "Backpack": return Icons.TypeSprite(EItemType.Backpack);
-				case "Pouch": return Icons.TypeSprite(EItemType.Container);
-				case "Special slots": return Icons.TypeSprite(EItemType.Special);
+				case "Vest": return "/files/handbook/icon_gear_rigs.png";
+				case "Backpack": return "/files/handbook/icon_gear_backpacks.png";
+				case "Pouch": return "/files/handbook/icon_gear_secured.png";
+				case "Special slots": return "/files/handbook/icon_spec.png";
 				default: return null;
+			}
+		}
+
+		// Whether a picture is on its way (so the page should be drawn again when it has come)
+		internal static bool Pending(string place) => PathOf(place) != null && !Loaded.ContainsKey(place) && !Failed.Contains(place);
+
+		internal static Sprite Of(string place)
+		{
+			if (place == "Pockets")
+			{
+				return _pockets ?? (_pockets = DrawPockets());
+			}
+
+			Sprite sprite;
+			if (Loaded.TryGetValue(place, out sprite))
+			{
+				return sprite;
+			}
+
+			string path = PathOf(place);
+			if (path != null && !Loading.Contains(place) && !Failed.Contains(place))
+			{
+				Loading.Add(place);
+				Fetch(place, path);
+			}
+
+			return null;
+		}
+
+		private static async void Fetch(string place, string path)
+		{
+			try
+			{
+				var context = ItemUiContext.Instance;
+				var loader = (context?.Session as IImageLoader) ?? (context?.ClientSession as IImageLoader);
+				if (loader == null)
+				{
+					Failed.Add(place);
+					return;
+				}
+
+				var texture = await loader.LoadTextureMain(path);
+				if (texture != null)
+				{
+					Loaded[place] = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+				}
+				else
+				{
+					Failed.Add(place);
+				}
+			}
+			catch (System.Exception e)
+			{
+				Failed.Add(place);
+				Plugin.Log.LogWarning($"No picture for {place}: {e.Message}");
+			}
+			finally
+			{
+				Loading.Remove(place);
 			}
 		}
 
