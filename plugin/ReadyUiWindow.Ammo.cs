@@ -347,7 +347,7 @@ namespace GetReady
 			}
 		}
 
-		private static void HelpMark(Transform parent, string text) => UiKit.Tip(UiKit.Label(parent, "?", 0.8f, Ui.Dim, align: TextAlignmentOptions.Center), text);
+		private static void HelpMark(Transform parent, string text) => UiKit.HelpMark(parent, text);
 
 		private static void AmmoRestHeader(Transform parent, PlanLine line, ReadyPlan.Standing standing)
 		{

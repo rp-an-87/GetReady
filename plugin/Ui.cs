@@ -44,7 +44,7 @@ namespace GetReady
 		}
 
 		// A filled circle with an edge, smooth at its rim
-		private static Texture2D Disc(int size, Color fill, Color edge)
+		internal static Texture2D Disc(int size, Color fill, Color edge)
 		{
 			var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
 			float radius = size / 2f;

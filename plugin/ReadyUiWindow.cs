@@ -26,7 +26,8 @@ namespace GetReady
 		private static int _pendingRounds;
 		private static bool _dumped;
 
-		private const float Width = 900f, Height = 940f;
+		// The window's size: what the owner dragged it to is kept while the game runs
+		private static float _width = 900f, _height = 940f;
 
 		internal static void Toggle()
 		{
@@ -49,6 +50,7 @@ namespace GetReady
 				window.name = "GetReady Window";
 				var windowContext = ((Window<EditBuildNameWindowContext>)window).Show();
 				UiKit.Init(window.Caption);
+				UiKit.Scale = ReadyWindow.Scale;
 				window.Caption.text = "Get ready for raid";
 				Build(window);
 				window.WindowTransform.SetAsLastSibling();
@@ -79,7 +81,8 @@ namespace GetReady
 			}
 		}
 
-		// The window's size: the saved Window size setting, applied to the whole window (the border and caption too)
+		// The size of what is inside: the saved Window size setting scales the text and the pictures of the page, built again when it
+		// changes. The window itself keeps its size, so it stays where the game puts a window and can be dragged.
 		private static void ApplyScale()
 		{
 			if (_window == null)
@@ -88,7 +91,12 @@ namespace GetReady
 			}
 
 			float scale = ReadyWindow.Scale;
-			_window.WindowTransform.localScale = new Vector3(scale, scale, 1f);
+			if (!Mathf.Approximately(scale, UiKit.Scale))
+			{
+				UiKit.Scale = scale;
+				BuildBody(_window.WindowTransform);
+			}
+
 			if (_scaleLabel != null)
 			{
 				_scaleLabel.text = $"{Mathf.RoundToInt(scale * 100f)}%";
@@ -174,7 +182,7 @@ namespace GetReady
 				group.enabled = false;
 			}
 
-			frame.sizeDelta = new Vector2(Width, Height);
+			frame.sizeDelta = new Vector2(_width, _height);
 			try
 			{
 				frame.SetInCenter();
@@ -184,11 +192,37 @@ namespace GetReady
 				Plugin.Log.LogWarning($"Get ready window: could not centre it: {e.Message}");
 			}
 
-			float captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
+			_captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
+			UiResize.Add(frame, new Vector2(520f, 420f), new Vector2(4000f, 4000f), () =>
+			{
+				_width = frame.sizeDelta.x;
+				_height = frame.sizeDelta.y;
+			});
+			BuildBody(frame);
+			if (!_dumped)
+			{
+				_dumped = true;
+				Dump(frame, 0, 4);
+			}
+		}
+
+		private static float _captionHeight;
+		private static RectTransform _root;
+
+		// Our body under the caption: the tabs, the page and the footer. Built again when the size changes.
+		private static void BuildBody(RectTransform frame)
+		{
+			if (_root != null)
+			{
+				_root.SetParent(null, false);
+				UnityEngine.Object.Destroy(_root.gameObject);
+			}
+
 			var root = UiKit.VBox(frame, 8f, new RectOffset(10, 10, 10, 10));
+			_root = root;
 			root.name = "GetReady Root";
 			root.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-			UiKit.Stretch(root, 0f, 0f, 0f, Mathf.Max(captionHeight, 30f));
+			UiKit.Stretch(root, 0f, 0f, 0f, Mathf.Max(_captionHeight, 30f));
 
 			var tabs = UiKit.HBox(root, 8f);
 			UiKit.PushButton(tabs, "Ready", null, new Color(0.25f, 0.23f, 0.15f), new Color(0.31f, 0.29f, 0.19f), new Color(0.95f, 0.9f, 0.72f), height: UiKit.Unit * 1.8f).gameObject.GetComponent<LayoutElement>().flexibleWidth = 1f;
@@ -200,20 +234,17 @@ namespace GetReady
 
 			var footer = UiKit.HBox(root, 12f);
 			var size = UiKit.HBox(footer, 6f);
-			UiKit.Tip(UiKit.Label(size, "Size", 0.8f, Ui.Dim), "Scales this window. The same setting as Window size in the old window.");
+			UiKit.Tip(UiKit.Label(size, "Size", 0.8f, Ui.Dim), "Scales the text and pictures in this window. The same setting as Window size in the old window.");
 			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.8f);
-			_scaleLabel = UiKit.Label(size, "", 0.85f, Ui.Text, align: TextAlignmentOptions.Center);
+			_scaleLabel = UiKit.Label(size, $"{Mathf.RoundToInt(UiKit.Scale * 100f)}%", 0.85f, Ui.Text, align: TextAlignmentOptions.Center);
 			UiKit.Size(_scaleLabel, UiKit.Unit * 3f);
 			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.8f);
 			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
 			UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
 
-			ApplyScale();
-			if (!_dumped)
-			{
-				_dumped = true;
-				Dump(frame, 0, 4);
-			}
+			_signature = "";
+			Rebuild();
+			UiResize.ToFront(frame);
 		}
 
 		// What the copy of the window is made of, once in the log, for when something sits in the wrong place

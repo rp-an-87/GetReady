@@ -13,7 +13,12 @@ namespace GetReady
 		internal static TMP_FontAsset Font;
 
 		// The size of the game window's caption text: the other sizes are fractions of it, so the window follows the game's UI scale
-		internal static float Unit = 20f;
+		internal static float BaseUnit = 20f;
+
+		// The size the owner chose for what is inside the window (1 = as the game draws it)
+		internal static float Scale = 1f;
+
+		internal static float Unit => BaseUnit * Scale;
 
 		internal static readonly Color PanelColor = new Color(0.12f, 0.125f, 0.125f);
 		internal static readonly Color CardColor = new Color(0.155f, 0.16f, 0.16f);
@@ -30,7 +35,7 @@ namespace GetReady
 		internal static void Init(TMP_Text sample)
 		{
 			Font = sample.font;
-			Unit = sample.fontSize > 4f ? sample.fontSize : 20f;
+			BaseUnit = sample.fontSize > 4f ? sample.fontSize : 20f;
 		}
 
 		internal static RectTransform Node(string name, Transform parent)
@@ -239,6 +244,35 @@ namespace GetReady
 			var hover = part.GetComponent<HoverTrigger>() ?? part.gameObject.AddComponent<HoverTrigger>();
 			hover.OnHoverStart += _ => ItemUiContext.Instance?.Tooltip?.Show(text, null, 0.25f, null);
 			hover.OnHoverEnd += _ => ItemUiContext.Instance?.Tooltip?.Close();
+		}
+
+		private static Sprite _helpSprite, _helpHoverSprite;
+
+		private static Sprite DiscSprite(Color fill, Color edge)
+		{
+			var texture = Ui.Disc(44, fill, edge);
+			return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+		}
+
+		// The round "?" of the window that explains something on hover: a dark disc with a gold edge, brighter under the mouse
+		internal static void HelpMark(Transform parent, string tip)
+		{
+			if (_helpSprite == null)
+			{
+				_helpSprite = DiscSprite(new Color(0.17f, 0.18f, 0.18f), new Color(0.55f, 0.5f, 0.32f));
+				_helpHoverSprite = DiscSprite(new Color(0.27f, 0.26f, 0.18f), new Color(0.8f, 0.72f, 0.45f));
+			}
+
+			var rect = Node("Help", parent);
+			var image = rect.gameObject.AddComponent<Image>();
+			image.sprite = _helpSprite;
+			Size(rect, Unit * 1.4f, Unit * 1.4f);
+			var mark = Label(rect, "?", 0.8f, new Color(0.88f, 0.85f, 0.74f), true, TextAlignmentOptions.Center);
+			Stretch(mark.rectTransform, 0f, 0f, 0f, 0f);
+			Tip(rect, tip);
+			var hover = rect.GetComponent<HoverTrigger>();
+			hover.OnHoverStart += _ => image.sprite = _helpHoverSprite;
+			hover.OnHoverEnd += _ => image.sprite = _helpSprite;
 		}
 
 		// A thin bar filled to a fraction
