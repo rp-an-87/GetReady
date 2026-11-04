@@ -7,104 +7,126 @@ using UnityEngine.UI;
 
 namespace GetReady
 {
-	// Rows of a list moved by dragging them (anywhere on the row): the hand cursor shows they can be, the dragged row dims, a bar shows where it would land, and on release the list is told
-	// "from this index to that one" (both as the list is now), or nothing when it did not move.
+	// Rows of a list moved by dragging them (anywhere on the row). The hand cursor shows they can be; the row under the mouse is lit; while one
+	// is dragged (and dims) the row it would take the place of is the one that is lit, nearest by height, so it need not be dropped exactly
+	// on it. On release the list is told "from this index to that one" (both as the list is now), or nothing when it would not move.
 	internal class ReorderGrip : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
 	{
-		internal RectTransform Container;
 		internal List<RectTransform> Rows;
 		internal int Index;
 		internal Action<int, int> OnMove;
-		internal RectTransform Bar;
 		internal Image Backdrop;
 
-		private int _at = -1;
-		private bool _over, _dragging;
+		// The row being dragged, so the others do not light up (or change the cursor) by themselves meanwhile
+		private static ReorderGrip _active;
+
+		private static readonly Color Lit = new Color(0.8f, 0.72f, 0.45f, 0.16f), Off = new Color(0f, 0f, 0f, 0f);
+
+		private int _target = -1;
+		private bool _over;
 
 		public void OnPointerEnter(PointerEventData eventData)
 		{
 			_over = true;
-			CursorSwitcher.SetCursor(ECursorType.Hand);
-			Light(true);
+			if (_active == null)
+			{
+				CursorSwitcher.SetCursor(ECursorType.Hand);
+				Light(this, true);
+			}
 		}
 
 		public void OnPointerExit(PointerEventData eventData)
 		{
 			_over = false;
-			if (!_dragging)
+			if (_active == null)
 			{
 				CursorSwitcher.SetCursor(ECursorType.Idle);
-				Light(false);
+				Light(this, false);
 			}
 		}
 
 		public void OnBeginDrag(PointerEventData eventData)
 		{
-			_dragging = true;
+			_active = this;
+			_target = -1;
 			CursorSwitcher.SetCursor(ECursorType.Hand);
-			_at = -1;
+			Light(this, false);
 			Dim(Rows[Index], 0.45f);
 		}
 
 		public void OnDrag(PointerEventData eventData)
 		{
-			_at = Landing(eventData);
-			// Only where the row would end up somewhere else: no bar for the place it is already in
-			if (_at < 0 || (_at > Index ? _at - 1 : _at) == Index)
+			int next = Nearest(eventData);
+			if (next == Index)
 			{
-				_at = -1;
-				Bar.gameObject.SetActive(false);
-				return;
+				next = -1;
 			}
 
-			var row = Rows[Mathf.Min(_at, Rows.Count - 1)];
-			var bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(Container, row);
-			Bar.gameObject.SetActive(true);
-			Bar.SetAsLastSibling();
-			Bar.sizeDelta = new Vector2(Container.rect.width, 3f);
-			Bar.localPosition = new Vector3(Container.rect.center.x, _at < Rows.Count ? bounds.max.y : bounds.min.y, 0f);
+			if (next != _target)
+			{
+				if (_target >= 0)
+				{
+					Light(Rows[_target].GetComponent<ReorderGrip>(), false);
+				}
+
+				_target = next;
+				if (_target >= 0)
+				{
+					Light(Rows[_target].GetComponent<ReorderGrip>(), true);
+				}
+			}
 		}
 
 		public void OnEndDrag(PointerEventData eventData)
 		{
-			_dragging = false;
-			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
-			Light(_over);
-			Dim(Rows[Index], 1f);
-			Bar.gameObject.SetActive(false);
-			if (_at >= 0)
+			if (_target >= 0)
 			{
-				OnMove(Index, _at > Index ? _at - 1 : _at);
+				Light(Rows[_target].GetComponent<ReorderGrip>(), false);
+			}
+
+			int target = _target;
+			_target = -1;
+			_active = null;
+			Dim(Rows[Index], 1f);
+			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
+			Light(this, _over);
+			if (target >= 0)
+			{
+				OnMove(Index, target);
 			}
 		}
 
-		// The place between rows nearest the pointer, by how high it is: it does not have to be over a row, or even over the list
-		private int Landing(PointerEventData eventData)
+		// The row the pointer is on, or the one nearest to it by height (it does not have to be over a row, or even over the list)
+		private int Nearest(PointerEventData eventData)
 		{
+			var container = (RectTransform)Rows[Index].parent;
 			Vector2 local;
-			if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(Container, eventData.position, eventData.pressEventCamera, out local))
+			if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(container, eventData.position, eventData.pressEventCamera, out local))
 			{
 				return -1;
 			}
 
-			int above = 0;
-			foreach (var row in Rows)
+			int best = -1;
+			float bestDistance = float.MaxValue;
+			for (int i = 0; i < Rows.Count; i++)
 			{
-				if (RectTransformUtility.CalculateRelativeRectTransformBounds(Container, row).center.y > local.y)
+				var bounds = RectTransformUtility.CalculateRelativeRectTransformBounds(container, Rows[i]);
+				float distance = local.y > bounds.max.y ? local.y - bounds.max.y : local.y < bounds.min.y ? bounds.min.y - local.y : 0f;
+				if (distance < bestDistance)
 				{
-					above++;
+					bestDistance = distance;
+					best = i;
 				}
 			}
 
-			return above;
+			return best;
 		}
 
-		// The row under the mouse, and the one being dragged, are lit
-		private void Light(bool on)
+		private static void Light(ReorderGrip row, bool on)
 		{
-			if (Backdrop != null)
+			if (row != null && row.Backdrop != null)
 			{
-				Backdrop.color = on ? new Color(0.8f, 0.72f, 0.45f, 0.12f) : new Color(0f, 0f, 0f, 0f);
+				row.Backdrop.color = on ? Lit : Off;
 			}
 		}
 
@@ -120,11 +142,6 @@ namespace GetReady
 		// Makes each row draggable by any part of it, inside the container (UiKit.Grip draws the three lines that tell it can be)
 		internal static void Attach(RectTransform container, List<RectTransform> rows, Action<int, int> onMove)
 		{
-			var bar = UiKit.Node("Drop Bar", container);
-			bar.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-			bar.gameObject.AddComponent<Image>().color = new Color(0.8f, 0.72f, 0.45f);
-			bar.GetComponent<Image>().raycastTarget = false;
-			bar.gameObject.SetActive(false);
 			for (int i = 0; i < rows.Count; i++)
 			{
 				// A row with no picture of its own cannot be hit: an invisible one makes all of it grabbable
@@ -144,11 +161,9 @@ namespace GetReady
 				backdrop.SetAsFirstSibling();
 				var handle = rows[i].gameObject.AddComponent<ReorderGrip>();
 				handle.Backdrop = light;
-				handle.Container = container;
 				handle.Rows = rows;
 				handle.Index = i;
 				handle.OnMove = onMove;
-				handle.Bar = bar;
 			}
 		}
 	}
