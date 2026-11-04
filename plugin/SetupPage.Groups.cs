@@ -67,7 +67,8 @@ namespace GetReady
 			}
 
 			var column = UiKit.VBox(top, 4f);
-			UiKit.Size(column, flexWidth: 1f);
+			// Money has room for the places on the same row, so its column keeps to what it needs
+			UiKit.Size(column, flexWidth: def.Money ? 0f : 1f);
 			UiKit.Label(column, def.Name, 0.95f, on ? Ui.Heading : Ui.Dim);
 			var amount = UiKit.HBox(column, 6f);
 			if (def.Money)
@@ -156,7 +157,14 @@ namespace GetReady
 			// The places: only when it is wanted
 			if (on)
 			{
-				PlacesPanel(card, def);
+				if (def.Money && !compact)
+				{
+					UiKit.Size(PlacesPanel(top, def), flexWidth: 1f);
+				}
+				else
+				{
+					PlacesPanel(card, def);
+				}
 			}
 
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))

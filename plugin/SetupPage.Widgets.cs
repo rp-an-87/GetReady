@@ -163,11 +163,12 @@ namespace GetReady
 		}
 
 		// "Bring to" in a dark panel: its heading, then every place as a chip in one row
-		internal static void PlacesPanel(Transform parent, GroupDef def)
+		internal static RectTransform PlacesPanel(Transform parent, GroupDef def)
 		{
 			var panel = UiKit.VBox(parent, 6f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
 			HelpTitle(panel, "Bring to", "Each item goes to the first place in the row that has room, tried from left to right. Drag a place onto another to swap them. Click a place to switch it off (a red cross, at the end, never used).", true);
 			PlacePicker(panel, def, 99);
+			return panel;
 		}
 
 		// The places of a group as chips

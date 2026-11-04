@@ -117,10 +117,10 @@ namespace GetReady
 							}
 
 							covered++;
-							// Each leg is rounded: lighter down its middle, darker at its sides, and a darker hem
+							// The light comes from the top left, as with the game's pictures
 							float legMiddle = point.x < 24f ? 15.5f : 32.5f;
-							float side = Mathf.Clamp01(Mathf.Abs(point.x - legMiddle) / 6.5f);
-							shade += 1f - 0.38f * side * side - (point.y < 11f ? 0.15f : 0f);
+														// Lit from the top left: the left of each leg and the upper part lighter, the right and the lower part a little darker
+								shade += 1f - 0.2f * Mathf.Clamp((point.x - legMiddle) / 6.5f, -1f, 1f) - 0.12f * Mathf.Clamp((24f - point.y) / 16f, -1f, 1f);
 							bool belt = Mathf.Abs(point.y - 36.5f) < 1.3f;
 							bool fly = Mathf.Abs(point.x - 24f) < 0.8f && point.y < 36.5f && point.y > 26f;
 							bool slitLeft = Near(point, new Vector2(12f, 35f), new Vector2(17f, 28f), 1.1f);
