@@ -25,6 +25,9 @@ namespace GetReady
 		private static int _pendingRounds;
 		private static bool _dumped;
 
+		// Which page shows: 0 = Ready, 1 = Setup
+		private static int _tab;
+
 		// The window's size: what the owner dragged it to is kept while the game runs
 		private static float _width = 900f, _height = 940f;
 
@@ -81,7 +84,7 @@ namespace GetReady
 
 		// The size of what is inside: the saved Window size setting scales the text and the pictures of the page, built again when it
 		// changes. The window itself keeps its size, so it stays where the game puts a window and can be dragged.
-		private static void ApplyScale()
+		internal static void ApplyScale()
 		{
 			if (_window == null)
 			{
@@ -194,6 +197,65 @@ namespace GetReady
 		}
 
 		private static float _captionHeight;
+
+		private static readonly Color TabOn = new Color(0.25f, 0.23f, 0.15f), TabOff = new Color(0.13f, 0.135f, 0.135f);
+
+		private static void Tab(Transform parent, string name, int index)
+		{
+			bool on = _tab == index;
+			var button = UiKit.PushButton(parent, name, () => SetTab(index), on ? TabOn : TabOff, on ? new Color(0.31f, 0.29f, 0.19f) : new Color(0.2f, 0.21f, 0.21f), on ? new Color(0.95f, 0.9f, 0.72f) : Ui.Text, height: UiKit.Unit * 1.8f);
+			button.GetComponent<LayoutElement>().flexibleWidth = 1f;
+		}
+
+		private static void SetTab(int tab)
+		{
+			if (_tab == tab || _window == null)
+			{
+				return;
+			}
+
+			_tab = tab;
+			BuildBody(_window.WindowTransform);
+		}
+
+		// One small tab per section of the Setup page: a click scrolls the section to the top
+		private static void JumpStrip(Transform parent)
+		{
+			var names = SetupPage.Names();
+			var widths = names.Select(name => name.Length * UiKit.Unit * 0.5f + UiKit.Unit * 2f + 6f).ToList();
+			foreach (var rowIndexes in ReadyWindow.TabRows(widths, _width - 40f))
+			{
+				var row = UiKit.HBox(parent, 4f);
+				foreach (int index in rowIndexes)
+				{
+					int section = index;
+					var button = UiKit.PushButton(row, names[index], () => JumpTo(section), new Color(0.15f, 0.155f, 0.155f), new Color(0.22f, 0.23f, 0.22f), Ui.Text, height: UiKit.Unit * 1.5f);
+					button.GetComponent<LayoutElement>().flexibleWidth = 1f;
+				}
+			}
+		}
+
+		private static void JumpTo(int index)
+		{
+			if (_content == null || _scroll == null || index < 0 || index >= SetupPage.Sections.Count || SetupPage.Sections[index] == null)
+			{
+				return;
+			}
+
+			Canvas.ForceUpdateCanvases();
+			float top = -RectTransformUtility.CalculateRelativeRectTransformBounds(_content, SetupPage.Sections[index]).max.y;
+			float most = Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height);
+			_content.anchoredPosition = new Vector2(0f, Mathf.Clamp(top - 8f, 0f, most));
+		}
+
+		// A setting was changed on the Setup page: keep it, plan again, and draw the page again
+		internal static void SettingChanged()
+		{
+			SettingsStore.Save();
+			ReadyPlan.RefreshSoon();
+			Rebuild();
+		}
+		private const float ScrollMin = 200f;
 		private static int _fitLogged;
 
 		// The body fills the window under the caption, whatever the window's size is now
@@ -230,17 +292,26 @@ namespace GetReady
 			UiKit.Stretch(root, 0f, 0f, 0f, Mathf.Max(_captionHeight, 30f));
 
 			var tabs = UiKit.HBox(root, 8f);
-			UiKit.PushButton(tabs, "Ready", null, new Color(0.25f, 0.23f, 0.15f), new Color(0.31f, 0.29f, 0.19f), new Color(0.95f, 0.9f, 0.72f), height: UiKit.Unit * 1.8f).gameObject.GetComponent<LayoutElement>().flexibleWidth = 1f;
-			var setup = UiKit.PushButton(tabs, "Setup", ReadyWindow.ShowSetup, new Color(0.13f, 0.135f, 0.135f), new Color(0.2f, 0.21f, 0.21f), Ui.Text, height: UiKit.Unit * 1.8f);
-			setup.gameObject.GetComponent<LayoutElement>().flexibleWidth = 1f;
+			Tab(tabs, "Ready", 0);
+			Tab(tabs, "Setup", 1);
+			if (_tab == 1)
+			{
+				JumpStrip(root);
+			}
 
 			_scroll = UiKit.Scroll(root, out _content);
-			UiKit.Size(_scroll, height: 400f, flexWidth: 1f, flexHeight: 1f);
+			var scrollSize = UiKit.Size(_scroll, flexWidth: 1f, flexHeight: 1f);
+			scrollSize.minHeight = ScrollMin;
+			scrollSize.preferredHeight = 400f;
 
 			var footer = UiKit.HBox(root, 12f);
 			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
 			UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
 
+			// What the tabs, the footer, the spacing and a little of the page need, so the body always fits the window
+			float minHeight = Mathf.Max(_captionHeight, 30f) + 20f + UiKit.Unit * 2f + UiKit.Unit * 2.4f + 16f + ScrollMin;
+			UiResize.SetMin(frame, new Vector2(520f, minHeight));
+			_height = Mathf.Max(_height, minHeight);
 			_signature = "";
 			Rebuild();
 			UiResize.ToFront(frame);
@@ -277,7 +348,15 @@ namespace GetReady
 			}
 
 			_pending = 0;
-			ReadyPage(_content);
+			if (_tab == 1)
+			{
+				SetupPage.Build(_content);
+			}
+			else
+			{
+				ReadyPage(_content);
+			}
+
 			if (_status != null)
 			{
 				_status.text = ReadyPlan._status ?? "";

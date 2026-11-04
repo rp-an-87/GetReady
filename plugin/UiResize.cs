@@ -77,6 +77,25 @@ namespace GetReady
 			Handle(frame, Names[2], new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(Corner, Corner), Vector2.zero, true, true, ECursorType.StretchCorner, min, max, onResized);
 		}
 
+		// The smallest the window may be: what its body needs to fit, so nothing spills out below
+		internal static void SetMin(RectTransform frame, Vector2 min)
+		{
+			foreach (var name in Names)
+			{
+				var handle = frame.Find(name)?.GetComponent<ResizeHandle>();
+				if (handle != null)
+				{
+					handle.Min = min;
+				}
+			}
+
+			var size = frame.sizeDelta;
+			if (size.x < min.x || size.y < min.y)
+			{
+				frame.sizeDelta = new Vector2(Mathf.Max(size.x, min.x), Mathf.Max(size.y, min.y));
+			}
+		}
+
 		internal static void ToFront(RectTransform frame)
 		{
 			foreach (var name in Names)

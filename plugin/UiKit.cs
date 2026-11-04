@@ -246,6 +246,30 @@ namespace GetReady
 			hover.OnHoverEnd += _ => ItemUiContext.Instance?.Tooltip?.Close();
 		}
 
+		// The three lines a row is dragged by (the reorder code looks for the child called Grip)
+		internal static RectTransform Grip(Transform parent)
+		{
+			var grip = Node("Grip", parent);
+			Fill(grip, new Color(0f, 0f, 0f, 0f), true);
+			Size(grip, Unit * 1.5f, Unit * 1.5f);
+			var lines = grip.gameObject.AddComponent<VerticalLayoutGroup>();
+			lines.spacing = 3f;
+			lines.childAlignment = TextAnchor.MiddleCenter;
+			lines.childControlWidth = true;
+			lines.childControlHeight = false;
+			lines.childForceExpandWidth = false;
+			lines.childForceExpandHeight = false;
+			for (int i = 0; i < 3; i++)
+			{
+				var line = Node("Line", grip);
+				Fill(line, new Color(0.62f, 0.63f, 0.6f));
+				Size(line, Unit * 1.1f, 2f);
+			}
+
+			Tip(grip, "Drag to change the order");
+			return grip;
+		}
+
 		private static Sprite _helpSprite, _helpHoverSprite;
 
 		private static Sprite DiscSprite(Color fill, Color edge)
