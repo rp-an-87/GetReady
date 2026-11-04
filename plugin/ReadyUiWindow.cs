@@ -275,6 +275,7 @@ namespace GetReady
 					var box = UiKit.VBox(row, 0f, new RectOffset(14, 14, 10, 10), UiKit.ProblemColor);
 					UiKit.Size(box, flexWidth: 1f);
 					UiKit.Label(box, problemGroups == 1 ? "1 thing can't be done as set up" : $"{problemGroups} things can't be done as set up", 1f, Ui.Bad);
+					UiKit.Tip(box, ReadyWindow.ProblemsTooltip());
 				}
 
 				if (moves > 0)
@@ -282,6 +283,7 @@ namespace GetReady
 					var box = UiKit.VBox(row, 0f, new RectOffset(14, 14, 10, 10), UiKit.TodoColor);
 					UiKit.Size(box, flexWidth: 1f);
 					UiKit.Label(box, moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil", 1f, Ui.Warn);
+					UiKit.Tip(box, ReadyWindow.ToDoTooltip());
 				}
 			}
 
@@ -290,7 +292,7 @@ namespace GetReady
 				var lines = ReadyWindow.Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor);
 				var head = UiKit.HBox(section, 8f);
-				UiKit.Icon(head, Icons.StepSprite(step.Name), UiKit.Unit * 1.3f);
+				UiKit.Icon(head, Icons.StepSprite(step.Name), UiKit.Unit * 1.3f, step.Name);
 				UiKit.Label(head, step.Name, 1f, Ui.Heading, bold: true);
 				UiKit.Spacer(head);
 				StepChip(head, step, lines);
@@ -366,7 +368,7 @@ namespace GetReady
 			var sprite = SpriteOf(line);
 			if (line.Item != null || !string.IsNullOrEmpty(line.Template))
 			{
-				UiKit.Icon(row, sprite, UiKit.Unit * 1.8f);
+				UiKit.Icon(row, sprite, UiKit.Unit * 1.8f, line.Subject);
 			}
 
 			var column = UiKit.VBox(row, 3f);
@@ -390,7 +392,7 @@ namespace GetReady
 				var box = UiKit.HBox(parent, 8f, new RectOffset(10, 10, 6, 6), UiKit.ProblemColor);
 				if (!line.AlertIconOnly && (line.Item != null || !string.IsNullOrEmpty(line.Template)))
 				{
-					UiKit.Icon(box, SpriteOf(line), UiKit.Unit * 1.8f);
+					UiKit.Icon(box, SpriteOf(line), UiKit.Unit * 1.8f, line.Subject);
 				}
 
 				var column = UiKit.VBox(box, 2f);

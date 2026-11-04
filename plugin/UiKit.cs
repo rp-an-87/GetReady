@@ -1,4 +1,5 @@
 using System;
+using EFT.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -172,11 +173,12 @@ namespace GetReady
 		}
 
 		// A square frame with a picture in it (the frame stays empty while the picture is null)
-		internal static void Icon(Transform parent, Sprite sprite, float size)
+		internal static void Icon(Transform parent, Sprite sprite, float size, string tip = null)
 		{
 			var frame = Node("Icon", parent);
 			Fill(frame, InnerColor);
 			Size(frame, size, size);
+			Tip(frame, tip);
 			if (sprite == null)
 			{
 				return;
@@ -188,6 +190,25 @@ namespace GetReady
 			image.sprite = sprite;
 			image.preserveAspect = true;
 			image.raycastTarget = false;
+		}
+
+		// The game's tooltip while the mouse is over the piece (it needs a picture to be hit, which every box and icon here has)
+		internal static void Tip(Component part, string text)
+		{
+			if (string.IsNullOrEmpty(text))
+			{
+				return;
+			}
+
+			var graphic = part.GetComponent<Graphic>();
+			if (graphic != null)
+			{
+				graphic.raycastTarget = true;
+			}
+
+			var hover = part.GetComponent<HoverTrigger>() ?? part.gameObject.AddComponent<HoverTrigger>();
+			hover.OnHoverStart += _ => ItemUiContext.Instance?.Tooltip?.Show(text, null, 0.25f, null);
+			hover.OnHoverEnd += _ => ItemUiContext.Instance?.Tooltip?.Close();
 		}
 
 		// A thin bar filled to a fraction
@@ -226,8 +247,9 @@ namespace GetReady
 			group.childAlignment = TextAnchor.MiddleCenter;
 			group.childControlWidth = true;
 			group.childControlHeight = true;
-			group.childForceExpandWidth = true;
-			group.childForceExpandHeight = true;
+			// No force-expand: a group that expands tells its parents it wants all the spare room, and the button would fill it
+			group.childForceExpandWidth = false;
+			group.childForceExpandHeight = false;
 			Label(rect, text, 0.9f, textColor, align: TextAlignmentOptions.Center);
 			Size(rect, width, height);
 			return button;
