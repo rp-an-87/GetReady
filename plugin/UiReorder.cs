@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
+using EFT.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace GetReady
 {
-	// Rows of a list moved by dragging their grip: the dragged row dims, a bar shows where it would land, and on release the list is told
+	// Rows of a list moved by dragging them (anywhere on the row): the hand cursor shows they can be, the dragged row dims, a bar shows where it would land, and on release the list is told
 	// "from this index to that one" (both as the list is now), or nothing when it did not move.
-	internal class ReorderGrip : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
+	internal class ReorderGrip : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerEnterHandler, IPointerExitHandler
 	{
 		internal RectTransform Container;
 		internal List<RectTransform> Rows;
@@ -17,9 +18,27 @@ namespace GetReady
 		internal RectTransform Bar;
 
 		private int _at = -1;
+		private bool _over, _dragging;
+
+		public void OnPointerEnter(PointerEventData eventData)
+		{
+			_over = true;
+			CursorSwitcher.SetCursor(ECursorType.Hand);
+		}
+
+		public void OnPointerExit(PointerEventData eventData)
+		{
+			_over = false;
+			if (!_dragging)
+			{
+				CursorSwitcher.SetCursor(ECursorType.Idle);
+			}
+		}
 
 		public void OnBeginDrag(PointerEventData eventData)
 		{
+			_dragging = true;
+			CursorSwitcher.SetCursor(ECursorType.Hand);
 			_at = -1;
 			Dim(Rows[Index], 0.45f);
 		}
@@ -45,6 +64,8 @@ namespace GetReady
 
 		public void OnEndDrag(PointerEventData eventData)
 		{
+			_dragging = false;
+			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);
 			Dim(Rows[Index], 1f);
 			Bar.gameObject.SetActive(false);
 			if (_at >= 0)
@@ -83,7 +104,7 @@ namespace GetReady
 
 	internal static class UiReorder
 	{
-		// Makes the grip of each row (the child called "Grip", see UiKit.Grip) drag the row inside the container
+		// Makes each row draggable by any part of it, inside the container (UiKit.Grip draws the three lines that tell it can be)
 		internal static void Attach(RectTransform container, List<RectTransform> rows, Action<int, int> onMove)
 		{
 			var bar = UiKit.Node("Drop Bar", container);
@@ -93,13 +114,15 @@ namespace GetReady
 			bar.gameObject.SetActive(false);
 			for (int i = 0; i < rows.Count; i++)
 			{
-				var grip = rows[i].Find("Grip");
-				if (grip == null)
+				// A row with no picture of its own cannot be hit: an invisible one makes all of it grabbable
+				if (rows[i].GetComponent<Graphic>() == null)
 				{
-					continue;
+					var clear = rows[i].gameObject.AddComponent<Image>();
+					clear.color = new Color(0f, 0f, 0f, 0f);
+					clear.raycastTarget = true;
 				}
 
-				var handle = grip.gameObject.AddComponent<ReorderGrip>();
+				var handle = rows[i].gameObject.AddComponent<ReorderGrip>();
 				handle.Container = container;
 				handle.Rows = rows;
 				handle.Index = i;
