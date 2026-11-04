@@ -87,7 +87,7 @@ namespace GetReady
 		}
 
 		// The pockets, as a pair of slim trousers drawn flat, like the game's pictures: one grey, the waistband, the fly and the pocket slits in
-		// a darker grey, and under it a soft dark copy moved a little down and to the right (the shadow the game's pictures have)
+		// a darker grey, and under it the soft dark glow the game's pictures have (the shape blurred, black, a little lower)
 		private static Sprite DrawPockets()
 		{
 			const int size = 48;
@@ -98,60 +98,96 @@ namespace GetReady
 				new Vector2(9f, 40f), new Vector2(39f, 40f), new Vector2(38f, 8f), new Vector2(27f, 8f),
 				new Vector2(24f, 24f), new Vector2(21f, 8f), new Vector2(10f, 8f)
 			};
-			var shadowMove = new Vector2(1.6f, -1.6f);
+			var covered = new float[size, size];
+			var detail = new float[size, size];
 			for (int x = 0; x < size; x++)
 			{
 				for (int y = 0; y < size; y++)
 				{
-					// Covered part of the pixel by the trousers and by their shadow, and how much of the trousers is detail, by looking at nine points
-					int covered = 0, detail = 0, shadowed = 0;
+					// Covered part of the pixel, and how much of that is detail, by looking at nine points in it
+					int inside = 0, marks = 0;
 					for (int sx = 0; sx < 3; sx++)
 					{
 						for (int sy = 0; sy < 3; sy++)
 						{
 							// Looked up at a larger drawing, so the whole glyph is smaller in the square
-							var spot = new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f);
-							var point = (spot - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
-							var under = (spot - shadowMove - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
-							if (Inside(outline, under))
-							{
-								shadowed++;
-							}
-
+							var point = (new Vector2(x + (sx + 0.5f) / 3f, y + (sy + 0.5f) / 3f) - new Vector2(24f, 24f)) / 0.82f + new Vector2(24f, 24f);
 							if (!Inside(outline, point))
 							{
 								continue;
 							}
 
-							covered++;
+							inside++;
 							bool belt = Mathf.Abs(point.y - 36.5f) < 1.3f;
 							bool fly = Mathf.Abs(point.x - 24f) < 0.8f && point.y < 36.5f && point.y > 26f;
 							bool slitLeft = Near(point, new Vector2(12f, 35f), new Vector2(17f, 28f), 1.1f);
 							bool slitRight = Near(point, new Vector2(36f, 35f), new Vector2(31f, 28f), 1.1f);
 							if (belt || fly || slitLeft || slitRight)
 							{
-								detail++;
+								marks++;
 							}
 						}
 					}
 
-					// The trousers over the shadow
-					float top = covered / 9f, under2 = shadowed / 9f * 0.5f;
-					float alpha = top + under2 * (1f - top);
-					if (alpha <= 0f)
+					covered[x, y] = inside / 9f;
+					detail[x, y] = inside == 0 ? 0f : marks / (float)inside;
+				}
+			}
+
+			var glow = Blur(Blur(Blur(covered, size, 3), size, 3), size, 3);
+			for (int x = 0; x < size; x++)
+			{
+				for (int y = 0; y < size; y++)
+				{
+					// The glow, a little lower than the shape, under the trousers
+					int lower = Mathf.Min(size - 1, y + 2);
+					float under = Mathf.Clamp01(glow[x, lower] * 1.5f) * 0.75f;
+					float top = covered[x, y];
+					float alpha = top + under * (1f - top);
+					if (alpha <= 0.001f)
 					{
-						texture.SetPixel(x, y, new Color(1f, 1f, 1f, 0f));
+						texture.SetPixel(x, y, new Color(0f, 0f, 0f, 0f));
 						continue;
 					}
 
-					float grey = covered == 0 ? 0f : Mathf.Lerp(0.86f, 0.25f, detail / (float)covered);
-					float value = grey * top / alpha;
+					float value = Mathf.Lerp(0.86f, 0.25f, detail[x, y]) * top / alpha;
 					texture.SetPixel(x, y, new Color(value, value, value, alpha));
 				}
 			}
 
 			texture.Apply();
 			return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), 100f);
+		}
+
+		// A square blur (the average of the pixels within a radius)
+		private static float[,] Blur(float[,] source, int size, int radius)
+		{
+			var result = new float[size, size];
+			for (int x = 0; x < size; x++)
+			{
+				for (int y = 0; y < size; y++)
+				{
+					float sum = 0f;
+					int count = 0;
+					for (int dx = -radius; dx <= radius; dx++)
+					{
+						for (int dy = -radius; dy <= radius; dy++)
+						{
+							int nx = x + dx, ny = y + dy;
+							if (nx >= 0 && ny >= 0 && nx < size && ny < size)
+							{
+								sum += source[nx, ny];
+							}
+
+							count++;
+						}
+					}
+
+					result[x, y] = sum / count;
+				}
+			}
+
+			return result;
 		}
 
 		// Whether a point is within a distance of the line from a to b
