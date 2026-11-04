@@ -19,7 +19,6 @@ namespace GetReady
 		private static RectTransform _content;
 		private static ScrollRect _scroll;
 		private static TextMeshProUGUI _status;
-		private static TextMeshProUGUI _scaleLabel;
 		private static string _signature = "";
 		private static float _checkedAt;
 		private static int _pending;
@@ -66,7 +65,6 @@ namespace GetReady
 					_content = null;
 					_scroll = null;
 					_status = null;
-					_scaleLabel = null;
 				};
 				_window = window;
 				_signature = "";
@@ -96,18 +94,6 @@ namespace GetReady
 				UiKit.Scale = scale;
 				BuildBody(_window.WindowTransform);
 			}
-
-			if (_scaleLabel != null)
-			{
-				_scaleLabel.text = $"{Mathf.RoundToInt(scale * 100f)}%";
-			}
-		}
-
-		private static void Resize(float step)
-		{
-			SettingsStore.Current.UiScale = Mathf.Clamp(Mathf.Round((ReadyWindow.Scale + step) * 10f) / 10f, 0.8f, 2f);
-			SettingsStore.Save();
-			ApplyScale();
 		}
 
 		// Looked at from the plugin's Update: the page is built again when the plan (or the icons that were still loading) changed
@@ -197,6 +183,7 @@ namespace GetReady
 			{
 				_width = frame.sizeDelta.x;
 				_height = frame.sizeDelta.y;
+				FitBody(frame);
 			});
 			BuildBody(frame);
 			if (!_dumped)
@@ -207,6 +194,24 @@ namespace GetReady
 		}
 
 		private static float _captionHeight;
+		private static int _fitLogged;
+
+		// The body fills the window under the caption, whatever the window's size is now
+		private static void FitBody(RectTransform frame)
+		{
+			if (_root == null)
+			{
+				return;
+			}
+
+			UiKit.Stretch(_root, 0f, 0f, 0f, Mathf.Max(_captionHeight, 30f));
+			LayoutRebuilder.ForceRebuildLayoutImmediate(_root);
+			if (_fitLogged < 3)
+			{
+				_fitLogged++;
+				Plugin.Log.LogInfo($"Get ready window resized: frame {frame.rect.size} (sizeDelta {frame.sizeDelta}, anchors {frame.anchorMin}-{frame.anchorMax}), body {_root.rect.size} (anchors {_root.anchorMin}-{_root.anchorMax})");
+			}
+		}
 		private static RectTransform _root;
 
 		// Our body under the caption: the tabs, the page and the footer. Built again when the size changes.
@@ -233,12 +238,6 @@ namespace GetReady
 			UiKit.Size(_scroll, height: 400f, flexWidth: 1f, flexHeight: 1f);
 
 			var footer = UiKit.HBox(root, 12f);
-			var size = UiKit.HBox(footer, 6f);
-			UiKit.Tip(UiKit.Label(size, "Size", 0.8f, Ui.Dim), "Scales the text and pictures in this window. The same setting as Window size in the old window.");
-			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.8f);
-			_scaleLabel = UiKit.Label(size, $"{Mathf.RoundToInt(UiKit.Scale * 100f)}%", 0.85f, Ui.Text, align: TextAlignmentOptions.Center);
-			UiKit.Size(_scaleLabel, UiKit.Unit * 3f);
-			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.8f);
 			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
 			UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
 
