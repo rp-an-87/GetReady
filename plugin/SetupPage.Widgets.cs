@@ -189,6 +189,13 @@ namespace GetReady
 			}, (place, other) => def.SwapPlaces(place, other));
 		}
 
+		// What is said where a list has nothing: in the middle of its width, with some room round it, so it is not mistaken for a row
+		internal static void EmptyNote(Transform parent, string text)
+		{
+			var row = UiKit.HBox(parent, 0f, new RectOffset(0, 0, 8, 8));
+			UiKit.Label(row, text, 0.85f, Ui.Dim, align: TMPro.TextAlignmentOptions.Center, wrap: true, flex: true);
+		}
+
 		// A panel with two sections that are always there: what is on you (equipped), and what is saved or configured but not on you
 		internal static void TwoSections(Transform parent, string onLabel, string onEmpty, bool anyOn, Action<Transform> drawOn, string awayLabel, string awayEmpty, bool anyAway, Action<Transform> drawAway)
 		{
@@ -200,7 +207,7 @@ namespace GetReady
 			}
 			else
 			{
-				UiKit.Label(box, onEmpty, 0.85f, Ui.Dim);
+				EmptyNote(box, onEmpty);
 			}
 
 			UiKit.Line(box);
@@ -211,7 +218,7 @@ namespace GetReady
 			}
 			else
 			{
-				UiKit.Label(box, awayEmpty, 0.85f, Ui.Dim);
+				EmptyNote(box, awayEmpty);
 			}
 		}
 	}

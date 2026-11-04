@@ -14,7 +14,7 @@ namespace GetReady
 			var slots = SettingsStore.Current.SpecialSlots.Slots;
 			if (slots.Count == 0)
 			{
-				UiKit.Label(section, "Nothing saved yet. Put what you want in the special slots, then save them.", 0.85f, Ui.Dim);
+				EmptyNote(section, "Nothing saved yet. Put what you want in the special slots, then save them.");
 			}
 			else
 			{
