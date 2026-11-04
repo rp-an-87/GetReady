@@ -18,7 +18,7 @@ namespace GetReady
 
 		// The window is drawn through a scaling matrix: every size and position of the window (_rect, the alert box) is in its own
 		// units, a screen pixel is Scale of them
-		internal static float Scale => Mathf.Clamp(SettingsStore.Current.UiScale, 0.8f, 1.6f);
+		internal static float Scale => Mathf.Clamp(SettingsStore.Current.UiScale, 0.8f, 2f);
 
 		private static Vector2 _scroll;
 

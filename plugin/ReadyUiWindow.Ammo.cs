@@ -143,12 +143,12 @@ namespace GetReady
 
 			foreach (var weapon in group.Weapons)
 			{
-				AmmoWeapon(UiKit.VBox(card, 3f, new RectOffset(8, 8, 6, 6), InnerPanel), weapon);
+				AmmoWeapon(UiKit.VBox(card, 3f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge), weapon);
 			}
 
 			if (group.SpareHead != null)
 			{
-				AmmoSpare(UiKit.VBox(card, 3f, new RectOffset(8, 8, 6, 6), InnerPanel), group);
+				AmmoSpare(UiKit.VBox(card, 3f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge), group);
 			}
 		}
 
@@ -340,7 +340,7 @@ namespace GetReady
 
 				if (!line.Standalone && card != null && inner == null)
 				{
-					inner = UiKit.VBox(card, 3f, new RectOffset(8, 8, 6, 6), InnerPanel);
+					inner = UiKit.VBox(card, 3f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
 				}
 
 				AmmoRestLine(inner ?? (RectTransform)parent, line);

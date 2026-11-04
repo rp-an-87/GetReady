@@ -18,6 +18,10 @@ namespace GetReady
 		internal static readonly Color PanelColor = new Color(0.12f, 0.125f, 0.125f);
 		internal static readonly Color CardColor = new Color(0.155f, 0.16f, 0.16f);
 		internal static readonly Color InnerColor = new Color(0.07f, 0.075f, 0.075f);
+		// The edges of the old window's boxes: sections, cards and the inner panels of a card
+		internal static readonly Color SectionEdge = new Color(0.33f, 0.34f, 0.32f);
+		internal static readonly Color CardEdge = new Color(0.27f, 0.28f, 0.27f);
+		internal static readonly Color InnerEdge = new Color(0.22f, 0.23f, 0.22f);
 		internal static readonly Color LineColor = new Color(0.3f, 0.31f, 0.3f);
 		internal static readonly Color ProblemColor = new Color(0.3f, 0.13f, 0.12f);
 		internal static readonly Color TodoColor = new Color(0.24f, 0.21f, 0.11f);
@@ -80,12 +84,27 @@ namespace GetReady
 			return element;
 		}
 
-		internal static RectTransform VBox(Transform parent, float spacing = 4f, RectOffset padding = null, Color? background = null)
+		// A 1 px edge round a box that has a fill
+		private static void Edge(RectTransform rect, Color? edge)
+		{
+			if (!edge.HasValue || rect.GetComponent<Image>() == null)
+			{
+				return;
+			}
+
+			var outline = rect.gameObject.AddComponent<Outline>();
+			outline.effectColor = edge.Value;
+			outline.effectDistance = new Vector2(1f, 1f);
+			outline.useGraphicAlpha = false;
+		}
+
+		internal static RectTransform VBox(Transform parent, float spacing = 4f, RectOffset padding = null, Color? background = null, Color? edge = null)
 		{
 			var rect = Node("VBox", parent);
 			if (background.HasValue)
 			{
 				Fill(rect, background.Value);
+				Edge(rect, edge);
 			}
 
 			var group = rect.gameObject.AddComponent<VerticalLayoutGroup>();
@@ -98,12 +117,13 @@ namespace GetReady
 			return rect;
 		}
 
-		internal static RectTransform HBox(Transform parent, float spacing = 6f, RectOffset padding = null, Color? background = null, bool expandHeight = false)
+		internal static RectTransform HBox(Transform parent, float spacing = 6f, RectOffset padding = null, Color? background = null, bool expandHeight = false, Color? edge = null)
 		{
 			var rect = Node("HBox", parent);
 			if (background.HasValue)
 			{
 				Fill(rect, background.Value);
+				Edge(rect, edge);
 			}
 
 			var group = rect.gameObject.AddComponent<HorizontalLayoutGroup>();

@@ -19,6 +19,7 @@ namespace GetReady
 		private static RectTransform _content;
 		private static ScrollRect _scroll;
 		private static TextMeshProUGUI _status;
+		private static TextMeshProUGUI _scaleLabel;
 		private static string _signature = "";
 		private static float _checkedAt;
 		private static int _pending;
@@ -63,6 +64,7 @@ namespace GetReady
 					_content = null;
 					_scroll = null;
 					_status = null;
+					_scaleLabel = null;
 				};
 				_window = window;
 				_signature = "";
@@ -77,6 +79,29 @@ namespace GetReady
 			}
 		}
 
+		// The window's size: the saved Window size setting, applied to the whole window (the border and caption too)
+		private static void ApplyScale()
+		{
+			if (_window == null)
+			{
+				return;
+			}
+
+			float scale = ReadyWindow.Scale;
+			_window.WindowTransform.localScale = new Vector3(scale, scale, 1f);
+			if (_scaleLabel != null)
+			{
+				_scaleLabel.text = $"{Mathf.RoundToInt(scale * 100f)}%";
+			}
+		}
+
+		private static void Resize(float step)
+		{
+			SettingsStore.Current.UiScale = Mathf.Clamp(Mathf.Round((ReadyWindow.Scale + step) * 10f) / 10f, 0.8f, 2f);
+			SettingsStore.Save();
+			ApplyScale();
+		}
+
 		// Looked at from the plugin's Update: the page is built again when the plan (or the icons that were still loading) changed
 		internal static void Update()
 		{
@@ -86,6 +111,7 @@ namespace GetReady
 			}
 
 			_checkedAt = Time.unscaledTime;
+			ApplyScale();
 			try
 			{
 				string signature = Signature();
@@ -173,9 +199,16 @@ namespace GetReady
 			UiKit.Size(_scroll, height: 400f, flexWidth: 1f, flexHeight: 1f);
 
 			var footer = UiKit.HBox(root, 12f);
+			var size = UiKit.HBox(footer, 6f);
+			UiKit.Tip(UiKit.Label(size, "Size", 0.8f, Ui.Dim), "Scales this window. The same setting as Window size in the old window.");
+			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.8f);
+			_scaleLabel = UiKit.Label(size, "", 0.85f, Ui.Text, align: TextAlignmentOptions.Center);
+			UiKit.Size(_scaleLabel, UiKit.Unit * 3f);
+			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.8f);
 			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
 			UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
 
+			ApplyScale();
 			if (!_dumped)
 			{
 				_dumped = true;
@@ -292,7 +325,7 @@ namespace GetReady
 			foreach (var step in Steps.DisplayOrder.OrderBy(step => step.Enabled ? 0 : 1))
 			{
 				var lines = ReadyWindow.Plan.Where(entry => entry.Key == step).Select(entry => entry.Value).FirstOrDefault();
-				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor);
+				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 				if (!step.Enabled)
 				{
 					section.gameObject.AddComponent<CanvasGroup>().alpha = 0.45f;
@@ -372,7 +405,7 @@ namespace GetReady
 		// One card: a stripe in the colour of how it stands, and the box its content goes in
 		private static RectTransform Card(Transform parent, ReadyWindow.Standing standing)
 		{
-			var outer = UiKit.HBox(parent, 0f, null, UiKit.CardColor, true);
+			var outer = UiKit.HBox(parent, 0f, null, UiKit.CardColor, true, UiKit.CardEdge);
 			var stripe = UiKit.Node("Stripe", outer);
 			stripe.gameObject.AddComponent<Image>().color = ColorOf(standing);
 			UiKit.Size(stripe, 4f);
