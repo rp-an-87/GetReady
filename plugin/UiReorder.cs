@@ -27,8 +27,10 @@ namespace GetReady
 		public void OnDrag(PointerEventData eventData)
 		{
 			_at = Landing(eventData);
-			if (_at < 0)
+			// Only where the row would end up somewhere else: no bar for the place it is already in
+			if (_at < 0 || (_at > Index ? _at - 1 : _at) == Index)
 			{
+				_at = -1;
 				Bar.gameObject.SetActive(false);
 				return;
 			}
@@ -47,38 +49,29 @@ namespace GetReady
 			Bar.gameObject.SetActive(false);
 			if (_at >= 0)
 			{
-				int to = _at > Index ? _at - 1 : _at;
-				if (to != Index)
-				{
-					OnMove(Index, to);
-				}
+				OnMove(Index, _at > Index ? _at - 1 : _at);
 			}
 		}
 
-		// The place between rows the pointer is at: before the row it is in the upper half of, after the one it is in the lower half of
+		// The place between rows nearest the pointer, by how high it is: it does not have to be over a row, or even over the list
 		private int Landing(PointerEventData eventData)
 		{
-			for (int i = 0; i < Rows.Count; i++)
+			Vector2 local;
+			if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(Container, eventData.position, eventData.pressEventCamera, out local))
 			{
-				Vector2 local;
-				RectTransformUtility.ScreenPointToLocalPointInRectangle(Rows[i], eventData.position, eventData.pressEventCamera, out local);
-				if (Rows[i].rect.Contains(local))
-				{
-					return local.y > Rows[i].rect.center.y ? i : i + 1;
-				}
+				return -1;
+			}
 
-				if (i == 0 && local.y > Rows[i].rect.yMax)
+			int above = 0;
+			foreach (var row in Rows)
+			{
+				if (RectTransformUtility.CalculateRelativeRectTransformBounds(Container, row).center.y > local.y)
 				{
-					return 0;
-				}
-
-				if (i == Rows.Count - 1 && local.y < Rows[i].rect.yMin)
-				{
-					return Rows.Count;
+					above++;
 				}
 			}
 
-			return -1;
+			return above;
 		}
 
 		private static void Dim(RectTransform row, float alpha)

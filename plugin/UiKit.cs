@@ -255,8 +255,9 @@ namespace GetReady
 			var lines = grip.gameObject.AddComponent<VerticalLayoutGroup>();
 			lines.spacing = 3f;
 			lines.childAlignment = TextAnchor.MiddleCenter;
+			// Controlled, or each line keeps the 100 x 100 a new object starts with
 			lines.childControlWidth = true;
-			lines.childControlHeight = false;
+			lines.childControlHeight = true;
 			lines.childForceExpandWidth = false;
 			lines.childForceExpandHeight = false;
 			for (int i = 0; i < 3; i++)
