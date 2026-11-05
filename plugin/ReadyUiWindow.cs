@@ -87,43 +87,9 @@ namespace GetReady
 					return;
 				}
 
-				var context = ItemUiContext.Instance;
-				if (context == null || context._editBuildNameWindow == null || context._infoWindowsContainer == null)
-				{
-					Plugin.Log.LogWarning("Get ready window: the game's window template is not available here");
-					return;
-				}
-
 				var openWatch = System.Diagnostics.Stopwatch.StartNew();
-				var window = UnityEngine.Object.Instantiate(context._editBuildNameWindow, context._infoWindowsContainer, false);
-				window.name = "GetReady Window";
-				var windowContext = ((Window<EditBuildNameWindowContext>)window).Show();
-				UiKit.Init(window.Caption);
-				UiKit.Scale = UiKit.ChosenScale;
-				window.Caption.text = "Get ready for raid";
-				// The window's own Save button is the game's standard button: it is copied for ours before the window hides it
-				try
+				var window = GameWindow.Open("GetReady Window", "Get ready for raid", () =>
 				{
-					GameWidgets.ButtonTemplate = window._saveButtonSpawner;
-				}
-				catch (Exception e)
-				{
-					GameWidgets.ButtonTemplate = null;
-					Plugin.Log.LogWarning($"Get ready window: no game button to copy: {e.Message}");
-				}
-
-				long made = openWatch.ElapsedMilliseconds;
-				Build(window);
-				long shell = openWatch.ElapsedMilliseconds;
-				window.WindowTransform.SetAsLastSibling();
-				context.RegisterWindow<EditBuildNameWindowContext>(window, windowContext);
-				windowContext.OnClose += () =>
-				{
-					if (window != null)
-					{
-						UnityEngine.Object.Destroy(window.gameObject);
-					}
-
 					_window = null;
 					SetupPage.StopWatching();
 					DragGhost.End();
@@ -131,7 +97,17 @@ namespace GetReady
 					_content = null;
 					_scroll = null;
 					_status = null;
-				};
+				}, out _captionHeight, out var button);
+				if (window == null)
+				{
+					return;
+				}
+
+				// The window's own Save button is the game's standard button: it is copied for ours
+				GameWidgets.ButtonTemplate = button;
+				long made = openWatch.ElapsedMilliseconds;
+				Build(window);
+				long shell = openWatch.ElapsedMilliseconds;
 				_window = window;
 				ApplyDragFade();
 				_signature = "";
@@ -312,34 +288,6 @@ namespace GetReady
 		private static void Build(EditBuildNameWindow window)
 		{
 			var frame = window.WindowTransform;
-			window._inputField.gameObject.SetActive(false);
-			window._saveButtonSpawner.gameObject.SetActive(false);
-			window._placeholderText.gameObject.SetActive(false);
-			var caption = window._captionPanel != null ? window._captionPanel.transform : null;
-			for (int i = 0; i < frame.childCount; i++)
-			{
-				var child = frame.GetChild(i);
-				// The caption stays, and so does the grey border every game window has
-				if (child.name == "Border" || (caption != null && (child == caption || caption.IsChildOf(child))))
-				{
-					continue;
-				}
-
-				child.gameObject.SetActive(false);
-			}
-
-			var fitter = frame.GetComponent<ContentSizeFitter>();
-			if (fitter != null)
-			{
-				fitter.enabled = false;
-			}
-
-			foreach (var group in frame.GetComponents<LayoutGroup>())
-			{
-				group.enabled = false;
-			}
-
-			UiKit.OwnCanvas(frame.gameObject);
 			frame.sizeDelta = new Vector2(_width, _height);
 			try
 			{
@@ -350,7 +298,6 @@ namespace GetReady
 				Plugin.Log.LogWarning($"Get ready window: could not centre it: {e.Message}");
 			}
 
-			_captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
 			UiResize.Add(frame, new Vector2(520f, 420f), new Vector2(4000f, 4000f), () =>
 			{
 				_width = frame.sizeDelta.x;

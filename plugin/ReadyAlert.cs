@@ -40,33 +40,17 @@ namespace GetReady
 					return;
 				}
 
-				var context = ItemUiContext.Instance;
-				if (context == null || context._editBuildNameWindow == null || context._infoWindowsContainer == null)
+				var window = GameWindow.Open("GetReady Alert", "Check this before you leave", () =>
 				{
-					Plugin.Log.LogWarning("Alert: the game's window template is not available here");
+					_window = null;
+					_root = null;
+				}, out _captionHeight, out _buttonTemplate);
+				if (window == null)
+				{
 					return;
 				}
 
-				var window = UnityEngine.Object.Instantiate(context._editBuildNameWindow, context._infoWindowsContainer, false);
-				window.name = "GetReady Alert";
-				var windowContext = ((Window<EditBuildNameWindowContext>)window).Show();
-				UiKit.Init(window.Caption);
-				UiKit.Scale = UiKit.ChosenScale;
-				window.Caption.text = "Check this before you leave";
-				_buttonTemplate = window._saveButtonSpawner;
-				Shell(window);
-				window.WindowTransform.SetAsLastSibling();
-				context.RegisterWindow<EditBuildNameWindowContext>(window, windowContext);
-				windowContext.OnClose += () =>
-				{
-					if (window != null)
-					{
-						UnityEngine.Object.Destroy(window.gameObject);
-					}
-
-					_window = null;
-					_root = null;
-				};
+				Size(window.WindowTransform);
 				_window = window;
 				BuildHidden();
 			}
@@ -140,38 +124,9 @@ namespace GetReady
 			});
 		}
 
-		// The game's window made ours: its caption and red cross stay, the rest is hidden, sized to the screen and put in the upper middle
-		private static void Shell(EditBuildNameWindow window)
+		// Sized to the screen and put in the upper middle
+		private static void Size(RectTransform frame)
 		{
-			var frame = window.WindowTransform;
-			window._inputField.gameObject.SetActive(false);
-			window._saveButtonSpawner.gameObject.SetActive(false);
-			window._placeholderText.gameObject.SetActive(false);
-			var caption = window._captionPanel != null ? window._captionPanel.transform : null;
-			for (int i = 0; i < frame.childCount; i++)
-			{
-				var child = frame.GetChild(i);
-				if (child.name == "Border" || (caption != null && (child == caption || caption.IsChildOf(child))))
-				{
-					continue;
-				}
-
-				child.gameObject.SetActive(false);
-			}
-
-			var fitter = frame.GetComponent<ContentSizeFitter>();
-			if (fitter != null)
-			{
-				fitter.enabled = false;
-			}
-
-			foreach (var group in frame.GetComponents<LayoutGroup>())
-			{
-				group.enabled = false;
-			}
-
-			_captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
-			UiKit.OwnCanvas(frame.gameObject);
 			frame.sizeDelta = new Vector2(Mathf.Min(UiKit.Unit * 32f, Parent(frame).rect.width * 0.9f), 300f);
 			Place(frame);
 		}
