@@ -12,7 +12,7 @@ namespace GetReady
 	// for. A case with nothing set is not kept.
 	internal static partial class SetupPage
 	{
-		private const int MapsPerRow = 4, StripPerRow = 10;
+		private const int MapsPerRow = 4;
 
 		private static void CasesSetup(Transform section, InventoryController controller)
 		{
@@ -110,7 +110,7 @@ namespace GetReady
 		}
 
 		// An item picture with its amount in the corner and, when asked, its short name at the top, as the game draws a stack
-		private static void StripIcon(Transform row, string template, string tip, int count, string label, string amountText = null)
+		private static RectTransform StripIcon(Transform row, string template, string tip, int count, string label, string amountText = null)
 		{
 			TemplateIcon(row, template, UiKit.Unit * 2.4f, tip);
 			var frame = row.GetChild(row.childCount - 1);
@@ -126,40 +126,88 @@ namespace GetReady
 				var amount = UiKit.Label(frame, amountText ?? count.ToString(), 0.6f, new Color(0.55f, 0.9f, 0.45f), bold: true, align: TextAlignmentOptions.BottomRight);
 				UiKit.Stretch(amount.rectTransform, 0f, 0f, 4f, 2f);
 			}
+
+			return (RectTransform)frame;
 		}
 
-		// What a case tracks, as rows of pictures
-		private static void TrackedStrip(Transform parent, CaseEntry entry)
+		// A colour laid over a picture, out of the mouse's way
+		private static GameObject Tint(Transform frame, Color color)
+		{
+			var rect = UiKit.Node("Tint", frame);
+			UiKit.Stretch(rect, 0f, 0f, 0f, 0f);
+			var image = rect.gameObject.AddComponent<UnityEngine.UI.Image>();
+			image.color = color;
+			image.raycastTarget = false;
+			rect.gameObject.AddComponent<UnityEngine.UI.LayoutElement>().ignoreLayout = true;
+			return rect.gameObject;
+		}
+
+		// What a case tracks, as pictures that use the whole width of the panel before going on to another row. Returns what shows what Update would
+		// do while the mouse is on its button (items it would add in green, ones it would remove in red); null when there is nothing to show.
+		private static System.Action<bool> TrackedStrip(Transform parent, CaseEntry entry, CasesStep.CaseChange change)
 		{
 			var panel = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
 			var shown = (entry.Exact ? entry.Items.OrderBy(held => held.Grid).ThenBy(held => held.Y).ThenBy(held => held.X) : entry.Items.OrderBy(held => held.Template)).ToList();
-			var pieces = new List<System.Action<Transform>>();
-			foreach (var held in shown)
-			{
-				var kept = held;
-				pieces.Add(row => StripIcon(row, kept.Template, kept.Count > 1 ? $"{kept.Name} x{kept.Count}" : kept.Name, kept.Count, kept.Name));
-			}
-
-			foreach (var currency in CasesStep.Currencies.Where(currency => entry.Money.ContainsKey(currency)))
-			{
-				string code = currency;
-				pieces.Add(row => StripIcon(row, CasesStep.TemplateOfCurrency(code), Game.Amount(code, entry.Money[code]), entry.Money[code], code, Compact(entry.Money[code])));
-			}
-
-			if (pieces.Count == 0)
+			var money = CasesStep.Currencies.Where(currency => entry.Money.ContainsKey(currency)).ToList();
+			bool anyAdded = change != null && change.Added.Count > 0;
+			if (shown.Count == 0 && money.Count == 0)
 			{
 				EmptyNote(panel, "Tracking nothing: getting ready empties this case.");
-				return;
-			}
-
-			for (int first = 0; first < pieces.Count; first += StripPerRow)
-			{
-				var row = UiKit.HBox(panel, 6f);
-				foreach (var piece in pieces.Skip(first).Take(StripPerRow))
+				if (!anyAdded)
 				{
-					piece(row);
+					return null;
 				}
 			}
+
+			// A grid of fixed cells that wraps by the width it has: no count per row to guess
+			var cells = UiKit.Node("Strip", panel);
+			var grid = cells.gameObject.AddComponent<UnityEngine.UI.GridLayoutGroup>();
+			grid.cellSize = new Vector2(UiKit.Unit * 2.4f, UiKit.Unit * 2.4f);
+			grid.spacing = new Vector2(6f, 6f);
+			grid.startCorner = UnityEngine.UI.GridLayoutGroup.Corner.UpperLeft;
+			grid.startAxis = UnityEngine.UI.GridLayoutGroup.Axis.Horizontal;
+			grid.childAlignment = TextAnchor.UpperLeft;
+			grid.constraint = UnityEngine.UI.GridLayoutGroup.Constraint.Flexible;
+			var removed = new HashSet<string>(change != null ? change.Removed.Select(item => item.Template) : new string[0]);
+			var previews = new List<GameObject>();
+			foreach (var held in shown)
+			{
+				var frame = StripIcon(cells, held.Template, held.Count > 1 ? $"{held.Name} x{held.Count}" : held.Name, held.Count, held.Name);
+				if (removed.Contains(held.Template))
+				{
+					var red = Tint(frame, new Color(0.9f, 0.2f, 0.18f, 0.45f));
+					red.SetActive(false);
+					previews.Add(red);
+				}
+			}
+
+			foreach (var currency in money)
+			{
+				StripIcon(cells, CasesStep.TemplateOfCurrency(currency), Game.Amount(currency, entry.Money[currency]), entry.Money[currency], currency, Compact(entry.Money[currency]));
+			}
+
+			// What Update would add: shown only while the mouse is on the button, in green
+			if (anyAdded)
+			{
+				foreach (var added in change.Added)
+				{
+					var frame = StripIcon(cells, added.Template, $"Would add {added.Name}" + (added.Count > 1 ? $" x{added.Count}" : ""), added.Count, added.Name);
+					Tint(frame, new Color(0.25f, 0.8f, 0.3f, 0.4f));
+					frame.gameObject.SetActive(false);
+					previews.Add(frame.gameObject);
+				}
+			}
+
+			return previews.Count == 0 ? null : (System.Action<bool>)(show =>
+			{
+				foreach (var preview in previews)
+				{
+					if (preview != null)
+					{
+						preview.SetActive(show);
+					}
+				}
+			});
 		}
 
 		// One case: its name, tag and icon, the buttons for its tracked items, what it holds, and its switches and maps. item is null for a saved
@@ -198,6 +246,9 @@ namespace GetReady
 			}
 
 			bool recorded = entry != null && entry.Recorded;
+			// What Update would change in what is tracked, for the button and the strip
+			var change = recorded && item != null ? CasesStep.Diff(item, entry) : null;
+			UnityEngine.UI.Button trackButton = null;
 			int count = recorded ? CasesStep.ItemCount(entry) : item != null ? item.Grids.Sum(grid => grid.Items.Count()) : 0;
 			var title = UiKit.Label(header, $"{name}  -  {ItemsText(count)}", 0.9f, Ui.Text, flex: true);
 			title.overflowMode = TextOverflowModes.Ellipsis;
@@ -218,13 +269,25 @@ namespace GetReady
 				// The two buttons have a row of their own, so a narrow window does not squeeze them into the header
 				var buttons = UiKit.HBox(card, 8f);
 				buttons.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandWidth = true;
-				var track = UiKit.PushButton(buttons, recorded ? "Update tracked items" : "Track items inside", () =>
+				string trackText = recorded ? "Update tracked items" : "Track items inside";
+				if (change != null && change.AddedCount > 0)
+				{
+					trackText += $" <color=#7fd36b>(+{change.AddedCount})</color>";
+				}
+
+				if (change != null && change.RemovedCount > 0)
+				{
+					trackText += $" <color=#ec6a5f>(-{change.RemovedCount})</color>";
+				}
+
+				var track = UiKit.PushButton(buttons, trackText, () =>
 				{
 					var saved = CasesStep.Record(item);
 					ReadyPlan._status = $"Tracking {ItemsText(CasesStep.ItemCount(saved))}{(saved.Money.Count > 0 ? " and " + MoneyText(saved) : "")} in {name}.";
 					Changed();
 				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.Size(track, width: 1f, flexWidth: 1f).minWidth = 0f;
+				trackButton = track;
 				UiKit.Tip(track, "Remembers what this case holds now, and where each item sits.\n\nGetting ready then brings back what is missing and, with <b>Take out the rest</b>, takes out everything else. Other cases are left alone.");
 				if (recorded)
 				{
@@ -252,7 +315,11 @@ namespace GetReady
 
 			if (recorded)
 			{
-				TrackedStrip(card, entry);
+				var preview = TrackedStrip(card, entry, change);
+				if (preview != null && trackButton != null)
+				{
+					trackButton.gameObject.AddComponent<HoverRelay>().OnHover = preview;
+				}
 			}
 
 			var options = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
@@ -318,5 +385,15 @@ namespace GetReady
 				}
 			}
 		}
+	}
+
+	// Tells a function when the mouse comes onto and leaves an object (what Update would do, shown while it is over its button)
+	internal class HoverRelay : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+	{
+		internal System.Action<bool> OnHover;
+
+		public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData) => OnHover?.Invoke(true);
+
+		public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) => OnHover?.Invoke(false);
 	}
 }

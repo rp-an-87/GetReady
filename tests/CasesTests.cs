@@ -104,6 +104,35 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void Update_would_add_what_is_new_and_remove_what_is_gone()
+		{
+			Put(Key, _case);
+			var gone = Put(Card, _case);
+			var entry = Recorded(_case);
+			Take(gone);
+			Put(Other, _case);
+
+			var change = CasesStep.Diff(_case, entry);
+
+			change.Added.Should().ContainSingle().Which.Template.Should().Be(Other);
+			change.Removed.Should().ContainSingle().Which.Template.Should().Be(Card);
+			change.AddedCount.Should().Be(1);
+			change.RemovedCount.Should().Be(1);
+		}
+
+		[Fact]
+		public void Update_changes_nothing_when_the_case_is_as_recorded()
+		{
+			Put(Key, _case);
+			var entry = Recorded(_case);
+
+			var change = CasesStep.Diff(_case, entry);
+
+			change.Added.Should().BeEmpty();
+			change.Removed.Should().BeEmpty();
+		}
+
+		[Fact]
 		public void Recording_keeps_where_each_item_sat()
 		{
 			var grid = _case.Grids[0];

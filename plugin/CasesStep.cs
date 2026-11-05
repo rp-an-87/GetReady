@@ -106,6 +106,58 @@ namespace GetReady
 			return entry;
 		}
 
+		// What pressing Update would change: items in the case now that are not tracked (added) and tracked items no longer in it (removed),
+		// counted by kind. Money and positions are not part of it.
+		internal class CaseChange
+		{
+			public List<CaseItem> Added = new List<CaseItem>(), Removed = new List<CaseItem>();
+			public int AddedCount => Added.Sum(item => item.Count);
+			public int RemovedCount => Removed.Sum(item => item.Count);
+		}
+
+		internal static CaseChange Diff(CompoundItem container, CaseEntry entry)
+		{
+			var now = new Dictionary<string, CaseItem>();
+			foreach (var grid in container.Grids)
+			{
+				foreach (var item in grid.Items.Where(item => !IsMoney(item)))
+				{
+					var template = item.TemplateId.ToString();
+					CaseItem found;
+					if (now.TryGetValue(template, out found))
+					{
+						found.Count += item.StackObjectsCount;
+					}
+					else
+					{
+						now[template] = new CaseItem { Template = template, Name = Game.NameOf(item), Count = item.StackObjectsCount };
+					}
+				}
+			}
+
+			var tracked = entry.Items.GroupBy(item => item.Template).ToDictionary(group => group.Key, group => new CaseItem { Template = group.Key, Name = group.First().Name, Count = group.Sum(item => item.Count) });
+			var change = new CaseChange();
+			foreach (var pair in now)
+			{
+				int had = tracked.ContainsKey(pair.Key) ? tracked[pair.Key].Count : 0;
+				if (pair.Value.Count > had)
+				{
+					change.Added.Add(new CaseItem { Template = pair.Key, Name = pair.Value.Name, Count = pair.Value.Count - had });
+				}
+			}
+
+			foreach (var pair in tracked)
+			{
+				int has = now.ContainsKey(pair.Key) ? now[pair.Key].Count : 0;
+				if (pair.Value.Count > has)
+				{
+					change.Removed.Add(new CaseItem { Template = pair.Key, Name = pair.Value.Name, Count = pair.Value.Count - has });
+				}
+			}
+
+			return change;
+		}
+
 		// How many items (not money) a template holds
 		internal static int ItemCount(CaseEntry entry) => entry.Items.Sum(item => item.Count);
 
