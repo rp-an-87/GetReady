@@ -59,10 +59,8 @@ namespace GetReady
 			new InventoryScreenEscapePatch().Enable();
 			new HideoutOverlayEscapePatch().Enable();
 			new MapScreenPatch().Enable();
-			new TextWeightPatch().Enable();
 			new DragStartPatch().Enable();
 			new DragEndPatch().Enable();
-			new TextWeightButtonPatch().Enable();
 			new TagChangedPatch().Enable();
 			Trace($"GetReady {PluginVersion} loaded");
 		}
@@ -72,7 +70,7 @@ namespace GetReady
 		private void Update()
 		{
 			SettingsStore.FlushIfDue();
-			ReadyWindow.Tick();
+			ReadyInput.Tick();
 			MagazineTopUp.Update();
 			RepairWithKit.Update();
 			ReadyUiWindow.Update();

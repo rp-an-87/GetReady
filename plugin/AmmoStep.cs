@@ -202,6 +202,18 @@ namespace GetReady
 			return lines;
 		}
 
+		// A model asks for this many stacks: the generic number takes it off the list, any other number puts it on (or changes it)
+		internal static void SetStacks(string template, string name, int stacks)
+		{
+			var ammo = SettingsStore.Current.Ammo;
+			ammo.SpareIgnored.RemoveAll(entry => entry.Template == template);
+			ammo.SpareStacks.RemoveAll(entry => entry.Template == template);
+			if (stacks != Spare.Setting.Target)
+			{
+				ammo.SpareStacks.Add(new ModelStacks { Template = template, Name = name, Stacks = stacks });
+			}
+		}
+
 		// How many stacks of spare ammo a weapon model asks for: its own number, else the generic one
 		internal static int StacksOf(Weapon weapon) => StacksOf(weapon.TemplateId.ToString());
 

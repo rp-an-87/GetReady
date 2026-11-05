@@ -21,6 +21,9 @@ namespace GetReady
 
 		internal static float Unit => BaseUnit * Scale;
 
+		// The size the owner chose in the settings (Scale is what the window was last drawn at)
+		internal static float ChosenScale => Mathf.Clamp(SettingsStore.Current.UiScale, 0.8f, 2f);
+
 		internal static readonly Color PanelColor = new Color(0.12f, 0.125f, 0.125f);
 		internal static readonly Color CardColor = new Color(0.155f, 0.16f, 0.16f);
 		internal static readonly Color InnerColor = new Color(0.07f, 0.075f, 0.075f);
@@ -378,7 +381,7 @@ namespace GetReady
 
 		private static Sprite DiscSprite(Color fill, Color edge)
 		{
-			var texture = Ui.Disc(44, fill, edge);
+			var texture = Disc(44, fill, edge);
 			return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
 		}
 
@@ -487,6 +490,26 @@ namespace GetReady
 			{
 				target.AddComponent<GraphicRaycaster>();
 			}
+		}
+
+		// A filled circle with an edge, smooth at its rim
+		private static Texture2D Disc(int size, Color fill, Color edge)
+		{
+			var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+			float radius = size / 2f;
+			for (int x = 0; x < size; x++)
+			{
+				for (int y = 0; y < size; y++)
+				{
+					float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius));
+					var color = distance > radius - 1.6f ? edge : fill;
+					color.a *= Mathf.Clamp01(radius - distance);
+					texture.SetPixel(x, y, color);
+				}
+			}
+
+			texture.Apply();
+			return texture;
 		}
 
 		private const float ScrollbarWidth = 12f;

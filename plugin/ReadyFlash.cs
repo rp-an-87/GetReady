@@ -85,10 +85,10 @@ namespace GetReady
 				_text = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal, alignment = TextAnchor.MiddleCenter, richText = false, wordWrap = false };
 			}
 
-			Ui.Init();
-			if (Ui.Font != null && _text.font != Ui.Font)
+			OverlayFont.Init();
+			if (OverlayFont.Font != null && _text.font != OverlayFont.Font)
 			{
-				_text.font = Ui.Font;
+				_text.font = OverlayFont.Font;
 			}
 
 			var screen = new Rect(0, 0, Screen.width, Screen.height);

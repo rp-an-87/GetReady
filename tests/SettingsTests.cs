@@ -165,8 +165,8 @@ namespace GetReady.Tests
 			SettingsStore.UseForTests(new Settings());
 			var generic = AmmoStep.Spare.Setting.Target;
 
-			ReadyWindow.SetStacks("abc", "M4A1", generic + 1);
-			ReadyWindow.SetStacks("abc", "M4A1", generic + 3);
+			AmmoStep.SetStacks("abc", "M4A1", generic + 1);
+			AmmoStep.SetStacks("abc", "M4A1", generic + 3);
 
 			SettingsStore.Current.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(generic + 3);
 		}
@@ -176,9 +176,9 @@ namespace GetReady.Tests
 		{
 			SettingsStore.UseForTests(new Settings());
 			var generic = AmmoStep.Spare.Setting.Target;
-			ReadyWindow.SetStacks("abc", "M4A1", generic + 2);
+			AmmoStep.SetStacks("abc", "M4A1", generic + 2);
 
-			ReadyWindow.SetStacks("abc", "M4A1", generic);
+			AmmoStep.SetStacks("abc", "M4A1", generic);
 
 			SettingsStore.Current.Ammo.SpareStacks.Should().BeEmpty();
 			AmmoStep.StacksOf("abc").Should().Be(generic);
@@ -189,7 +189,7 @@ namespace GetReady.Tests
 		{
 			SettingsStore.UseForTests(new Settings());
 
-			ReadyWindow.SetStacks("abc", "Glock", 0);
+			AmmoStep.SetStacks("abc", "Glock", 0);
 
 			AmmoStep.StacksOf("abc").Should().Be(0);
 			SettingsStore.Current.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(0);
@@ -202,7 +202,7 @@ namespace GetReady.Tests
 			SettingsStore.Current.Ammo.SpareIgnored.Add(new ItemRef { Template = "abc", Name = "Glock" });
 			AmmoStep.StacksOf("abc").Should().Be(0);
 
-			ReadyWindow.SetStacks("abc", "Glock", 1);
+			AmmoStep.SetStacks("abc", "Glock", 1);
 
 			SettingsStore.Current.Ammo.SpareIgnored.Should().BeEmpty();
 			AmmoStep.StacksOf("abc").Should().Be(1);

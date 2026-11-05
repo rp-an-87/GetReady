@@ -100,7 +100,7 @@ namespace GetReady
 				window.name = "GetReady Window";
 				var windowContext = ((Window<EditBuildNameWindowContext>)window).Show();
 				UiKit.Init(window.Caption);
-				UiKit.Scale = ReadyWindow.Scale;
+				UiKit.Scale = UiKit.ChosenScale;
 				window.Caption.text = "Get ready for raid";
 				// The window's own Save button is the game's standard button: it is copied for ours before the window hides it
 				try
@@ -160,7 +160,7 @@ namespace GetReady
 				return;
 			}
 
-			float scale = ReadyWindow.Scale;
+			float scale = UiKit.ChosenScale;
 			if (!Mathf.Approximately(scale, UiKit.Scale))
 			{
 				UiKit.Scale = scale;
@@ -586,9 +586,9 @@ namespace GetReady
 			var footer = UiKit.HBox(root, 12f);
 			_status = UiKit.Label(footer, "", 0.8f, UiColors.Dim, flex: true);
 			// The game's own button when it can be copied, else our green one
-			if (GameWidgets.Button(footer, "Get ready", ReadyWindow.Go, UiKit.Unit * 9f, UiKit.Unit * 2.2f) == null)
+			if (GameWidgets.Button(footer, "Get ready", ReadyActions.Go, UiKit.Unit * 9f, UiKit.Unit * 2.2f) == null)
 			{
-				UiKit.PushButton(footer, "Get ready", ReadyWindow.Go, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
+				UiKit.PushButton(footer, "Get ready", ReadyActions.Go, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
 			}
 
 			// What the tabs, the footer, the spacing and a little of the page need, so the body always fits the window
@@ -755,7 +755,7 @@ namespace GetReady
 			return sprite;
 		}
 
-		private static Color ColorOf(ReadyPlan.Standing standing) => ReadyWindow.StandingColor(standing);
+		private static Color ColorOf(ReadyPlan.Standing standing) => UiColors.Of(standing);
 
 		// The Ready page: one line of status on top, then what each step found
 		private static void ReadyPage(RectTransform content)

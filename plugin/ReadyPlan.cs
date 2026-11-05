@@ -356,6 +356,38 @@ namespace GetReady
 			return text.ToString();
 		}
 
+		private static bool _wasShown;
+
+		// Every frame: the status is kept up to date while the stash is up, window or not (the button shows it); the cases changed by hand are
+		// recorded again once the moving has settled (a drag is a remove and an add); a plan asked for is made after a short pause
+		internal static void Tick(bool shown)
+		{
+			if (shown && !_wasShown)
+			{
+				MarkDirty();
+			}
+
+			_wasShown = shown;
+			if (!shown && _watched != null)
+			{
+				Watch(null);
+			}
+
+			if (shown && !ReadyRun._running && CasesStep.Pending.Count > 0 && Time.unscaledTime - _dirtyAt > 0.3f)
+			{
+				var controller = Game.Controller();
+				if (controller != null && CasesStep.SyncPending(controller.Inventory) > 0)
+				{
+					MarkDirty();
+				}
+			}
+
+			if (shown && _dirty && !ReadyRun._running && Time.unscaledTime - _dirtyAt > 0.3f)
+			{
+				Refresh();
+			}
+		}
+
 		// Redraw with a fresh plan on the next frame (never in the middle of drawing)
 		internal static void RefreshSoon()
 		{

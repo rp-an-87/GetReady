@@ -51,28 +51,5 @@ namespace GetReady
 			}
 		}
 
-		// A square of the given size in the layout with the trader's portrait; the name is the tooltip
-		internal static void Slot(Trader trader, float size)
-		{
-			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), trader);
-		}
-
-		// The same in a given rect
-		internal static void Draw(Rect rect, Trader trader)
-		{
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			var sprite = Of(trader);
-			if (sprite != null && sprite.texture != null)
-			{
-				var source = sprite.textureRect;
-				float scale = Math.Min((rect.width - 4) / source.width, (rect.height - 4) / source.height);
-				var shown = new Vector2(source.width * scale, source.height * scale);
-				var target = new Rect(rect.x + (rect.width - shown.x) / 2f, rect.y + (rect.height - shown.y) / 2f, shown.x, shown.y);
-				var texture = sprite.texture;
-				GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
-			}
-
-			GUI.Label(rect, new GUIContent("", trader.LocalizedName));
-		}
 	}
 }

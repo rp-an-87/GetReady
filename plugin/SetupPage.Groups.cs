@@ -199,7 +199,7 @@ namespace GetReady
 		{
 			var box = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
 			UiKit.Label(box, def.Random ? "Used, in any order" : "Used, best first (drag a row to move it)", 0.8f, UiColors.Dim);
-			var entries = ReadyWindow.ShownEntries(def);
+			var entries = def.ShownEntries();
 			var rows = new List<RectTransform>();
 			bool headed = false;
 			foreach (var entry in entries)
@@ -242,7 +242,7 @@ namespace GetReady
 			{
 				UiReorder.Attach(box, rows, (from, to) =>
 				{
-					ReadyWindow.ReorderEntries(def, entries, from, to);
+					def.ReorderEntries(entries, from, to);
 					Changed();
 				});
 			}

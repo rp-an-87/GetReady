@@ -11,5 +11,9 @@ namespace GetReady
 		internal static readonly Color Ok = new Color(0.45f, 0.78f, 0.5f);
 		internal static readonly Color Warn = new Color(1f, 0.64f, 0.28f);
 		internal static readonly Color Bad = new Color(1f, 0.4f, 0.36f);
+
+		// How something stands: done, to do, skipped (dim) or wrong
+		internal static Color Of(ReadyPlan.Standing standing) =>
+			standing == ReadyPlan.Standing.Done ? Ok : standing == ReadyPlan.Standing.Doable ? Warn : standing == ReadyPlan.Standing.Skipped ? Dim : Bad;
 	}
 }

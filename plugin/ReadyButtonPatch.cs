@@ -84,7 +84,7 @@ namespace GetReady
 							ReadyUiWindow.Toggle();
 							break;
 						case ButtonAction.GetReady:
-							ReadyWindow.QuickRun();
+							ReadyActions.QuickRun();
 							break;
 					}
 				};

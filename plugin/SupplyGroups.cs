@@ -327,6 +327,24 @@ namespace GetReady
 			setting.Order = on.Concat(off).ToList();
 		}
 
+		// The entries in the order they are shown: the ones in use in their order, then the ones switched off
+		public List<Entry> ShownEntries()
+		{
+			var off = Setting.Off;
+			var all = OrderedEntries();
+			return all.Where(entry => !off.Contains(entry.Template)).Concat(all.Where(entry => off.Contains(entry.Template))).ToList();
+		}
+
+		// A row dragged from one place of the shown list to another: writes the order out in full
+		public void ReorderEntries(List<Entry> shown, int from, int to)
+		{
+			var order = shown.Select(entry => entry.Template).ToList();
+			var key = order[from];
+			order.RemoveAt(from);
+			order.Insert(to, key);
+			Setting.Order = order;
+		}
+
 		// ---- Weighing items
 
 		// What an item counts for, or 0 when it isn't one of the group's items

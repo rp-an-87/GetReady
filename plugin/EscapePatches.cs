@@ -15,7 +15,7 @@ namespace GetReady
 		// true when the key was taken
 		internal static bool Handle(ECommand command, ref InputNode.ETranslateResult result)
 		{
-			if (!command.IsCommand(ECommand.Escape) || !ReadyWindow.ConsumeEscape())
+			if (!command.IsCommand(ECommand.Escape) || !ReadyInput.ConsumeEscape())
 			{
 				return false;
 			}

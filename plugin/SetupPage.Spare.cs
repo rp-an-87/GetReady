@@ -125,7 +125,7 @@ namespace GetReady
 				{
 					if (now > 0)
 					{
-						ReadyWindow.SetStacks(template, name, now - 1);
+						AmmoStep.SetStacks(template, name, now - 1);
 						Changed();
 					}
 				},
@@ -133,7 +133,7 @@ namespace GetReady
 				{
 					if (now < MostStacks)
 					{
-						ReadyWindow.SetStacks(template, name, now + 1);
+						AmmoStep.SetStacks(template, name, now + 1);
 						Changed();
 					}
 				}, "One stack fewer for this model (0: no spare ammo)", "One stack more for this model");

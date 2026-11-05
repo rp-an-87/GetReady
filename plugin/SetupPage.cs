@@ -374,7 +374,7 @@ namespace GetReady
 			var size = UiKit.HBox(section, 8f);
 			UiKit.Tip(UiKit.Label(size, "Window size", 0.9f, UiColors.Text), "Scales the text and pictures in this window and the red check box. Handy on a big screen. The window itself is resized by dragging its edges.");
 			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
-			var percent = UiKit.Label(size, $"{Mathf.RoundToInt(ReadyWindow.Scale * 100f)}%", 0.9f, UiColors.Text, align: TextAlignmentOptions.Center);
+			var percent = UiKit.Label(size, $"{Mathf.RoundToInt(UiKit.ChosenScale * 100f)}%", 0.9f, UiColors.Text, align: TextAlignmentOptions.Center);
 			UiKit.Size(percent, UiKit.Unit * 3.5f);
 			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 
@@ -383,7 +383,7 @@ namespace GetReady
 
 		private static void Resize(float step)
 		{
-			SettingsStore.Current.UiScale = Mathf.Clamp(Mathf.Round((ReadyWindow.Scale + step) * 10f) / 10f, 0.8f, 2f);
+			SettingsStore.Current.UiScale = Mathf.Clamp(Mathf.Round((UiKit.ChosenScale + step) * 10f) / 10f, 0.8f, 2f);
 			SettingsStore.Save();
 			ReadyUiWindow.ApplyScale();
 		}

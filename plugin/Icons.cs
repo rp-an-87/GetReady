@@ -27,15 +27,6 @@ namespace GetReady
 
 		private static readonly Dictionary<object, Sprite> EffectSprites = new Dictionary<object, Sprite>();
 
-		// The game's own icon of a kind of trouble in a framed square, the name is the tooltip. A type (IHeavyBleeding, IFracture...) is
-		// the status icon of the health screen; the health factor (HP) is the game's health icon.
-		internal static void DrawEffect(Rect rect, object trouble, string name)
-		{
-			var sprite = EffectSprite(trouble);
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			DrawSprite(rect, sprite, name);
-		}
-
 		internal static Sprite EffectSprite(object trouble)
 		{
 			Sprite sprite;
@@ -130,20 +121,6 @@ namespace GetReady
 
 		// Whether the step has an icon type (the sprite may still be missing; Step then draws nothing)
 		internal static bool HasStepIcon(string step) => TypeOfStep(step) != null;
-
-		// A small framed icon for a step's title, like the item slots (just the space when the game has none)
-		internal static void Step(Rect rect, string step)
-		{
-			var type = TypeOfStep(step);
-			var sprite = type == null ? null : TypeSprite(type.Value);
-			if (sprite == null)
-			{
-				return;
-			}
-
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			DrawSprite(rect, sprite, step);
-		}
 
 		// Whether the template is in the item tree below the parent
 		internal static bool IsUnder(ItemTemplate template, string parent)
@@ -283,61 +260,5 @@ namespace GetReady
 			return icon?.Sprite;
 		}
 
-		// The item's icon fitted into the rect (an empty frame while it is loading or when you have none of it); the item's
-		// name is the tooltip
-		internal static void Draw(Rect rect, string template, string name)
-		{
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			var sprite = Of(template);
-			if (sprite == null && !IsExamined(template))
-			{
-				GUI.Label(rect, "?", Ui.Centered);
-			}
-
-			DrawSprite(rect, sprite, name);
-		}
-
-		internal static void Draw(Rect rect, Item item, string name)
-		{
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			DrawSprite(rect, OfItem(item), name);
-		}
-
-		private static void DrawSprite(Rect rect, Sprite sprite, string name)
-		{
-
-			if (sprite != null && sprite.texture != null)
-			{
-				var source = sprite.textureRect;
-				float scale = Math.Min((rect.width - 4) / source.width, (rect.height - 4) / source.height);
-				var size = new Vector2(source.width * scale, source.height * scale);
-				var target = new Rect(rect.x + (rect.width - size.x) / 2f, rect.y + (rect.height - size.y) / 2f, size.x, size.y);
-				var texture = sprite.texture;
-				GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
-			}
-
-			GUI.Label(rect, new GUIContent("", name));
-		}
-
-		// A square of the given size in the layout with this very item's icon
-		internal static void Slot(Item item, string name, float size)
-		{
-			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), item, name);
-		}
-
-		// A square of the given size with a "?" like an item not inspected yet: for a group that stands for any of several items
-		internal static void SlotUnknown(string name, float size)
-		{
-			var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
-			GUI.Box(rect, GUIContent.none, Ui.Inner);
-			GUI.Label(rect, "?", Ui.Centered);
-			GUI.Label(rect, new GUIContent("", name));
-		}
-
-		// A square of the given size in the layout with the item's icon
-		internal static void Slot(string template, string name, float size)
-		{
-			Draw(GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size)), template, name);
-		}
 	}
 }

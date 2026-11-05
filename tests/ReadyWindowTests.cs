@@ -426,7 +426,7 @@ namespace GetReady.Tests
 			skipped.Skipped = true;
 
 			Standing(skipped, new PlanLine { Text = "Would bring 75,000 RUB" }).Should().Be("Skipped");
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Skipped).Should().Be(UiColors.Dim);
+			UiColors.Of(ReadyPlan.Standing.Skipped).Should().Be(UiColors.Dim);
 		}
 
 		[Fact]
@@ -436,54 +436,6 @@ namespace GetReady.Tests
 			skipped.Skipped = true;
 
 			Step(skipped, new PlanLine { Text = "Would bring 75,000 RUB" }).Should().Be((0, 0));
-		}
-
-		// ---- the jump tabs of Setup
-
-		[Theory]
-		[InlineData(0f, 0)]
-		[InlineData(80f, 0)]
-		[InlineData(100f, 1)]      // within the small margin of the top
-		[InlineData(250f, 1)]
-		[InlineData(700f, 2)]
-		public void The_tab_lit_is_the_last_section_that_has_reached_the_top(float scroll, int expected)
-		{
-			ReadyWindow.ActiveSection(new[] { 0f, 100f, 400f }, scroll, 300f, 1000f).Should().Be(expected);
-		}
-
-		[Fact]
-		public void At_the_end_of_the_page_the_last_tab_is_lit_even_when_its_section_is_short()
-		{
-			// the page is 700 high in a view of 300: the end is 400, where the last section (at 650) never reaches the top
-			ReadyWindow.ActiveSection(new[] { 0f, 100f, 650f }, 400f, 300f, 700f).Should().Be(2);
-		}
-
-		[Fact]
-		public void A_page_that_fits_the_view_lights_the_first_tab()
-		{
-			ReadyWindow.ActiveSection(new[] { 0f, 100f }, 0f, 500f, 400f).Should().Be(0);
-		}
-
-		[Fact]
-		public void No_sections_measured_yet_lights_nothing()
-		{
-			ReadyWindow.ActiveSection(new float[0], 0f, 300f, 0f).Should().Be(-1);
-		}
-
-		[Fact]
-		public void Tabs_break_into_rows_when_they_do_not_fit()
-		{
-			var rows = ReadyWindow.TabRows(new[] { 100f, 100f, 100f, 100f, 100f }, 250f);
-
-			rows.Select(row => row.ToArray()).Should().BeEquivalentTo(new[] { new[] { 0, 1 }, new[] { 2, 3 }, new[] { 4 } });
-		}
-
-		[Fact]
-		public void A_tab_wider_than_the_strip_still_gets_a_row_of_its_own()
-		{
-			var rows = ReadyWindow.TabRows(new[] { 400f, 50f }, 250f);
-
-			rows.Select(row => row.ToArray()).Should().BeEquivalentTo(new[] { new[] { 0 }, new[] { 1 } });
 		}
 
 		// ---- a line that is not part of the card above it
@@ -529,9 +481,9 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_stripe_of_a_card_is_green_amber_or_red()
 		{
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Done).Should().Be(UiColors.Ok);
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Doable).Should().Be(UiColors.Warn);
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Problem).Should().Be(UiColors.Bad);
+			UiColors.Of(ReadyPlan.Standing.Done).Should().Be(UiColors.Ok);
+			UiColors.Of(ReadyPlan.Standing.Doable).Should().Be(UiColors.Warn);
+			UiColors.Of(ReadyPlan.Standing.Problem).Should().Be(UiColors.Bad);
 		}
 
 		// ---- the badge of one step counts cards, like the summary

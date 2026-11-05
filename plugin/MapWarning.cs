@@ -96,7 +96,7 @@ namespace GetReady
 				return;
 			}
 
-			Ui.Init();
+			OverlayFont.Init();
 			float row = Screen.height * 0.045f;
 			if (_text == null)
 			{
@@ -105,9 +105,9 @@ namespace GetReady
 			}
 
 			// The font can turn up after the style is made
-			if (Ui.Font != null && _text.font != Ui.Font)
+			if (OverlayFont.Font != null && _text.font != OverlayFont.Font)
 			{
-				_text.font = Ui.Font;
+				_text.font = OverlayFont.Font;
 			}
 
 			_text.fontSize = Mathf.RoundToInt(row * 0.4f);
@@ -176,6 +176,33 @@ namespace GetReady
 			GUILayout.EndArea();
 		}
 
+		// A case's picture in a small dark frame
+		private static void Slot(string template, float size)
+		{
+			var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
+			if (Event.current.type != EventType.Repaint)
+			{
+				return;
+			}
+
+			var previous = GUI.color;
+			GUI.color = new Color(0.105f, 0.11f, 0.11f);
+			GUI.DrawTexture(rect, Texture2D.whiteTexture);
+			GUI.color = previous;
+			var sprite = GetReady.Icons.Of(template);
+			if (sprite == null || sprite.texture == null)
+			{
+				return;
+			}
+
+			var source = sprite.textureRect;
+			float scale = Mathf.Min((rect.width - 4f) / source.width, (rect.height - 4f) / source.height);
+			var shown = new Vector2(source.width * scale, source.height * scale);
+			var target = new Rect(rect.x + (rect.width - shown.x) / 2f, rect.y + (rect.height - shown.y) / 2f, shown.x, shown.y);
+			var texture = sprite.texture;
+			GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
+		}
+
 		// The case icons, each with its tag across the bottom of it, centred on the line
 		private static void Icons(List<CaseEntry> entries, float size, float gap)
 		{
@@ -183,7 +210,7 @@ namespace GetReady
 			{
 				GUILayout.BeginVertical(GUILayout.Width(size));
 				GUILayout.FlexibleSpace();
-				GetReady.Icons.Slot(entry.CaseTemplate, entry.CaseName, size);
+				Slot(entry.CaseTemplate, size);
 				var rect = GUILayoutUtility.GetLastRect();
 				GUILayout.FlexibleSpace();
 				GUILayout.EndVertical();

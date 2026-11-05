@@ -100,7 +100,7 @@ namespace GetReady
 			}, "The usual order and the usual items on", UiKit.Unit * 5f);
 
 			var box = UiKit.VBox(section, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
-			var entries = ReadyWindow.ShownEntries(def);
+			var entries = def.ShownEntries();
 			var rows = new List<RectTransform>();
 			bool headed = false;
 			foreach (var entry in entries)
@@ -146,7 +146,7 @@ namespace GetReady
 
 			UiReorder.Attach(box, rows, (from, to) =>
 			{
-				ReadyWindow.ReorderEntries(def, entries, from, to);
+				def.ReorderEntries(entries, from, to);
 				Changed();
 			});
 		}

@@ -51,7 +51,7 @@ namespace GetReady
 				window.name = "GetReady Alert";
 				var windowContext = ((Window<EditBuildNameWindowContext>)window).Show();
 				UiKit.Init(window.Caption);
-				UiKit.Scale = ReadyWindow.Scale;
+				UiKit.Scale = UiKit.ChosenScale;
 				window.Caption.text = "Check this before you leave";
 				_buttonTemplate = window._saveButtonSpawner;
 				Shell(window);
