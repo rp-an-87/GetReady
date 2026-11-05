@@ -85,6 +85,7 @@ namespace GetReady
 			Sections.Clear();
 			Fillers.Clear();
 			Cards.Clear();
+			_fillNext = 0;
 			GearSections.Clear();
 			GearStale.Clear();
 			var controller = Game.Controller();
@@ -94,7 +95,6 @@ namespace GetReady
 				var current = step;
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 				Action fill = () => FillStep(section, current, controller);
-				fill();
 				if (step is RepairStep || step is AmmoStep)
 				{
 					GearSections.Add(Sections.Count);
@@ -112,9 +112,28 @@ namespace GetReady
 
 			var options = UiKit.VBox(content, 8f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 			Action fillOptions = () => FillOptions(options);
-			fillOptions();
 			Sections.Add(options);
 			Fillers.Add(fillOptions);
+		}
+
+		// The sections are made empty, and filled one after the other over several frames (see Pump), so opening the page is not one long frame
+		private static int _fillNext;
+
+		// Fills the next sections until the time given (in ms) is used; true when all are filled
+		internal static bool Pump(float budgetMs)
+		{
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			while (_fillNext < Fillers.Count)
+			{
+				Fillers[_fillNext]();
+				_fillNext++;
+				if (watch.Elapsed.TotalMilliseconds >= budgetMs)
+				{
+					break;
+				}
+			}
+
+			return _fillNext >= Fillers.Count;
 		}
 
 		// A setting changed: draw the section it is in again (the one the mouse is over; -1 when that is not clear, and the whole page is

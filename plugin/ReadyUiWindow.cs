@@ -193,6 +193,12 @@ namespace GetReady
 
 		private static void UpdateWindow()
 		{
+			if (_building)
+			{
+				PumpBuild();
+				return;
+			}
+
 			UpdateStrip();
 			if (_window == null || _content == null || Time.unscaledTime - _checkedAt < 0.4f)
 			{
@@ -439,6 +445,11 @@ namespace GetReady
 		// The section at the top of the view lit in the strip, as you scroll (a few times a second)
 		private static void UpdateStrip()
 		{
+			if (Plugin.StripHighlight != null && !Plugin.StripHighlight.Value)
+			{
+				return;
+			}
+
 			if (_tab != 1 || _content == null || _scroll == null || _stripTabs.Count == 0 || Time.unscaledTime - _stripAt < 0.15f)
 			{
 				return;
@@ -455,7 +466,7 @@ namespace GetReady
 					continue;
 				}
 
-				float top = -RectTransformUtility.CalculateRelativeRectTransformBounds(_content, section).max.y;
+				float top = TopOf(section);
 				if (top - 12f <= y)
 				{
 					current = i;
@@ -496,6 +507,9 @@ namespace GetReady
 			}
 		}
 
+		// How far down the page a section starts (its top edge; the page's own origin is its top): read from its position, not by measuring everything in it
+		private static float TopOf(RectTransform section) => -(section.localPosition.y + section.rect.yMax);
+
 		private static void JumpTo(int index)
 		{
 			if (_content == null || _scroll == null || index < 0 || index >= SetupPage.Sections.Count || SetupPage.Sections[index] == null)
@@ -504,7 +518,7 @@ namespace GetReady
 			}
 
 			Canvas.ForceUpdateCanvases();
-			float top = -RectTransformUtility.CalculateRelativeRectTransformBounds(_content, SetupPage.Sections[index]).max.y;
+			float top = TopOf(SetupPage.Sections[index]);
 			float most = Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height);
 			_content.anchoredPosition = new Vector2(0f, Mathf.Clamp(top - 8f, 0f, most));
 			// The one clicked stays lit until you scroll yourself (a short section at the end can't reach the top, and the last one would win)
@@ -675,33 +689,67 @@ namespace GetReady
 			}
 
 			WaitFor.Clear();
-			if (_tab == 1)
-			{
-				SetupPage.Build(_content);
-			}
-			else
-			{
-				ReadyPage(_content);
-			}
-
 			if (_status != null)
 			{
 				_status.text = ReadyPlan._status ?? "";
 			}
 
+			if (_tab == 1)
+			{
+				// The Setup page is the big one: its sections are made empty now and filled over the next frames, behind the Loading note
+				SetupPage.Build(_content);
+				_building = true;
+				_buildScroll = scroll;
+				Hold(true);
+				return;
+			}
+
+			_building = false;
+			ReadyPage(_content);
+			FinishPage(scroll);
+		}
+
+		// While the Setup page is being filled
+		private static bool _building;
+		private static float _buildScroll;
+
+		private static void PumpBuild()
+		{
+			if (_content == null)
+			{
+				_building = false;
+				return;
+			}
+
+			if (SetupPage.Pump(8f))
+			{
+				_building = false;
+				FinishPage(_buildScroll);
+			}
+		}
+
+		// The page keeps out of sight behind the Loading note
+		private static void Hold(bool on)
+		{
+			var group = _content.GetComponent<CanvasGroup>() ?? _content.gameObject.AddComponent<CanvasGroup>();
+			group.alpha = on ? 0f : 1f;
+			group.blocksRaycasts = !on;
+			if (_loadingNote != null)
+			{
+				_loadingNote.gameObject.SetActive(on);
+			}
+		}
+
+		// The page is all there: laid out, put back where it was scrolled to, and shown (or held for the pictures that are still to come)
+		private static void FinishPage(float scroll)
+		{
 			LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
 			_content.anchoredPosition = new Vector2(0f, scroll);
 
 			// Pictures still to come: the page is kept out of sight behind a note until they are all there
 			_loading = WaitFor.Count > 0 && !_giveUp && !AllThere();
 			_loadSince = _loading ? Time.unscaledTime : _loadSince;
-			var group = _content.GetComponent<CanvasGroup>() ?? _content.gameObject.AddComponent<CanvasGroup>();
-			group.alpha = _loading ? 0f : 1f;
-			group.blocksRaycasts = !_loading;
-			if (_loadingNote != null)
-			{
-				_loadingNote.gameObject.SetActive(_loading);
-			}
+			Hold(_loading);
 		}
 
 		private static Sprite SpriteOf(PlanLine line)
