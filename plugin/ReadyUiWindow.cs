@@ -210,6 +210,19 @@ namespace GetReady
 				return;
 			}
 
+			if (_revealFrames > 0 && _content != null)
+			{
+				Canvas.ForceUpdateCanvases();
+				LayoutRebuilder.ForceRebuildLayoutImmediate(_content);
+				_revealFrames--;
+				if (_revealFrames == 0)
+				{
+					Hold(false);
+				}
+
+				return;
+			}
+
 			if (_content != null)
 			{
 				_tabScroll[_tab] = _content.anchoredPosition.y;
@@ -633,6 +646,7 @@ namespace GetReady
 			}
 
 			WaitFor.Clear();
+			_revealFrames = 0;
 			if (_status != null)
 			{
 				_status.text = ReadyPlan._status ?? "";
@@ -659,6 +673,8 @@ namespace GetReady
 
 		// While the Setup page is being filled
 		private static bool _building;
+		// Frames the finished page is still kept out of sight, for the layout to settle
+		private static int _revealFrames;
 		private static float _buildScroll;
 
 		private static void PumpBuild()
@@ -697,7 +713,10 @@ namespace GetReady
 			// Pictures still to come: the page is kept out of sight behind a note until they are all there
 			_loading = WaitFor.Count > 0 && !_giveUp && !AllThere();
 			_loadSince = _loading ? Time.unscaledTime : _loadSince;
-			Hold(_loading);
+			// Not shown the moment it is all there: the layout (the scroll bar, the grids, the text) takes a few frames to settle, and the page is
+			// kept behind the Loading note until then (it is also kept while pictures are still to come)
+			Hold(true);
+			_revealFrames = _loading ? 0 : 4;
 		}
 
 		private static Sprite SpriteOf(PlanLine line)
