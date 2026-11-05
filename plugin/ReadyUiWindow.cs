@@ -155,6 +155,39 @@ namespace GetReady
 		// Looked at from the plugin's Update: the page is built again when the plan (or the icons that were still loading) changed
 		internal static void Update()
 		{
+			if (_window == null || Plugin.DebugLogging == null || !Plugin.DebugLogging.Value)
+			{
+				UpdateWindow();
+				return;
+			}
+
+			// With Log details on: what this costs each frame and how fast the game runs while the window is open, every five seconds
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			UpdateWindow();
+			float ms = (float)watch.Elapsed.TotalMilliseconds;
+			_probeCost += ms;
+			_probeMax = Mathf.Max(_probeMax, ms);
+			_probeFrames++;
+			_probeTime += Time.unscaledDeltaTime;
+			if (Time.unscaledTime - _probeAt >= 5f)
+			{
+				if (_probeFrames > 0 && _probeAt > 0f)
+				{
+					float frame = _probeTime / _probeFrames * 1000f;
+					Plugin.Trace($"Window probe (page {(_tab == 0 ? "Status" : "Setup")}): our update {_probeCost / _probeFrames:0.000} ms/frame (worst {_probeMax:0.0} ms), frame {frame:0.0} ms = {1000f / Mathf.Max(frame, 0.01f):0} fps, page rebuilt {_probeRebuilds}x");
+				}
+
+				_probeAt = Time.unscaledTime;
+				_probeCost = _probeMax = _probeTime = 0f;
+				_probeFrames = _probeRebuilds = 0;
+			}
+		}
+
+		private static float _probeCost, _probeMax, _probeTime, _probeAt;
+		private static int _probeFrames, _probeRebuilds;
+
+		private static void UpdateWindow()
+		{
 			UpdateStrip();
 			if (_window == null || _content == null || Time.unscaledTime - _checkedAt < 0.4f)
 			{
@@ -621,6 +654,7 @@ namespace GetReady
 
 		internal static void Rebuild()
 		{
+			_probeRebuilds++;
 			if (_content == null)
 			{
 				return;
