@@ -373,9 +373,10 @@ namespace GetReady
 			plan.Type = follow.Value.Key;
 			plan.Reason = follow.Value.Value;
 
-			// Where the rounds come from, see Rank; the smallest stack first within the same rank
+			// Where the rounds come from, see Rank; within the same rank the loose stacks before the ones inside a case, then the smallest first
 			var ordered = stacks.Where(stack => stack.TemplateId == plan.Type.Value)
 				.OrderBy(stack => Rank(stock, magazine, stack))
+				.ThenBy(stack => Game.InContainer(stack))
 				.ThenBy(stack => stack.StackObjectsCount)
 				.ToList();
 			plan.TypeName = ordered[0].LocalizedShortName();
@@ -410,6 +411,7 @@ namespace GetReady
 			var stack = FindAmmo(controller, magazine)
 				.Where(ammo => ammo.TemplateId == type && stock.Left(ammo) > 0 && ammo.Caliber == weapon.AmmoCaliber && chamber.CheckCompatibility(ammo))
 				.OrderBy(ammo => Rank(stock, magazine, ammo))
+				.ThenBy(ammo => Game.InContainer(ammo))
 				.ThenBy(ammo => ammo.StackObjectsCount)
 				.FirstOrDefault();
 			if (stack != null)

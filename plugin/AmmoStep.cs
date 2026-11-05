@@ -753,8 +753,8 @@ namespace GetReady
 				.Select(group =>
 				{
 					var place = group.First().Key.Parent.Container.ParentItem;
-					// The stash has no icon of its own to draw: no template, the window writes its name
-					bool stash = stock.Stash.Contains(group.First().Key);
+					// The stash has no icon of its own to draw: no template, the window writes its name. Ammo inside a case in the stash is from that case.
+					bool stash = stock.Stash.Contains(group.First().Key) && Game.InContainer(group.First().Key) == 0;
 					return new PlaceCount { Template = stash ? null : place.TemplateId.ToString(), Name = stash ? "Stash" : Game.NameOf(place), Count = group.Sum(pair => pair.Value) };
 				}).ToList();
 

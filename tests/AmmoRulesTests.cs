@@ -30,6 +30,21 @@ namespace GetReady.Tests
 
 		private Ammo OnYou(string template, int count) => NewAmmo(template, count).In(_world.Backpack);
 
+		[Fact]
+		public void Loose_stacks_in_the_stash_are_used_before_ammo_inside_a_case()
+		{
+			var holder = NewContainer(AlphaCase).In(_world.StashBox);
+			var small = NewAmmo(M855, 20).In(holder);
+			Game.IsInsideContainer = item => item == small;
+			var loose = InStash(M855, 70);
+			_world.Equip(NewWeapon().With(NewMagazine().Loaded(M855, 30)));
+
+			var plan = Plan(SpareOnYou());
+
+			plan.Allocation.Select(pair => pair.Key).Should().Equal(loose);
+			plan.Allocation.Select(pair => pair.Key).Should().NotContain(small);
+		}
+
 		// ---- what is there to put in
 
 		[Fact]
