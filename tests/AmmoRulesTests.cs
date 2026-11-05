@@ -93,6 +93,28 @@ namespace GetReady.Tests
 			plan.Reason.Should().StartWith($"the {mode} of the loose ammo");
 		}
 
+		[Theory]
+		[InlineData("worst")]
+		[InlineData("best")]
+		[InlineData("random")]
+		public void Kinds_of_different_calibers_are_never_picked_between(string mode)
+		{
+			var kinds = new List<Ammo> { NewAmmo(M855, 20), NewAmmo(Pst9x19, 20) };
+
+			PickKind(kinds, mode).Should().BeNull();
+		}
+
+		[Fact]
+		public void Kinds_of_one_caliber_are_picked_by_penetration()
+		{
+			var worse = NewAmmo(M855, 20);
+			var better = NewAmmo(M995, 20);
+
+			PickKind(new List<Ammo> { worse, better }, "best").Should().BeSameAs(better);
+			PickKind(new List<Ammo> { worse, better }, "worst").Should().BeSameAs(worse);
+			PickKind(new List<Ammo> { worse, better }, "conflict").Should().BeNull();
+		}
+
 		// ---- what is there to put in
 
 		[Fact]

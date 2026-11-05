@@ -143,8 +143,8 @@ namespace GetReady
 
 		private static string ContainerName(Item container) => container == null ? "your gear" : Game.NameOf(container);
 
-		// One of several kinds of ammo by the owner's mode: the worst or the best (penetration, then damage) or a random one. Null for "conflict":
-		// nothing is guessed. A single kind is always the answer.
+		// One of several kinds of ammo of the same caliber by the owner's mode: the worst or the best (penetration, then damage) or a random one.
+		// Null for "conflict", and for kinds of different calibers: nothing is guessed. A single kind is always the answer.
 		internal static Ammo PickKind(List<Ammo> kinds, string mode)
 		{
 			if (kinds.Count == 0)
@@ -155,6 +155,12 @@ namespace GetReady
 			if (kinds.Count == 1)
 			{
 				return kinds[0];
+			}
+
+			// Kinds of more than one caliber (a magazine that takes two) are never picked between: the worst of a 5.56 and a .300 means nothing
+			if (kinds.Select(ammo => ammo.Caliber).Distinct().Count() > 1)
+			{
+				return null;
 			}
 
 			if (mode == "random")
