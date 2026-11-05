@@ -35,7 +35,7 @@ namespace GetReady
 			UiKit.Icon(parent, sprite, size, tip);
 			if (unknown)
 			{
-				var mark = UiKit.Label(parent.GetChild(parent.childCount - 1), "?", size / Mathf.Max(UiKit.Unit, 1f) * 0.45f, Ui.Dim, align: TextAlignmentOptions.Center);
+				var mark = UiKit.Label(parent.GetChild(parent.childCount - 1), "?", size / Mathf.Max(UiKit.Unit, 1f) * 0.45f, UiColors.Dim, align: TextAlignmentOptions.Center);
 				UiKit.Stretch(mark.rectTransform, 0f, 0f, 0f, 0f);
 			}
 		}
@@ -54,18 +54,18 @@ namespace GetReady
 		// - text +
 		internal static void Stepper(Transform parent, string text, Color color, float width, Action minus, Action plus, string minusTip, string plusTip)
 		{
-			var less = UiKit.PushButton(parent, "-", minus, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+			var less = UiKit.PushButton(parent, "-", minus, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			UiKit.Tip(less, minusTip);
 			var label = UiKit.Label(parent, text, 0.9f, color, align: TextAlignmentOptions.Center);
 			UiKit.Size(label, UiKit.Unit * width);
-			var more = UiKit.PushButton(parent, "+", plus, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+			var more = UiKit.PushButton(parent, "+", plus, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			UiKit.Tip(more, plusTip);
 		}
 
 		// One choice of a row: lit when it is the one chosen
 		internal static void Pick(Transform parent, string text, bool on, Action choose, string tip, float width = -1f)
 		{
-			var button = UiKit.PushButton(parent, text, choose, on ? PickOnFill : PickFill, on ? PickOnHover : PickHover, on ? PickOnText : Ui.Text, width: width, height: UiKit.Unit * 1.7f, edge: on ? PickOnEdge : PickEdge);
+			var button = UiKit.PushButton(parent, text, choose, on ? PickOnFill : PickFill, on ? PickOnHover : PickHover, on ? PickOnText : UiColors.Text, width: width, height: UiKit.Unit * 1.7f, edge: on ? PickOnEdge : PickEdge);
 			UiKit.Tip(button, tip);
 		}
 
@@ -97,7 +97,7 @@ namespace GetReady
 				bool afterOn = i % perRow > 0 && chips[i - 1].On;
 				if (chip.On && afterOn)
 				{
-					UiKit.Label(row, ">", 0.9f, Ui.Dim, align: TextAlignmentOptions.Center);
+					UiKit.Label(row, ">", 0.9f, UiColors.Dim, align: TextAlignmentOptions.Center);
 				}
 				else if (!chip.On && afterOn)
 				{
@@ -112,7 +112,7 @@ namespace GetReady
 					{
 						toggle(key);
 					}
-				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : Ui.Dim, width: UiKit.Unit * (chip.Icon != null ? 2.7f : 6.5f), height: UiKit.Unit * (chip.Icon != null ? 2f : 1.7f), edge: chip.On ? PickOnEdge : PickEdge);
+				}, chip.On ? PickOnFill : PickFill, chip.On ? PickOnHover : PickHover, chip.On ? PickOnText : UiColors.Dim, width: UiKit.Unit * (chip.Icon != null ? 2.7f : 6.5f), height: UiKit.Unit * (chip.Icon != null ? 2f : 1.7f), edge: chip.On ? PickOnEdge : PickEdge);
 				if (chip.Icon != null)
 				{
 					ChipPicture(button.transform, chip);
@@ -194,7 +194,7 @@ namespace GetReady
 		internal static void NotUsedHeading(Transform box)
 		{
 			var heading = UiKit.HBox(box, 0f, new RectOffset(0, 0, 8, 2));
-			UiKit.Label(heading, "NOT USED", 0.75f, Ui.Dim, bold: true);
+			UiKit.Label(heading, "NOT USED", 0.75f, UiColors.Dim, bold: true);
 		}
 
 		// A row of an item that is not used fades, but for its last part (the Used / Not used button), which stays clear to click
@@ -210,14 +210,14 @@ namespace GetReady
 		internal static void EmptyNote(Transform parent, string text)
 		{
 			var row = UiKit.HBox(parent, 0f, new RectOffset(4, 4, 8, 8));
-			UiKit.Label(row, text, 0.85f, Ui.Dim, align: TMPro.TextAlignmentOptions.Center, wrap: true, flex: true);
+			UiKit.Label(row, text, 0.85f, UiColors.Dim, align: TMPro.TextAlignmentOptions.Center, wrap: true, flex: true);
 		}
 
 		// A panel with two sections that are always there: what is on you (equipped), and what is saved or configured but not on you
 		internal static void TwoSections(Transform parent, string onLabel, string onEmpty, bool anyOn, Action<Transform> drawOn, string awayLabel, string awayEmpty, bool anyAway, Action<Transform> drawAway)
 		{
 			var box = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
-			UiKit.Label(box, onLabel, 0.8f, Ui.Dim);
+			UiKit.Label(box, onLabel, 0.8f, UiColors.Dim);
 			if (anyOn)
 			{
 				drawOn(box);
@@ -228,7 +228,7 @@ namespace GetReady
 			}
 
 			UiKit.Line(box);
-			UiKit.Label(box, awayLabel, 0.8f, Ui.Dim);
+			UiKit.Label(box, awayLabel, 0.8f, UiColors.Dim);
 			if (anyAway)
 			{
 				drawAway(box);

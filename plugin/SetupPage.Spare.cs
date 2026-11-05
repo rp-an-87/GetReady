@@ -26,12 +26,12 @@ namespace GetReady
 			var setting = def.Setting;
 			bool anyOwn = AmmoStep.AnyOwnStacks();
 			var card = UiKit.VBox(parent, 8f, new RectOffset(10, 10, 8, 8), UiKit.CardColor, UiKit.CardEdge);
-			UiKit.Label(card, "Spare ammo", 0.95f, setting.Target > 0 || anyOwn ? Ui.Heading : Ui.Dim);
+			UiKit.Label(card, "Spare ammo", 0.95f, setting.Target > 0 || anyOwn ? UiColors.Heading : UiColors.Dim);
 
 			// How many stacks for each caliber
 			var stacks = UiKit.HBox(card, 8f);
 			UiKit.HelpMark(stacks, "How many stacks of spare ammo to carry for each caliber your equipped weapons use (a stack is the ammo's full stack size). Loose ammo of that caliber on you counts toward it, and so does what the top-up of your loose stacks adds; only what is still missing is brought from the stash, and you get a warning when the stash has no more. A weapon model can ask for another number in the list below.");
-			Stepper(stacks, setting.Target > 0 ? $"{setting.Target} stack{(setting.Target == 1 ? "" : "s")} per caliber" : "off", setting.Target > 0 ? Ui.Text : Ui.Dim, 11f,
+			Stepper(stacks, setting.Target > 0 ? $"{setting.Target} stack{(setting.Target == 1 ? "" : "s")} per caliber" : "off", setting.Target > 0 ? UiColors.Text : UiColors.Dim, 11f,
 				() =>
 				{
 					if (setting.Target > 0)
@@ -115,12 +115,12 @@ namespace GetReady
 				TemplateIcon(row, template, UiKit.Unit * 2.2f, name);
 			}
 
-			UiKit.Label(row, name, 0.9f, Ui.Text, flex: true);
+			UiKit.Label(row, name, 0.9f, UiColors.Text, flex: true);
 			int generic = AmmoStep.Spare.Setting.Target;
 			int now = AmmoStep.StacksOf(template);
 			string amount = now == 0 ? "none" : $"{now} stack{(now == 1 ? "" : "s")}";
 			string text = now == generic ? $"default ({(now == 0 ? "none" : now.ToString())})" : amount;
-			Stepper(row, text, now == generic ? Ui.Dim : Ui.Heading, 7.5f,
+			Stepper(row, text, now == generic ? UiColors.Dim : UiColors.Heading, 7.5f,
 				() =>
 				{
 					if (now > 0)

@@ -249,7 +249,7 @@ namespace GetReady
 				Changed();
 			});
 			UiKit.Icon(head, Icons.StepSprite(step.Name), UiKit.Unit * 1.3f, step.Name);
-			UiKit.Label(head, step.Name, 1f, Ui.Heading, bold: true);
+			UiKit.Label(head, step.Name, 1f, UiColors.Heading, bold: true);
 			if (!step.Enabled)
 			{
 				return;
@@ -299,7 +299,7 @@ namespace GetReady
 		{
 			var button = on
 				? UiKit.PushButton(parent, "ON", toggle, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f, edge: new Color(0.5f, 0.62f, 0.38f))
-				: UiKit.PushButton(parent, "OFF", toggle, new Color(0.16f, 0.165f, 0.165f), new Color(0.27f, 0.28f, 0.27f), Ui.Dim, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f, edge: PickEdge);
+				: UiKit.PushButton(parent, "OFF", toggle, new Color(0.16f, 0.165f, 0.165f), new Color(0.27f, 0.28f, 0.27f), UiColors.Dim, width: UiKit.Unit * 3.4f, height: UiKit.Unit * 1.6f, edge: PickEdge);
 			button.GetComponentInChildren<TMP_Text>().fontStyle = FontStyles.Bold;
 		}
 
@@ -312,7 +312,7 @@ namespace GetReady
 				set(!value);
 				Changed();
 			});
-			var label = UiKit.Label(row, text, 0.9f, Ui.Text, flex: true);
+			var label = UiKit.Label(row, text, 0.9f, UiColors.Text, flex: true);
 			if (!string.IsNullOrEmpty(tip))
 			{
 				UiKit.Tip(label, tip);
@@ -324,7 +324,7 @@ namespace GetReady
 		{
 			var row = UiKit.HBox(parent, 8f);
 			UiKit.HelpMark(row, help);
-			UiKit.Label(row, title, muted ? 0.85f : 0.9f, muted ? Ui.Dim : Ui.Text);
+			UiKit.Label(row, title, muted ? 0.85f : 0.9f, muted ? UiColors.Dim : UiColors.Text);
 		}
 
 		// The standard priority list: rows in the order of use, moved by dragging the grip. label gives the text of an item; move gets the
@@ -334,7 +334,7 @@ namespace GetReady
 			var box = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), new Color(0.095f, 0.1f, 0.1f), UiKit.InnerEdge);
 			if (string.IsNullOrEmpty(help))
 			{
-				UiKit.Label(box, title, 0.85f, Ui.Dim);
+				UiKit.Label(box, title, 0.85f, UiColors.Dim);
 			}
 			else
 			{
@@ -347,13 +347,13 @@ namespace GetReady
 				var row = UiKit.HBox(box, 8f);
 				if (numbered)
 				{
-					var number = UiKit.Label(row, (i + 1).ToString(), 0.85f, Ui.Dim, align: TextAlignmentOptions.Center);
+					var number = UiKit.Label(row, (i + 1).ToString(), 0.85f, UiColors.Dim, align: TextAlignmentOptions.Center);
 					UiKit.Size(number, UiKit.Unit * 1.2f);
 				}
 
 				UiKit.Grip(row);
 				picture?.Invoke(row, items[i]);
-				UiKit.Label(row, label(items[i]), 0.9f, Ui.Text, flex: true);
+				UiKit.Label(row, label(items[i]), 0.9f, UiColors.Text, flex: true);
 				rows.Add(row);
 			}
 
@@ -368,15 +368,15 @@ namespace GetReady
 		private static void FillOptions(RectTransform section)
 		{
 			var supplies = SettingsStore.Current.Supplies;
-			UiKit.Label(section, "Options", 1f, Ui.Heading, bold: true);
+			UiKit.Label(section, "Options", 1f, UiColors.Heading, bold: true);
 			UiKit.Line(section);
 
 			var size = UiKit.HBox(section, 8f);
-			UiKit.Tip(UiKit.Label(size, "Window size", 0.9f, Ui.Text), "Scales the text and pictures in this window and the red check box. Handy on a big screen. The window itself is resized by dragging its edges.");
-			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
-			var percent = UiKit.Label(size, $"{Mathf.RoundToInt(ReadyWindow.Scale * 100f)}%", 0.9f, Ui.Text, align: TextAlignmentOptions.Center);
+			UiKit.Tip(UiKit.Label(size, "Window size", 0.9f, UiColors.Text), "Scales the text and pictures in this window and the red check box. Handy on a big screen. The window itself is resized by dragging its edges.");
+			UiKit.PushButton(size, "-", () => Resize(-0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+			var percent = UiKit.Label(size, $"{Mathf.RoundToInt(ReadyWindow.Scale * 100f)}%", 0.9f, UiColors.Text, align: TextAlignmentOptions.Center);
 			UiKit.Size(percent, UiKit.Unit * 3.5f);
-			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 
 			OptionRow(section, supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "Which copy of an item is taken from the stash when you have several.\n<b>On:</b> non-FiR first (it keeps your found-in-raid ones back), even when that one is inside a case or bag. Between equals, the one lying loose goes first.\n<b>Off:</b> the one lying loose goes first, whatever its FiR status.", value => supplies.NonFiRBeforeLoose = value);
 		}

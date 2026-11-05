@@ -30,11 +30,11 @@ namespace GetReady
 			return sprite;
 		}
 
-		private static void CellText(Transform row, string text, Color? color = null) => UiKit.Label(row, text, 0.85f, color ?? Ui.Text);
+		private static void CellText(Transform row, string text, Color? color = null) => UiKit.Label(row, text, 0.85f, color ?? UiColors.Text);
 
-		private static void CellArrow(Transform row) => UiKit.Label(row, "→", 0.85f, Ui.Dim);
+		private static void CellArrow(Transform row) => UiKit.Label(row, "→", 0.85f, UiColors.Dim);
 
-		private static void CellPlus(Transform row) => UiKit.Label(row, "+", 0.85f, Ui.Warn);
+		private static void CellPlus(Transform row) => UiKit.Label(row, "+", 0.85f, UiColors.Warn);
 
 		// An icon with its name as the tooltip (or the tip given: why this ammo was chosen)
 		private static void CellIcon(Transform row, string template, string name, string tip = null)
@@ -52,7 +52,7 @@ namespace GetReady
 		{
 			var row = UiKit.HBox(parent, 6f);
 			UiKit.Gap(row, UiKit.Unit * 2.4f);
-			var name = UiKit.Label(row, label, 0.8f, Ui.Dim);
+			var name = UiKit.Label(row, label, 0.8f, UiColors.Dim);
 			UiKit.Size(name, UiKit.Unit * 6f);
 			content(row);
 			UiKit.Tip(row, tip);
@@ -60,7 +60,7 @@ namespace GetReady
 
 		// "have/want", in the colour of whether it is full
 		private static void CellCount(Transform row, float have, float want, bool amber = false) =>
-			CellText(row, $"{have:N0}/{want:N0}", have >= want ? Ui.Ok : amber ? Ui.Warn : Ui.Bad);
+			CellText(row, $"{have:N0}/{want:N0}", have >= want ? UiColors.Ok : amber ? UiColors.Warn : UiColors.Bad);
 
 		// "from" and where the rounds are taken from: the stash by the picture of its "All" filter, a case by its own (hover: how many from each)
 		private static void CellFrom(Transform row, List<PlaceCount> from)
@@ -70,7 +70,7 @@ namespace GetReady
 				return;
 			}
 
-			CellText(row, "from", Ui.Dim);
+			CellText(row, "from", UiColors.Dim);
 			foreach (var place in from)
 			{
 				string tip = $"{place.Name}: {place.Count:N0} rounds";
@@ -140,7 +140,7 @@ namespace GetReady
 
 			foreach (var note in layout.Notes)
 			{
-				UiKit.Label(parent, note.Text, 0.8f, Ui.Dim, wrap: true);
+				UiKit.Label(parent, note.Text, 0.8f, UiColors.Dim, wrap: true);
 			}
 
 			if (layout.Rest.Count > 0)
@@ -163,7 +163,7 @@ namespace GetReady
 					UiKit.Icon(head, SpriteOfTemplate(bullet), CellIconSize, caliber);
 				}
 
-				UiKit.Label(head, caliber, 0.95f, Ui.Heading);
+				UiKit.Label(head, caliber, 0.95f, UiColors.Heading);
 			}
 
 			foreach (var weapon in group.Weapons)
@@ -186,10 +186,10 @@ namespace GetReady
 			var all = panel.All();
 			var head = UiKit.HBox(parent, 8f);
 			UiKit.Icon(head, Icons.OfItem(panel.Item), UiKit.Unit * 2.2f, panel.Name);
-			UiKit.Label(head, panel.Name, 0.9f, Ui.Text);
+			UiKit.Label(head, panel.Name, 0.9f, UiColors.Text);
 			if (!string.IsNullOrEmpty(panel.Slot))
 			{
-				UiKit.Label(head, "· " + panel.Slot, 0.85f, Ui.Dim);
+				UiKit.Label(head, "· " + panel.Slot, 0.85f, UiColors.Dim);
 			}
 
 			UiKit.Spacer(head);
@@ -205,12 +205,12 @@ namespace GetReady
 			// What is there now
 			if (magazine != null)
 			{
-				AmmoRow(parent, "In the gun", row => CellText(row, AmmoPanels.ShortProblem(magazine.Detail ?? magazine.Text), Ui.Bad), magazine.Text);
+				AmmoRow(parent, "In the gun", row => CellText(row, AmmoPanels.ShortProblem(magazine.Detail ?? magazine.Text), UiColors.Bad), magazine.Text);
 			}
 			else if (put != null)
 			{
 				// Amber: a magazine goes in (the steps below), red is only for a weapon nothing can be put in
-				AmmoRow(parent, "In the gun", row => CellText(row, "no magazine", Ui.Warn));
+				AmmoRow(parent, "In the gun", row => CellText(row, "no magazine", UiColors.Warn));
 			}
 			else if (panel.Head != null)
 			{
@@ -235,7 +235,7 @@ namespace GetReady
 				{
 					if (round == null)
 					{
-						CellText(row, "empty", Ui.Dim);
+						CellText(row, "empty", UiColors.Dim);
 					}
 					else
 					{
@@ -258,7 +258,7 @@ namespace GetReady
 					CellText(row, fill.Label);
 					if (forPut)
 					{
-						CellText(row, "from", Ui.Dim);
+						CellText(row, "from", UiColors.Dim);
 						CellIcon(row, fill.PlaceTemplate, fill.Place);
 					}
 
@@ -268,7 +268,7 @@ namespace GetReady
 					CellAmmo(row, fill.Template, fill.What, fill.Why, fill.From);
 					if (!forPut)
 					{
-						CellText(row, "(taken out and put back)", Ui.Dim);
+						CellText(row, "(taken out and put back)", UiColors.Dim);
 					}
 				}, AmmoPanels.Tip(fill));
 			}
@@ -280,9 +280,9 @@ namespace GetReady
 				{
 					CellIcon(row, put.Template, put.What);
 					CellText(row, put.What);
-					CellText(row, "from", Ui.Dim);
+					CellText(row, "from", UiColors.Dim);
 					CellIcon(row, put.PlaceTemplate, put.Place);
-					CellText(row, "into", Ui.Dim);
+					CellText(row, "into", UiColors.Dim);
 					UiKit.Icon(row, Icons.OfItem(panel.Item), CellIconSize, panel.Name);
 				}, put.Text);
 			}
@@ -294,7 +294,7 @@ namespace GetReady
 				{
 					if (chamber.Problem)
 					{
-						CellText(row, AmmoPanels.ShortProblem(chamber.Detail ?? chamber.Text), Ui.Bad);
+						CellText(row, AmmoPanels.ShortProblem(chamber.Detail ?? chamber.Text), UiColors.Bad);
 					}
 					else
 					{
@@ -306,7 +306,7 @@ namespace GetReady
 			foreach (var line in other)
 			{
 				var shown = line;
-				AmmoRow(parent, "", row => CellText(row, AmmoPanels.Short(shown.Detail ?? shown.Text), shown.Problem ? Ui.Bad : Ui.Text), shown.Text);
+				AmmoRow(parent, "", row => CellText(row, AmmoPanels.Short(shown.Detail ?? shown.Text), shown.Problem ? UiColors.Bad : UiColors.Text), shown.Text);
 			}
 		}
 
@@ -328,16 +328,16 @@ namespace GetReady
 				else if (problem == null && head.What != null)
 				{
 					CellIcon(row, head.WhatTemplate, head.What);
-					CellText(row, $"{head.Amount:N0} {head.What} on you", Ui.Ok);
+					CellText(row, $"{head.Amount:N0} {head.What} on you", UiColors.Ok);
 				}
 
 				if (problem != null)
 				{
-					CellText(row, AmmoPanels.ShortProblem(problem.Detail ?? problem.Text), Ui.Bad);
+					CellText(row, AmmoPanels.ShortProblem(problem.Detail ?? problem.Text), UiColors.Bad);
 				}
 				else if (asked > 0)
 				{
-					CellText(row, $"asks for {asked:N0}", Ui.Dim);
+					CellText(row, $"asks for {asked:N0}", UiColors.Dim);
 				}
 			}, bring?.Text ?? problem?.Text ?? "Loose ammo of this caliber on you counts toward what is asked, and so does what the top-up of the loose stacks adds.");
 		}
@@ -378,14 +378,14 @@ namespace GetReady
 		{
 			// Short, nothing to do and nothing wrong (loose stacks the stash can't fill): the count is dim, not a warning
 			bool left = line.Subject == AmmoStep.LooseAmmo && standing == ReadyPlan.Standing.Done && line.Have < line.Want;
-			var color = left ? Ui.Dim : standing == ReadyPlan.Standing.Done ? Ui.Ok : standing == ReadyPlan.Standing.Doable ? Ui.Warn : Ui.Bad;
+			var color = left ? UiColors.Dim : standing == ReadyPlan.Standing.Done ? UiColors.Ok : standing == ReadyPlan.Standing.Doable ? UiColors.Warn : UiColors.Bad;
 			var row = UiKit.HBox(parent, 8f);
 			if (!string.IsNullOrEmpty(line.Template))
 			{
 				UiKit.Icon(row, SpriteOfTemplate(line.Template), UiKit.Unit * 2.2f, line.Subject);
 			}
 
-			UiKit.Label(row, line.Subject, 0.9f, Ui.Text);
+			UiKit.Label(row, line.Subject, 0.9f, UiColors.Text);
 			if (line.Subject == AmmoStep.ExtraMagazines)
 			{
 				HelpMark(row, "Magazines not including the ones going into your weapons.");
@@ -407,7 +407,7 @@ namespace GetReady
 		private static void StuckBox(Transform parent, PlanLine line)
 		{
 			var box = UiKit.VBox(parent, 4f, new RectOffset(10, 10, 6, 6), UiKit.ProblemColor);
-			UiKit.Label(box, line.Subject, 0.9f, Ui.Bad);
+			UiKit.Label(box, line.Subject, 0.9f, UiColors.Bad);
 			foreach (var mag in line.Mags)
 			{
 				var row = UiKit.HBox(box, 6f);
@@ -415,7 +415,7 @@ namespace GetReady
 				CellText(row, mag.Name);
 				if (!string.IsNullOrEmpty(mag.Place))
 				{
-					CellText(row, "in", Ui.Dim);
+					CellText(row, "in", UiColors.Dim);
 					CellIcon(row, mag.PlaceTemplate, mag.Place);
 				}
 
@@ -424,7 +424,7 @@ namespace GetReady
 
 			UiKit.Label(box, string.IsNullOrEmpty(line.Options)
 				? "There is no ammo left on you or in the stash that fits them."
-				: $"They could take {line.Options}, and nothing tells which one: load one of them yourself and the others follow.", 0.85f, Ui.Text, wrap: true);
+				: $"They could take {line.Options}, and nothing tells which one: load one of them yourself and the others follow.", 0.85f, UiColors.Text, wrap: true);
 			UiKit.Tip(box, line.Text);
 		}
 
@@ -448,7 +448,7 @@ namespace GetReady
 			{
 				CellIcon(row, line.ItemTemplate, line.Label);
 				CellText(row, line.Label);
-				CellText(row, "in", Ui.Dim);
+				CellText(row, "in", UiColors.Dim);
 				CellIcon(row, line.PlaceTemplate, line.Place);
 				CellCount(row, line.Have, line.Want, true);
 				CellArrow(row);
@@ -463,7 +463,7 @@ namespace GetReady
 				CellCount(row, line.Have, line.Want, true);
 				CellArrow(row);
 				CellCount(row, Math.Min(line.Want, line.Have + line.Amount), line.Want, true);
-				CellText(row, $"+{line.Amount:N0}", Ui.Dim);
+				CellText(row, $"+{line.Amount:N0}", UiColors.Dim);
 				CellFrom(row, line.From);
 			}
 			else

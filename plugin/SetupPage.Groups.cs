@@ -71,14 +71,14 @@ namespace GetReady
 			{
 				// A square with a "?", like an item not inspected yet: it stands for any of several items
 				UiKit.Icon(top, null, UiKit.Unit * 3f, "Any of your grenades, picked at random");
-				var mark = UiKit.Label(top.GetChild(top.childCount - 1), "?", 1.1f, Ui.Dim, align: TextAlignmentOptions.Center);
+				var mark = UiKit.Label(top.GetChild(top.childCount - 1), "?", 1.1f, UiColors.Dim, align: TextAlignmentOptions.Center);
 				UiKit.Stretch(mark.rectTransform, 0f, 0f, 0f, 0f);
 			}
 
 			var column = UiKit.VBox(top, 4f);
 			// Money has room for the places on the same row, so its column keeps to what it needs
 			UiKit.Size(column, flexWidth: def.Money ? 0f : 1f);
-			UiKit.Label(column, def.Name, 0.95f, on ? Ui.Heading : Ui.Dim);
+			UiKit.Label(column, def.Name, 0.95f, on ? UiColors.Heading : UiColors.Dim);
 			var amount = UiKit.HBox(column, 6f);
 			if (def.Money)
 			{
@@ -90,7 +90,7 @@ namespace GetReady
 						setting.Target = Math.Max(0, setting.Target - def.Step);
 						Changed();
 					}
-				}, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				}, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.NumberField(amount, setting.Target.ToString(), UiKit.Unit * 7f, UiKit.Unit * 1.7f, typed =>
 				{
 					int parsed;
@@ -100,7 +100,7 @@ namespace GetReady
 						Changed();
 					}
 				});
-				var sign = UiKit.Label(amount, Game.Symbol(def.Unit) ?? def.Unit, 0.9f, Ui.Dim, align: TextAlignmentOptions.Center);
+				var sign = UiKit.Label(amount, Game.Symbol(def.Unit) ?? def.Unit, 0.9f, UiColors.Dim, align: TextAlignmentOptions.Center);
 				UiKit.Size(sign, UiKit.Unit * 1.5f);
 				UiKit.PushButton(amount, "+", () =>
 				{
@@ -109,11 +109,11 @@ namespace GetReady
 						setting.Target = Math.Min(def.Max, setting.Target + def.Step);
 						Changed();
 					}
-				}, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				}, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			}
 			else
 			{
-				Stepper(amount, on ? Game.Amount(def.Unit, setting.Target) : "off", on ? Ui.Text : Ui.Dim, compact ? (def.IsQuota ? 9f : 6f) : 9f,
+				Stepper(amount, on ? Game.Amount(def.Unit, setting.Target) : "off", on ? UiColors.Text : UiColors.Dim, compact ? (def.IsQuota ? 9f : 6f) : 9f,
 					() =>
 					{
 						if (setting.Target > 0)
@@ -198,7 +198,7 @@ namespace GetReady
 		private static void GroupItems(Transform parent, GroupDef def)
 		{
 			var box = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
-			UiKit.Label(box, def.Random ? "Used, in any order" : "Used, best first (drag a row to move it)", 0.8f, Ui.Dim);
+			UiKit.Label(box, def.Random ? "Used, in any order" : "Used, best first (drag a row to move it)", 0.8f, UiColors.Dim);
 			var entries = ReadyWindow.ShownEntries(def);
 			var rows = new List<RectTransform>();
 			bool headed = false;
@@ -218,7 +218,7 @@ namespace GetReady
 				}
 
 				TemplateIcon(row, entry.Template, UiKit.Unit * 2f, entry.Name);
-				UiKit.Label(row, entry.Name, 0.9f, off ? Ui.Dim : Ui.Text, flex: true);
+				UiKit.Label(row, entry.Name, 0.9f, off ? UiColors.Dim : UiColors.Text, flex: true);
 				if (!def.Random)
 				{
 					MaxControls(row, def, entry);
@@ -253,8 +253,8 @@ namespace GetReady
 		{
 			int max = def.MaxOf(entry.Template);
 			string template = entry.Template;
-			UiKit.Tip(UiKit.Label(row, "Max", 0.8f, Ui.Dim), "The most of this item to carry for the group. If nothing else can make up the amount, more are still brought.");
-			Stepper(row, max == 0 ? "any" : max.ToString(), Ui.Text, 3f,
+			UiKit.Tip(UiKit.Label(row, "Max", 0.8f, UiColors.Dim), "The most of this item to carry for the group. If nothing else can make up the amount, more are still brought.");
+			Stepper(row, max == 0 ? "any" : max.ToString(), UiColors.Text, 3f,
 				() =>
 				{
 					if (max > 0)

@@ -42,7 +42,7 @@ namespace GetReady
 				{
 					SpecialSlotsStep.Capture(controller);
 					Changed();
-				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				}, ButtonFill, ButtonHover, UiColors.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.Size(save, width: 1f, flexWidth: 1f).minWidth = 0f;
 				UiKit.Tip(save, "Remembers what is in each special slot of your pockets right now");
 			}
@@ -53,7 +53,7 @@ namespace GetReady
 				{
 					SpecialSlotsStep.Clear();
 					Changed();
-				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				}, ButtonFill, ButtonHover, UiColors.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.Size(clear, width: 1f, flexWidth: 1f).minWidth = 0f;
 				UiKit.Tip(clear, "Forgets the saved template (nothing moves)");
 			}

@@ -382,7 +382,7 @@ namespace GetReady
 				return;
 			}
 
-			var button = UiKit.PushButton(parent, name, () => SetTab(index), on ? TabOn : TabOff, on ? new Color(0.31f, 0.29f, 0.19f) : new Color(0.2f, 0.21f, 0.21f), on ? new Color(0.95f, 0.9f, 0.72f) : Ui.Text, height: UiKit.Unit * 1.8f);
+			var button = UiKit.PushButton(parent, name, () => SetTab(index), on ? TabOn : TabOff, on ? new Color(0.31f, 0.29f, 0.19f) : new Color(0.2f, 0.21f, 0.21f), on ? new Color(0.95f, 0.9f, 0.72f) : UiColors.Text, height: UiKit.Unit * 1.8f);
 			button.GetComponent<LayoutElement>().flexibleWidth = 1f;
 		}
 
@@ -460,7 +460,7 @@ namespace GetReady
 						continue;
 					}
 
-					var button = UiKit.PushButton(row, names[index], () => JumpTo(section), new Color(0.15f, 0.155f, 0.155f), new Color(0.22f, 0.23f, 0.22f), Ui.Text, height: UiKit.Unit * 1.5f);
+					var button = UiKit.PushButton(row, names[index], () => JumpTo(section), new Color(0.15f, 0.155f, 0.155f), new Color(0.22f, 0.23f, 0.22f), UiColors.Text, height: UiKit.Unit * 1.5f);
 					button.GetComponent<LayoutElement>().flexibleWidth = 1f;
 				}
 			}
@@ -575,7 +575,7 @@ namespace GetReady
 			}
 
 			_scroll = UiKit.Scroll(root, out _content);
-			_loadingNote = UiKit.Label(_scroll.transform, "Loading…", 1.1f, Ui.Dim, align: TextAlignmentOptions.Center);
+			_loadingNote = UiKit.Label(_scroll.transform, "Loading…", 1.1f, UiColors.Dim, align: TextAlignmentOptions.Center);
 			_loadingNote.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
 			UiKit.Stretch(_loadingNote.rectTransform, 0f, 0f, 0f, 0f);
 			_loadingNote.gameObject.SetActive(false);
@@ -584,7 +584,7 @@ namespace GetReady
 			scrollSize.preferredHeight = 400f;
 
 			var footer = UiKit.HBox(root, 12f);
-			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
+			_status = UiKit.Label(footer, "", 0.8f, UiColors.Dim, flex: true);
 			// The game's own button when it can be copied, else our green one
 			if (GameWidgets.Button(footer, "Get ready", ReadyWindow.Go, UiKit.Unit * 9f, UiKit.Unit * 2.2f) == null)
 			{
@@ -765,15 +765,15 @@ namespace GetReady
 			if (ReadyPlan.Plan.Count == 0)
 			{
 				var box = UiKit.VBox(content, 4f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor);
-				UiKit.Label(box, "Nothing is switched on. Turn something on in Setup.", 0.9f, Ui.Text);
+				UiKit.Label(box, "Nothing is switched on. Turn something on in Setup.", 0.9f, UiColors.Text);
 				return;
 			}
 
 			if (moves == 0 && problemGroups == 0)
 			{
 				var box = UiKit.VBox(content, 4f, new RectOffset(14, 14, 10, 10), UiKit.OkColor);
-				UiKit.Label(box, "You are all set", 1.1f, Ui.Heading, bold: true);
-				UiKit.Label(box, "Everything you asked for is already on you.", 0.9f, Ui.Text);
+				UiKit.Label(box, "You are all set", 1.1f, UiColors.Heading, bold: true);
+				UiKit.Label(box, "Everything you asked for is already on you.", 0.9f, UiColors.Text);
 			}
 			else
 			{
@@ -782,7 +782,7 @@ namespace GetReady
 				{
 					var box = UiKit.VBox(row, 0f, new RectOffset(14, 14, 10, 10), UiKit.ProblemColor);
 					UiKit.Size(box, flexWidth: 1f);
-					UiKit.Label(box, problemGroups == 1 ? "1 thing can't be done as set up" : $"{problemGroups} things can't be done as set up", 1f, Ui.Bad);
+					UiKit.Label(box, problemGroups == 1 ? "1 thing can't be done as set up" : $"{problemGroups} things can't be done as set up", 1f, UiColors.Bad);
 					UiKit.Tip(box, ReadyPlan.ProblemsTooltip());
 				}
 
@@ -790,7 +790,7 @@ namespace GetReady
 				{
 					var box = UiKit.VBox(row, 0f, new RectOffset(14, 14, 10, 10), UiKit.TodoColor);
 					UiKit.Size(box, flexWidth: 1f);
-					UiKit.Label(box, moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil", 1f, Ui.Warn);
+					UiKit.Label(box, moves == 1 ? "1 thing to fulfil" : $"{moves} things to fulfil", 1f, UiColors.Warn);
 					UiKit.Tip(box, ReadyPlan.ToDoTooltip());
 				}
 			}
@@ -807,7 +807,7 @@ namespace GetReady
 
 				var head = UiKit.HBox(section, 8f);
 				UiKit.Icon(head, Icons.StepSprite(step.Name), UiKit.Unit * 1.3f, step.Name);
-				UiKit.Label(head, step.Name, 1f, Ui.Heading, bold: true);
+				UiKit.Label(head, step.Name, 1f, UiColors.Heading, bold: true);
 				UiKit.Spacer(head);
 				StepChip(head, step, lines);
 				if (step.Enabled && lines != null && lines.Count > 0)
@@ -891,7 +891,7 @@ namespace GetReady
 		// What is wanted against what is there: icon, name, the numbers and a bar, in the colour of how the card stands
 		private static void ProgressRow(Transform parent, PlanLine line, ReadyPlan.Standing standing)
 		{
-			var color = line.Skipped ? Ui.Dim : ColorOf(standing);
+			var color = line.Skipped ? UiColors.Dim : ColorOf(standing);
 			var row = UiKit.HBox(parent, 8f);
 			var sprite = SpriteOf(line);
 			if (line.Item != null || !string.IsNullOrEmpty(line.Template))
@@ -902,10 +902,10 @@ namespace GetReady
 			var column = UiKit.VBox(row, 3f);
 			UiKit.Size(column, flexWidth: 1f);
 			var top = UiKit.HBox(column, 8f);
-			UiKit.Label(top, line.Subject, 0.9f, line.Skipped ? Ui.Dim : Ui.Text, flex: true);
+			UiKit.Label(top, line.Subject, 0.9f, line.Skipped ? UiColors.Dim : UiColors.Text, flex: true);
 			if (line.Skipped)
 			{
-				UiKit.Label(top, line.Note, 0.8f, Ui.Dim, align: TextAlignmentOptions.Right);
+				UiKit.Label(top, line.Note, 0.8f, UiColors.Dim, align: TextAlignmentOptions.Right);
 				return;
 			}
 
@@ -925,10 +925,10 @@ namespace GetReady
 
 				var column = UiKit.VBox(box, 2f);
 				UiKit.Size(column, flexWidth: 1f);
-				UiKit.Label(column, line.Subject ?? line.Text, 0.9f, Ui.Bad, wrap: true);
+				UiKit.Label(column, line.Subject ?? line.Text, 0.9f, UiColors.Bad, wrap: true);
 				if (line.Detail != null)
 				{
-					UiKit.Label(column, line.Detail, 0.85f, Ui.Text, wrap: true);
+					UiKit.Label(column, line.Detail, 0.85f, UiColors.Text, wrap: true);
 				}
 			}
 			else if (line.Run != null)
@@ -939,12 +939,12 @@ namespace GetReady
 					UiKit.Gap(row, UiKit.Unit * 2f);
 				}
 
-				UiKit.Label(row, "+", 0.9f, Ui.Warn);
+				UiKit.Label(row, "+", 0.9f, UiColors.Warn);
 				UiKit.Label(row, line.Text, 0.85f, Color.white, wrap: true, flex: true);
 			}
 			else
 			{
-				UiKit.Label(parent, line.Text, 0.8f, Ui.Dim, wrap: true);
+				UiKit.Label(parent, line.Text, 0.8f, UiColors.Dim, wrap: true);
 			}
 		}
 	}

@@ -12,7 +12,7 @@ namespace GetReady
 
 			// One card, three rules, each with a small heading: chambering, the loose stacks, and what an empty spare magazine copies
 			var rules = UiKit.VBox(section, 8f, new RectOffset(10, 10, 8, 8), UiKit.CardColor, UiKit.CardEdge);
-			UiKit.Label(rules, "Magazines and loose ammo", 0.95f, Ui.Heading);
+			UiKit.Label(rules, "Magazines and loose ammo", 0.95f, UiColors.Heading);
 
 			GroupHeading(rules, "CHAMBER", "The round is the same ammo as the weapon's magazine, taken from your gear first, then the stash.");
 			OptionRow(rules, ammo.Chamber, "Chamber a round in weapons with an empty chamber", null, value => ammo.Chamber = value);
@@ -43,7 +43,7 @@ namespace GetReady
 			}
 			else
 			{
-				UiKit.Label(section, "Open this with the stash to set the spare ammo.", 0.85f, Ui.Dim);
+				UiKit.Label(section, "Open this with the stash to set the spare ammo.", 0.85f, UiColors.Dim);
 			}
 		}
 
@@ -51,7 +51,7 @@ namespace GetReady
 		private static void GroupHeading(Transform parent, string title, string help)
 		{
 			var row = UiKit.HBox(parent, 8f);
-			UiKit.Label(row, title, 0.75f, Ui.Dim, bold: true);
+			UiKit.Label(row, title, 0.75f, UiColors.Dim, bold: true);
 			UiKit.HelpMark(row, help);
 		}
 	}

@@ -426,7 +426,7 @@ namespace GetReady.Tests
 			skipped.Skipped = true;
 
 			Standing(skipped, new PlanLine { Text = "Would bring 75,000 RUB" }).Should().Be("Skipped");
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Skipped).Should().Be(Ui.Dim);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Skipped).Should().Be(UiColors.Dim);
 		}
 
 		[Fact]
@@ -529,9 +529,9 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_stripe_of_a_card_is_green_amber_or_red()
 		{
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Done).Should().Be(Ui.Ok);
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Doable).Should().Be(Ui.Warn);
-			ReadyWindow.StandingColor(ReadyPlan.Standing.Problem).Should().Be(Ui.Bad);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Done).Should().Be(UiColors.Ok);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Doable).Should().Be(UiColors.Warn);
+			ReadyWindow.StandingColor(ReadyPlan.Standing.Problem).Should().Be(UiColors.Bad);
 		}
 
 		// ---- the badge of one step counts cards, like the summary

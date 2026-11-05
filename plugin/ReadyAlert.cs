@@ -230,10 +230,10 @@ namespace GetReady
 
 					var column = UiKit.VBox(box, 2f);
 					UiKit.Size(column, flexWidth: 1f);
-					UiKit.Label(column, line.Subject ?? line.Text, 0.95f, Ui.Text, bold: true, wrap: true, flex: true);
+					UiKit.Label(column, line.Subject ?? line.Text, 0.95f, UiColors.Text, bold: true, wrap: true, flex: true);
 					if (!string.IsNullOrEmpty(line.Detail))
 					{
-						UiKit.Label(column, line.Detail, 0.85f, Ui.Dim, wrap: true, flex: true);
+						UiKit.Label(column, line.Detail, 0.85f, UiColors.Dim, wrap: true, flex: true);
 					}
 				}
 			}
@@ -242,7 +242,7 @@ namespace GetReady
 			UiKit.Spacer(footer);
 			if (GameWidgets.Button(footer, "Got it", Close, UiKit.Unit * 8f, UiKit.Unit * 2.2f, false, _buttonTemplate) == null)
 			{
-				UiKit.PushButton(footer, "Got it", Close, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 8f, height: UiKit.Unit * 2.2f);
+				UiKit.PushButton(footer, "Got it", Close, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 8f, height: UiKit.Unit * 2.2f);
 			}
 
 			// As high as what is in it, up to most of the game's window area; above that the list scrolls (and the bar shows only then)

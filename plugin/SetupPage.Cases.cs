@@ -21,7 +21,7 @@ namespace GetReady
 			OptionRow(section, settings.MapWarnings, "Warn on the map screen about cases for another map", "The map screen, when you pick a map.\n<b>On:</b> a red bar shows the cases you carry that are set to other maps, and the cases set for this map that are not on you.\n<b>Off:</b> no bar.", value => settings.MapWarnings = value);
 			if (controller == null)
 			{
-				UiKit.Label(section, "Open this in the stash to set up the cases you carry.", 0.85f, Ui.Dim);
+				UiKit.Label(section, "Open this in the stash to set up the cases you carry.", 0.85f, UiColors.Dim);
 				return;
 			}
 
@@ -45,7 +45,7 @@ namespace GetReady
 
 			if (settings.Cases.Count == 0)
 			{
-				UiKit.Label(section, "Nothing tracked yet. Fill a case the way you like it, then press \"Track items inside\" (an empty case works too: it is kept empty).", 0.85f, Ui.Dim, wrap: true, flex: true);
+				UiKit.Label(section, "Nothing tracked yet. Fill a case the way you like it, then press \"Track items inside\" (an empty case works too: it is kept empty).", 0.85f, UiColors.Dim, wrap: true, flex: true);
 			}
 		}
 
@@ -98,7 +98,7 @@ namespace GetReady
 		// A small square button (the + - x of a case's header)
 		private static void SquareButton(Transform parent, string text, System.Action click, string tip)
 		{
-			var button = UiKit.PushButton(parent, text, click, ButtonFill, ButtonHover, Ui.Text, width: UiKit.Unit * 1.7f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+			var button = UiKit.PushButton(parent, text, click, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 1.7f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			button.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().padding = new RectOffset(0, 0, 0, 0);
 			UiKit.Tip(button, tip);
 		}
@@ -240,7 +240,7 @@ namespace GetReady
 			var change = recorded && item != null ? CasesStep.Diff(item, entry) : null;
 			UnityEngine.UI.Button trackButton = null;
 			int count = recorded ? CasesStep.ItemCount(entry) : item != null ? item.Grids.Sum(grid => grid.Items.Count()) : 0;
-			var title = UiKit.Label(header, $"{name}  -  {ItemsText(count)}", 0.9f, Ui.Text, flex: true);
+			var title = UiKit.Label(header, $"{name}  -  {ItemsText(count)}", 0.9f, UiColors.Text, flex: true);
 			title.overflowMode = TextOverflowModes.Ellipsis;
 			UiKit.Size(title, flexWidth: 1f).minWidth = 0f;
 			// The cross at the end of the header clears everything saved for the case, so it leaves the list
@@ -280,7 +280,7 @@ namespace GetReady
 					var saved = CasesStep.Record(item);
 					ReadyPlan._status = $"Tracking {ItemsText(CasesStep.ItemCount(saved))}{(CasesStep.MoneyOf(saved).Count > 0 ? " and " + MoneyText(saved) : "")} in {name}.";
 					Changed();
-				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				}, ButtonFill, ButtonHover, UiColors.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.Size(track, width: 1f, flexWidth: 1f).minWidth = 0f;
 				trackButton = track;
 				// Nothing changed since it was tracked: nothing to update, the button is greyed out
@@ -309,7 +309,7 @@ namespace GetReady
 			// What is saved, for a collapsed card (open, the strip and the buttons below say it)
 			if (entry != null && collapsed)
 			{
-				UiKit.Label(card, "Saved: " + CasesStep.Summary(entry), 0.8f, Ui.Dim, wrap: true, flex: true);
+				UiKit.Label(card, "Saved: " + CasesStep.Summary(entry), 0.8f, UiColors.Dim, wrap: true, flex: true);
 			}
 
 			if (collapsed)
@@ -323,7 +323,7 @@ namespace GetReady
 			}
 
 			var options = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
-			UiKit.Label(options, "Options:", 0.8f, Ui.Dim);
+			UiKit.Label(options, "Options:", 0.8f, UiColors.Dim);
 			var switches = UiKit.HBox(options, 8f);
 			bool stops = entry != null && entry.StopsCash;
 			Pick(switches, "Skip cash step", stops, () =>
@@ -349,7 +349,7 @@ namespace GetReady
 
 			// The maps it is for: none picked is any map
 			var mapsPanel = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
-			UiKit.Label(mapsPanel, entry != null && entry.Maps.Count > 0 ? "For these maps only:" : "For any map (pick the maps it is for):", 0.8f, Ui.Dim);
+			UiKit.Label(mapsPanel, entry != null && entry.Maps.Count > 0 ? "For these maps only:" : "For any map (pick the maps it is for):", 0.8f, UiColors.Dim);
 			for (int first = 0; first < MapTags.Maps.Length; first += MapsPerRow)
 			{
 				var row = UiKit.HBox(mapsPanel, 6f);

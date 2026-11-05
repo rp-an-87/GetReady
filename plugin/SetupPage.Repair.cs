@@ -12,7 +12,7 @@ namespace GetReady
 		private static RectTransform SmallCard(Transform parent, string title)
 		{
 			var card = UiKit.VBox(parent, 6f, new RectOffset(10, 10, 8, 8), UiKit.CardColor, UiKit.CardEdge);
-			UiKit.Label(card, title, 0.95f, Ui.Heading);
+			UiKit.Label(card, title, 0.95f, UiColors.Heading);
 			return card;
 		}
 
@@ -45,11 +45,11 @@ namespace GetReady
 			var exclude = SmallCard(section, "Exclude from repairs");
 			if (controller == null)
 			{
-				UiKit.Label(exclude, "Open this with the stash to pick the pieces.", 0.85f, Ui.Dim);
+				UiKit.Label(exclude, "Open this with the stash to pick the pieces.", 0.85f, UiColors.Dim);
 				return;
 			}
 
-			UiKit.Label(exclude, "This very piece, not its type: a new armor of the same type is repaired normally.", 0.8f, Ui.Dim);
+			UiKit.Label(exclude, "This very piece, not its type: a new armor of the same type is repaired normally.", 0.8f, UiColors.Dim);
 			var gear = RepairStep.EquippedGear(controller.Inventory);
 			var kept = repair.KeepDamaged;
 			var aside = kept.Where(entry => !gear.Any(item => item.Id.ToString() == entry.Id)).ToList();
@@ -62,7 +62,7 @@ namespace GetReady
 					var row = UiKit.HBox(box, 8f);
 					string name = Game.NameOf(piece);
 					ItemIcon(row, piece, UiKit.Unit * 2.2f, name);
-					UiKit.Label(row, keep ? name + "  · excluded" : name, 0.9f, keep ? Ui.Dim : Ui.Text, flex: true);
+					UiKit.Label(row, keep ? name + "  · excluded" : name, 0.9f, keep ? UiColors.Dim : UiColors.Text, flex: true);
 					Pick(row, keep ? "Include again" : "Exclude", keep, () =>
 					{
 						RepairStep.ToggleKept(piece);
@@ -76,7 +76,7 @@ namespace GetReady
 					var gone = entry;
 					var row = UiKit.HBox(box, 8f);
 					TemplateIcon(row, gone.Template, UiKit.Unit * 2.2f, gone.Name);
-					UiKit.Label(row, gone.Name, 0.9f, Ui.Text, flex: true);
+					UiKit.Label(row, gone.Name, 0.9f, UiColors.Text, flex: true);
 					Pick(row, "Include again", true, () =>
 					{
 						kept.Remove(gone);
@@ -92,7 +92,7 @@ namespace GetReady
 			var def = HealMeStep.Items;
 			var head = UiKit.HBox(section, 8f);
 			UiKit.HelpMark(head, "The most urgent injury is treated with the first item of the list that treats it, until you are healed. Put the dedicated items before the kits and a kit is only left for what is still hurt (a kit treats everything it can on a part at once). Runs last, so what Get ready just brought is left alone. The icons on each row show what the item treats.");
-			UiKit.Label(head, "Used in this order: the first that treats the injury", 0.9f, Ui.Text, flex: true);
+			UiKit.Label(head, "Used in this order: the first that treats the injury", 0.9f, UiColors.Text, flex: true);
 			Pick(head, "Reset", false, () =>
 			{
 				HealMeStep.ResetAll();
@@ -116,7 +116,7 @@ namespace GetReady
 				var row = UiKit.HBox(box, 8f);
 				UiKit.Grip(row);
 				TemplateIcon(row, template, UiKit.Unit * 2f, entry.Name);
-				UiKit.Size(UiKit.Label(row, entry.Name, 0.9f, off ? Ui.Dim : Ui.Text), UiKit.Unit * 10f);
+				UiKit.Size(UiKit.Label(row, entry.Name, 0.9f, off ? UiColors.Dim : UiColors.Text), UiKit.Unit * 10f);
 				foreach (var trouble in HealMeStep.Troubles)
 				{
 					// A fixed column each, so the pictures line up; nothing where it can't treat

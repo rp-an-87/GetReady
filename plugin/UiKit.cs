@@ -428,7 +428,7 @@ namespace GetReady
 			var viewport = Node("Viewport", rect);
 			Stretch(viewport, 8f, 2f, 8f, 2f);
 			viewport.gameObject.AddComponent<RectMask2D>();
-			var label = Label(viewport, text, 0.9f, Ui.Text, align: TextAlignmentOptions.Right);
+			var label = Label(viewport, text, 0.9f, UiColors.Text, align: TextAlignmentOptions.Right);
 			Stretch(label.rectTransform, 0f, 0f, 0f, 0f);
 			var field = rect.gameObject.AddComponent<TMP_InputField>();
 			field.targetGraphic = image;
