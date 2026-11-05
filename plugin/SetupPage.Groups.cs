@@ -178,7 +178,7 @@ namespace GetReady
 
 			// A kit you carry that a better one in the stash can replace (a fuller copy, a higher-ranked item): per row, so it can be left alone
 			// (not the injectors of the Propital row: they have no uses to run down)
-			if (on && !def.Stack)
+			if (on && !def.Stack && def.Id != "propital")
 			{
 				OptionRow(card, setting.AllowOvershoot, "Go over rather than stay short", "When only a little is missing and the next item in the stash is bigger (1 point short and the next is an Army bandage worth 2), take it anyway. Off: only an item that fits is brought, and you stay short if the stash has none.", value => setting.AllowOvershoot = value);
 			}
