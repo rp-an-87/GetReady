@@ -9,9 +9,9 @@ namespace GetReady
 	internal static partial class ReadyWindow
 	{
 		// The window's button: close the window and do it like the stash button does (alert and sound included)
-		private static void Go()
+		internal static void Go()
 		{
-			_closeRequested = true;
+			ReadyUiWindow.Close();
 			QuickRun();
 		}
 

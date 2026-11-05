@@ -573,9 +573,9 @@ namespace GetReady
 			var footer = UiKit.HBox(root, 12f);
 			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
 			// The game's own button when it can be copied, else our green one
-			if (GameWidgets.Button(footer, "Get ready", ReadyWindow.QuickRun, UiKit.Unit * 9f, UiKit.Unit * 2.2f) == null)
+			if (GameWidgets.Button(footer, "Get ready", ReadyWindow.Go, UiKit.Unit * 9f, UiKit.Unit * 2.2f) == null)
 			{
-				UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
+				UiKit.PushButton(footer, "Get ready", ReadyWindow.Go, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
 			}
 
 			// What the tabs, the footer, the spacing and a little of the page need, so the body always fits the window
