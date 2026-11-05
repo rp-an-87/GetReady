@@ -193,33 +193,42 @@ namespace GetReady
 
 			for (int pass = 0; pass < 2 && need > 0; pass++)
 			{
-				foreach (var item in candidates)
+				bool firstPass = pass == 0;
+				while (need > 0)
 				{
-					if (need <= 0)
+					// Still usable this pass, in priority order
+					var usable = candidates.Where(candidate =>
+					{
+						if (brought.Any(pair => pair.Key == candidate))
+						{
+							return false;
+						}
+
+						float size = def.WeightOf(candidate);
+						if (size <= 0 || (!def.Stack && !def.Setting.AllowOvershoot && size > need))
+						{
+							return false;
+						}
+
+						int owned;
+						counts.TryGetValue(candidate.TemplateId.ToString(), out owned);
+						int limit = def.MaxOf(candidate.TemplateId.ToString());
+						return !(firstPass && limit > 0 && owned >= limit);
+					}).ToList();
+
+					// Never bring two when one fills it: an item that covers all that is missing comes before a smaller one that would need another
+					var item = (def.Stack ? null : usable.FirstOrDefault(candidate => def.WeightOf(candidate) >= need)) ?? usable.FirstOrDefault();
+					if (item == null)
 					{
 						break;
 					}
 
-					if (brought.Any(pair => pair.Key == item))
-					{
-						continue;
-					}
-
 					float weight = def.WeightOf(item);
-					if (weight <= 0 || (!def.Stack && !def.Setting.AllowOvershoot && weight > need))
-					{
-						continue;
-					}
-
 					var template = item.TemplateId.ToString();
 					int have;
 					counts.TryGetValue(template, out have);
 					int max = def.MaxOf(template);
 					bool atLimit = max > 0 && have >= max;
-					if (atLimit && pass == 0)
-					{
-						continue;
-					}
 
 					// A stack gives only what is missing, anything else moves whole (count 0)
 					int count = def.Stack ? Math.Max(1, (int)Math.Min(weight, need)) : 0;

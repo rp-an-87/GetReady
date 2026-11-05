@@ -80,7 +80,8 @@ namespace GetReady.Tests
 			var def = Bandages(2);
 			def.Setting.Order = new List<string> { AsepticBandage, ArmyBandage };
 
-			var lines = Plan(_step, new Item[0], Items(ArmyBandage, AsepticBandage, AsepticBandage));
+			// No single item is left to fill it alone here, so the ranking decides
+			var lines = Plan(_step, new Item[0], Items(AsepticBandage, AsepticBandage));
 
 			Texts(lines).Should().Equal("Bandages: 0/2 bandage points", "Bring 2x Aseptic bandage");
 		}
@@ -143,6 +144,16 @@ namespace GetReady.Tests
 			Bandages(1).Setting.AllowOvershoot = true;
 
 			Texts(Plan(_step, new Item[0], Items(ArmyBandage))).Should().Equal("Bandages: 0/1 bandage points", "Bring 1x Army bandage");
+		}
+
+		[Fact]
+		public void Two_items_are_never_brought_when_one_of_them_fills_the_need()
+		{
+			var def = Bandages(2);
+			def.Setting.Order = new List<string> { AsepticBandage, ArmyBandage };
+			def.Setting.AllowOvershoot = true;
+
+			Texts(Plan(_step, new Item[0], Items(AsepticBandage, ArmyBandage))).Should().Equal("Bandages: 0/2 bandage points", "Bring 1x Army bandage");
 		}
 
 		[Fact]
