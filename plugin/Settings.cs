@@ -45,6 +45,8 @@ namespace GetReady
 		public string Hotkey;
 		// The most of one item to carry for the group, by template (missing or 0: no limit)
 		public Dictionary<string, int> MaxPer = new Dictionary<string, int>();
+		// Replace what is carried by better items from the stash (a fuller copy, a higher-ranked item, non-FiR); off leaves it as it is
+		public bool ReplaceWorse = true;
 	}
 
 	internal class SuppliesSettings
@@ -52,8 +54,6 @@ namespace GetReady
 		public bool HealingEnabled = true;
 		public bool GrenadesEnabled = true;
 		public bool CashEnabled = true;
-		// Replace carried items by better ones from the stash (more resource, higher priority, non-FiR)
-		public bool SwapWorse = true;
 		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
 		public bool AllowOvershoot = true;
 		// Non-FiR copies of an item go before FiR ones, even when the non-FiR one is in a container and the FiR one lies loose. Between

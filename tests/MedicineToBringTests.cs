@@ -274,7 +274,6 @@ namespace GetReady.Tests
 		public void A_used_up_kit_is_replaced_by_a_full_one_from_the_stash()
 		{
 			var def = Only(_step, "health", 400);
-			SettingsStore.Current.Supplies.SwapWorse = true;
 			var worn = Any(Salewa);
 			worn.GetItemComponent<MedKitComponent>().HpResource = 100;
 			var full = Any(Salewa);
@@ -285,10 +284,9 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void Nothing_is_replaced_when_the_option_is_off()
+		public void Nothing_is_replaced_when_the_row_is_set_not_to()
 		{
-			Only(_step, "health", 400);
-			SettingsStore.Current.Supplies.SwapWorse = false;
+			Only(_step, "health", 400).Setting.ReplaceWorse = false;
 			var worn = Any(Salewa);
 			worn.GetItemComponent<MedKitComponent>().HpResource = 100;
 
@@ -301,7 +299,6 @@ namespace GetReady.Tests
 		public void A_kit_that_already_meets_the_target_is_not_replaced()
 		{
 			Only(_step, "health", 300);
-			SettingsStore.Current.Supplies.SwapWorse = true;
 
 			var lines = Plan(_step, new[] { Any(Salewa) }, new[] { Any(Salewa) });
 

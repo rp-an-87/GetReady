@@ -559,15 +559,13 @@ namespace GetReady
 			}
 
 			GUILayout.EndHorizontal();
-			bool swap = OptionRow(supplies.SwapWorse, "Replace worse kits with better ones from the stash", "A used or lower-priority kit you carry is swapped for a better one");
 			bool overshoot = OptionRow(supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway");
 			bool nonFir = OptionRow(supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is");
 			GUILayout.EndVertical();
 			NoteSection(steps.Count);
 
-			if (swap != supplies.SwapWorse || overshoot != supplies.AllowOvershoot || nonFir != supplies.NonFiRBeforeLoose)
+			if (overshoot != supplies.AllowOvershoot || nonFir != supplies.NonFiRBeforeLoose)
 			{
-				supplies.SwapWorse = swap;
 				supplies.AllowOvershoot = overshoot;
 				supplies.NonFiRBeforeLoose = nonFir;
 				changed = true;

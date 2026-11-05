@@ -26,7 +26,7 @@ namespace GetReady.Tests
 			settings.Ammo.Pointers.Should().Equal("nearest", "others", "loose", "weapon");
 			settings.FullAuto.Slots.Should().Equal("FirstPrimaryWeapon", "SecondPrimaryWeapon");
 			settings.Repair.Armor.Should().BeTrue();
-			settings.Supplies.SwapWorse.Should().BeTrue();
+			new GroupSetting().ReplaceWorse.Should().BeTrue();
 			settings.SpecialSlots.Enabled.Should().BeTrue();
 		}
 

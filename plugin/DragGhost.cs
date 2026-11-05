@@ -40,8 +40,24 @@ namespace GetReady
 				rect.sizeDelta = source.rect.size;
 				rect.localScale = new Vector3(source.lossyScale.x / top.lossyScale.x, source.lossyScale.y / top.lossyScale.y, 1f);
 				rect.SetAsLastSibling();
+				// A row has no fill of its own (only text and pictures), which would float over the list: it gets a solid one and a thin edge
+				var fill = _ghost.GetComponent<UnityEngine.UI.Image>();
+				if (fill == null)
+				{
+					fill = _ghost.AddComponent<UnityEngine.UI.Image>();
+					fill.color = new Color(0f, 0f, 0f, 0f);
+				}
+
+				if (fill.color.a < 0.05f)
+				{
+					fill.color = new Color(0.13f, 0.14f, 0.14f, 1f);
+					var edge = _ghost.AddComponent<UnityEngine.UI.Outline>();
+					edge.effectColor = new Color(0.8f, 0.72f, 0.45f, 0.7f);
+					edge.effectDistance = new Vector2(1f, 1f);
+				}
+
 				var group = _ghost.GetComponent<CanvasGroup>() ?? _ghost.AddComponent<CanvasGroup>();
-				group.alpha = 0.75f;
+				group.alpha = 0.88f;
 				group.blocksRaycasts = false;
 				group.interactable = false;
 				rect.position = source.position;

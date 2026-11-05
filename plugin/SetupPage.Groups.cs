@@ -167,6 +167,12 @@ namespace GetReady
 				}
 			}
 
+			// A kit you carry that a better one in the stash can replace (a fuller copy, a higher-ranked item): per row, so it can be left alone
+			if (on && !def.Stack)
+			{
+				OptionRow(card, setting.ReplaceWorse, "Replace with better ones from the stash", "A used or lower-ranked item of this row that you carry is swapped for a better one from the stash. Off: what you carry stays as long as you keep the amount.", value => setting.ReplaceWorse = value);
+			}
+
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))
 			{
 				GroupItems(card, def);

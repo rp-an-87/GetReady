@@ -125,7 +125,7 @@ namespace GetReady
 				return;
 			}
 
-			if (context.Settings.SwapWorse && !def.Stack)
+			if (setting.ReplaceWorse && !def.Stack)
 			{
 				float fixedWeight = context.Owned.Sum(def.WeightOf) - leaving;
 				PlanSwaps(def, context, fixedWeight, places, lines);
