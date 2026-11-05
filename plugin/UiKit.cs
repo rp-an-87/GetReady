@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using EFT.UI;
 using TMPro;
 using UnityEngine;
@@ -254,14 +255,42 @@ namespace GetReady
 			graphic.raycastTarget = true;
 
 			var hover = part.GetComponent<HoverTrigger>() ?? part.gameObject.AddComponent<HoverTrigger>();
-			hover.OnHoverStart += _ =>
+			hover.OnHoverStart += _ => HoverEnter(part, text);
+			hover.OnHoverEnd += _ => HoverExit(part);
+		}
+
+		// The pieces the mouse is over that have a tooltip, outermost first (a row, and a chip inside it): the one entered last shows, and when
+		// the mouse leaves it the one below comes back, so two tooltips are never up at once
+		private static readonly List<KeyValuePair<Component, string>> HoveredTips = new List<KeyValuePair<Component, string>>();
+
+		private static void HoverEnter(Component part, string text)
+		{
+			HoveredTips.RemoveAll(pair => pair.Key == part);
+			HoveredTips.Add(new KeyValuePair<Component, string>(part, text));
+			ShowTopTip();
+		}
+
+		private static void HoverExit(Component part)
+		{
+			HoveredTips.RemoveAll(pair => pair.Key == part);
+			ShowTopTip();
+		}
+
+		private static void ShowTopTip()
+		{
+			// Pieces that were taken away while the mouse was over them (the page was drawn again) are dropped
+			HoveredTips.RemoveAll(pair => pair.Key == null);
+			var tooltip = ItemUiContext.Instance?.Tooltip;
+			if (tooltip == null)
 			{
-				if (!_tipsHushed)
-				{
-					ItemUiContext.Instance?.Tooltip?.Show(text, null, 0.25f, null);
-				}
-			};
-			hover.OnHoverEnd += _ => ItemUiContext.Instance?.Tooltip?.Close();
+				return;
+			}
+
+			tooltip.Close();
+			if (HoveredTips.Count > 0 && !_tipsHushed)
+			{
+				tooltip.Show(HoveredTips[HoveredTips.Count - 1].Value, null, 0.25f, null);
+			}
 		}
 
 		// The three lines a row is dragged by (the reorder code looks for the child called Grip)
