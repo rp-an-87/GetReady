@@ -80,6 +80,17 @@ namespace GetReady
 				UiKit.Init(window.Caption);
 				UiKit.Scale = ReadyWindow.Scale;
 				window.Caption.text = "Get ready for raid";
+				// The window's own Save button is the game's standard button: it is copied for ours before the window hides it
+				try
+				{
+					GameWidgets.ButtonTemplate = window._saveButtonSpawner;
+				}
+				catch (Exception e)
+				{
+					GameWidgets.ButtonTemplate = null;
+					Plugin.Log.LogWarning($"Get ready window: no game button to copy: {e.Message}");
+				}
+
 				Build(window);
 				window.WindowTransform.SetAsLastSibling();
 				context.RegisterWindow<EditBuildNameWindowContext>(window, windowContext);
@@ -289,7 +300,7 @@ namespace GetReady
 			bool on = _tab == index;
 			// The game's own tab button when it can be copied, else our own
 			var group = parent.GetComponent<ToggleGroup>() ?? parent.gameObject.AddComponent<ToggleGroup>();
-			if (GameWidgets.Tab(parent, name, null, on, group, () => SetTab(index), UiKit.Unit * 2f) != null)
+			if (GameWidgets.Tab(parent, name, null, on, group, () => SetTab(index), UiKit.Unit * 2f, 1.05f) != null)
 			{
 				return;
 			}
@@ -348,7 +359,7 @@ namespace GetReady
 				foreach (int index in rowIndexes)
 				{
 					int section = index;
-					var tab = GameWidgets.Tab(row, names[index], Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton);
+					var tab = GameWidgets.Tab(row, names[index], Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton, 0.8f);
 					if (tab != null)
 					{
 						_stripTabs[index] = tab;
@@ -524,7 +535,11 @@ namespace GetReady
 
 			var footer = UiKit.HBox(root, 12f);
 			_status = UiKit.Label(footer, "", 0.8f, Ui.Dim, flex: true);
-			UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
+			// The game's own button when it can be copied, else our green one
+			if (GameWidgets.Button(footer, "Get ready", ReadyWindow.QuickRun, UiKit.Unit * 9f, UiKit.Unit * 2.2f) == null)
+			{
+				UiKit.PushButton(footer, "Get ready", ReadyWindow.QuickRun, new Color(0.24f, 0.36f, 0.19f), new Color(0.3f, 0.44f, 0.23f), Color.white, width: UiKit.Unit * 9f, height: UiKit.Unit * 2.2f);
+			}
 
 			// What the tabs, the footer, the spacing and a little of the page need, so the body always fits the window
 			float minHeight = Mathf.Max(_captionHeight, 30f) + 20f + UiKit.Unit * 2f + UiKit.Unit * 2.4f + 16f + ScrollMin;

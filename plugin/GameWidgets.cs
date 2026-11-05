@@ -51,7 +51,7 @@ namespace GetReady
 
 		// A copy of the game's tab button in the row: the caption (the game puts it in capitals), an optional picture, lit when it is on; select is
 		// called when it is clicked on. The group makes the tabs of a row switch each other off. Null when the game's tab is not there.
-		internal static AnimatedToggle Tab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height)
+		internal static AnimatedToggle Tab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height, float textUnits)
 		{
 			var template = TabTemplate();
 			if (template == null)
@@ -66,8 +66,9 @@ namespace GetReady
 				copy.SetActive(true);
 				var tab = copy.GetComponent<UISpawnableToggle>();
 				tab.Init(group);
-				int size = Mathf.Max(8, Mathf.RoundToInt(tab._headerLabel.fontSize * UiKit.Scale));
-				tab.InitSpawnableButton(text, size, icon, null);
+				// The text is sized like the rest of the window (the game's own tabs are made for a big screen of their own)
+				tab.InitSpawnableButton(text, Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * textUnits)), icon, null);
+				copy.AddComponent<TabHover>().Tab = tab;
 				var toggle = tab.Toggle;
 				toggle.onValueChanged.AddListener(value =>
 				{
@@ -85,6 +86,49 @@ namespace GetReady
 				Plugin.Log.LogWarning($"Game tab: could not make one: {e.Message}");
 				return null;
 			}
+		}
+
+		// The game's standard button, copied from a window of its own that this window is made from (its Save button): the same look and
+		// hover and click feel as every button of the game. Set when the window opens.
+		internal static DefaultUIButton ButtonTemplate;
+
+		// A copy of the game's button with this text; null when there is no template (the caller then makes its own)
+		internal static DefaultUIButton Button(Transform parent, string text, Action click, float width, float height)
+		{
+			if (ButtonTemplate == null)
+			{
+				return null;
+			}
+
+			try
+			{
+				var copy = UnityEngine.Object.Instantiate(ButtonTemplate.gameObject, parent, false);
+				copy.name = "Button " + text;
+				copy.SetActive(true);
+				var button = copy.GetComponent<DefaultUIButton>();
+				button.OnClick.RemoveAllListeners();
+				button.OnClick.AddListener(() => click());
+				button.Interactable = true;
+				button.SetHeaderText(text, Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * 1.1f)));
+				UiKit.Size(copy.transform, width: width, height: height);
+				return button;
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Game button: could not make one: {e.Message}");
+				return null;
+			}
+		}
+
+		// The game's tab shows no hover of its own here, so the pointer over it gives the bold the game's tab has on hover (and the hand cursor
+		// is the tab's own)
+		internal class TabHover : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+		{
+			internal UISpawnableToggle Tab;
+
+			public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData) => Tab?.Highlighted();
+
+			public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) => Tab?.Default();
 		}
 
 		// For finding the game's big green Ready button: what buttons the game has in memory, once in the log (with Log details on)
