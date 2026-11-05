@@ -275,13 +275,6 @@ namespace GetReady
 			{
 				_width = frame.sizeDelta.x;
 				_height = frame.sizeDelta.y;
-				// A different width breaks the section buttons into more or fewer rows, which changes the room the window needs
-				if (_tab == 1 && JumpRows().Count != _stripRows)
-				{
-					BuildBody(frame);
-					return;
-				}
-
 				FitBody(frame);
 			});
 			BuildBody(frame);
@@ -337,10 +330,18 @@ namespace GetReady
 			}
 		}
 
+		// The section buttons in two rows of equal share, whatever the width: no row ever needs to move to another when the window is resized
 		private static List<List<int>> JumpRows()
 		{
-			var widths = SetupPage.Names().Select(name => StripName(name).Length * UiKit.Unit * 0.5f + UiKit.Unit * 2f + 6f).ToList();
-			return ReadyWindow.TabRows(widths, _width - 40f).Select(row => row.ToList()).ToList();
+			int count = SetupPage.Names().Count;
+			int perRow = (count + 1) / 2;
+			var rows = new List<List<int>>();
+			for (int first = 0; first < count; first += perRow)
+			{
+				rows.Add(Enumerable.Range(first, Math.Min(perRow, count - first)).ToList());
+			}
+
+			return rows;
 		}
 
 		// The rows the strip was built with: the window needs room for them (each row is a child of the body, with its spacing)
