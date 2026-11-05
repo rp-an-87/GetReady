@@ -84,6 +84,7 @@ namespace GetReady
 		{
 			Sections.Clear();
 			Fillers.Clear();
+			Cards.Clear();
 			GearSections.Clear();
 			GearStale.Clear();
 			var controller = Game.Controller();
@@ -121,7 +122,58 @@ namespace GetReady
 		internal static int Refresh(RectTransform content)
 		{
 			int index = SectionUnderMouse();
+			if (index < 0)
+			{
+				return -1;
+			}
+
+			// The card the mouse is over, when it has one (a group's card), else the section
+			if (RefreshCard(content, index))
+			{
+				LastRedraw = "card";
+				return index;
+			}
+
+			LastRedraw = "section";
 			return RefreshSection(content, index) ? index : -1;
+		}
+
+		// What the last redraw was, for the log
+		internal static string LastRedraw = "";
+
+		// The cards that can be drawn again on their own, and what fills each
+		private static readonly List<KeyValuePair<RectTransform, Action>> Cards = new List<KeyValuePair<RectTransform, Action>>();
+
+		private static bool RefreshCard(RectTransform content, int section)
+		{
+			Cards.RemoveAll(card => card.Key == null || !card.Key.gameObject.activeInHierarchy);
+			foreach (var card in Cards)
+			{
+				if (!card.Key.IsChildOf(Sections[section]) || !Contains(card.Key))
+				{
+					continue;
+				}
+
+				for (int i = card.Key.childCount - 1; i >= 0; i--)
+				{
+					var child = card.Key.GetChild(i);
+					child.gameObject.SetActive(false);
+					UnityEngine.Object.Destroy(child.gameObject);
+				}
+
+				card.Value();
+				UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+				return true;
+			}
+
+			return false;
+		}
+
+		private static bool Contains(RectTransform rect)
+		{
+			var canvas = rect.GetComponentInParent<Canvas>();
+			var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+			return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, camera);
 		}
 
 		// One section made again

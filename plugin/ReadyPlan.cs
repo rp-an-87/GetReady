@@ -106,6 +106,13 @@ namespace GetReady
 
 		internal static void Refresh()
 		{
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			RefreshPlan();
+			Plugin.Trace($"Plan made in {watch.ElapsedMilliseconds} ms");
+		}
+
+		private static void RefreshPlan()
+		{
 			Plan.Clear();
 			_dirty = false;
 			var controller = Game.Controller();

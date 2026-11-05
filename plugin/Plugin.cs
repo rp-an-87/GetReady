@@ -19,6 +19,16 @@ namespace GetReady
 		internal static ConfigEntry<KeyboardShortcut> SpikeHotkey;
 		internal static ConfigEntry<DragFadeMode> DragFadeMode;
 		internal static ConfigEntry<float> DragFadeOpacity;
+		internal static ConfigEntry<bool> DebugLogging;
+
+		// A line for the log, only when "Log details" is on (F12): what the window does and how long it takes
+		internal static void Trace(string text)
+		{
+			if (DebugLogging != null && DebugLogging.Value)
+			{
+				Log.LogInfo(text);
+			}
+		}
 		internal static ConfigEntry<KeyboardShortcut> TopUpHotkey;
 		internal static ConfigEntry<KeyboardShortcut> RepairHotkey;
 
@@ -36,6 +46,8 @@ namespace GetReady
 				"What the new Get ready window does while you drag an item in the stash: Off leaves it as it is, Fade makes it see-through (and lets the mouse through, so you can drop the item on what is behind it), Hide takes it away until you drop.");
 			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.05f,
 				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
+			DebugLogging = Config.Bind("8. Debugging", "Log details", false,
+				"Writes what the window does, and how long it takes, to the BepInEx log. For finding out why something is slow.");
 			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
 				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
@@ -54,8 +66,11 @@ namespace GetReady
 			Log.LogInfo($"GetReady {PluginVersion} loaded");
 		}
 
+		private void OnApplicationQuit() => SettingsStore.FlushIfDue(true);
+
 		private void Update()
 		{
+			SettingsStore.FlushIfDue();
 			ReadyWindow.Tick();
 			MagazineTopUp.Update();
 			RepairWithKit.Update();

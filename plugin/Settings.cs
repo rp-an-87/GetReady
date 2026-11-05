@@ -264,6 +264,7 @@ namespace GetReady
 				return;
 			}
 
+			FlushIfDue(true);
 			_profileId = id;
 			_current = new Settings();
 			Load();
@@ -297,8 +298,23 @@ namespace GetReady
 			}
 		}
 
+		// Saves a little after the last change, not at every click (a row of clicks is one write); FlushIfDue writes it when the time has come
+		private static DateTime _saveDue = DateTime.MaxValue;
+
+		internal static void SaveSoon() => _saveDue = DateTime.UtcNow.AddMilliseconds(600);
+
+		// force: now, whatever the time (the window closes, the game quits, another profile is loaded)
+		internal static void FlushIfDue(bool force = false)
+		{
+			if (_saveDue != DateTime.MaxValue && (force || DateTime.UtcNow >= _saveDue))
+			{
+				Save();
+			}
+		}
+
 		internal static void Save()
 		{
+			_saveDue = DateTime.MaxValue;
 			if (_profileId == null || _fixedForTests)
 			{
 				return;

@@ -93,6 +93,7 @@ namespace GetReady
 					_window = null;
 					SetupPage.StopWatching();
 					DragGhost.End();
+					SettingsStore.FlushIfDue(true);
 					_content = null;
 					_scroll = null;
 					_status = null;
@@ -363,14 +364,17 @@ namespace GetReady
 		// A setting was changed on the Setup page: keep it, plan again, and draw the page again
 		internal static void SettingChanged()
 		{
-			SettingsStore.Save();
+			var watch = System.Diagnostics.Stopwatch.StartNew();
+			SettingsStore.SaveSoon();
 			ReadyPlan.RefreshSoon();
+			long saved = watch.ElapsedMilliseconds;
 			if (_tab == 1 && _content != null)
 			{
 				WaitFor.Clear();
 				int section = SetupPage.Refresh(_content);
 				if (section >= 0)
 				{
+					Plugin.Trace($"Setting changed: noting the save {saved} ms, redraw of the {SetupPage.LastRedraw} {watch.ElapsedMilliseconds - saved} ms");
 					// New pictures for that section: it is drawn once more when they are there
 					if (WaitFor.Count > 0 && !AllThere())
 					{

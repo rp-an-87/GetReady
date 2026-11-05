@@ -46,12 +46,21 @@ namespace GetReady
 			}
 		}
 
+		// A group's card. It is registered, so a change made inside it draws only this card again (see RefreshCard), not the whole section.
 		private static RectTransform GroupCard(Transform parent, GroupDef def, bool compact)
+		{
+			var card = UiKit.VBox(parent, 8f, new RectOffset(10, 10, 8, 8), UiKit.CardColor, UiKit.CardEdge);
+			Action fill = () => FillGroupCard(card, def, compact);
+			fill();
+			Cards.Add(new KeyValuePair<RectTransform, Action>(card, fill));
+			return card;
+		}
+
+		private static void FillGroupCard(RectTransform card, GroupDef def, bool compact)
 		{
 			var setting = def.Setting;
 			var active = def.ActiveEntries();
 			bool on = setting.Target > 0;
-			var card = UiKit.VBox(parent, 8f, new RectOffset(10, 10, 8, 8), UiKit.CardColor, UiKit.CardEdge);
 			var top = UiKit.HBox(card, 10f);
 			if (def.Entries.Length > 0)
 			{
@@ -178,8 +187,6 @@ namespace GetReady
 			{
 				GroupItems(card, def);
 			}
-
-			return card;
 		}
 
 		// The items of a group (opened with "Items"): their order (drag a row), limits and switches. What is not used is at the end.
