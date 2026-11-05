@@ -88,6 +88,40 @@ namespace GetReady
 			element.flexibleHeight = 0f;
 		}
 
+		// A copy of a game toggle, cleaned of what the game gave it for its own screen: its tooltip and the actions set on it
+		private static AnimatedToggle CopyToggle(GameObject template, Transform parent, string text)
+		{
+			var copy = UnityEngine.Object.Instantiate(template, parent, false);
+			copy.name = "Tab " + text;
+			copy.SetActive(true);
+			foreach (var area in copy.GetComponentsInChildren<HoverTooltipArea>(true))
+			{
+				UnityEngine.Object.Destroy(area);
+			}
+
+			var toggle = copy.GetComponent<AnimatedToggle>();
+			for (int i = toggle.onValueChanged.GetPersistentEventCount() - 1; i >= 0; i--)
+			{
+				toggle.onValueChanged.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
+			}
+
+			return toggle;
+		}
+
+		// Makes the copy ours: what a click does, whether it is lit now, and the room it takes in its row
+		private static void Wire(AnimatedToggle toggle, bool on, Action select, float height)
+		{
+			toggle.onValueChanged.AddListener(value =>
+			{
+				if (value)
+				{
+					select();
+				}
+			});
+			toggle.ToggleSilent(on);
+			Pin(UiKit.Size(toggle.transform, width: 1f, height: height, flexWidth: 1f), height);
+		}
+
 		// A copy of a top bar tab with our caption and picture; it behaves as the game's own (hover, selected). Null when the bar is not there.
 		private static AnimatedToggle NavTab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height, float textUnits)
 		{
@@ -99,21 +133,8 @@ namespace GetReady
 
 			try
 			{
-				var copy = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
-				copy.name = "Tab " + text;
-				copy.SetActive(true);
-				// The tooltip and behaviour the game gave this tab for its own screen are not wanted on ours
-				foreach (var area in copy.GetComponentsInChildren<HoverTooltipArea>(true))
-				{
-					UnityEngine.Object.Destroy(area);
-				}
-
-				var toggle = copy.GetComponent<AnimatedToggle>();
-				for (int i = toggle.onValueChanged.GetPersistentEventCount() - 1; i >= 0; i--)
-				{
-					toggle.onValueChanged.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
-				}
-
+				var toggle = CopyToggle(template.gameObject, parent, text);
+				var copy = toggle.gameObject;
 				toggle.group = group;
 				int size = Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * textUnits));
 				foreach (var label in copy.GetComponentsInChildren<TMPro.TMP_Text>(true))
@@ -146,15 +167,7 @@ namespace GetReady
 					}
 				}
 
-				toggle.onValueChanged.AddListener(value =>
-				{
-					if (value)
-					{
-						select();
-					}
-				});
-				toggle.ToggleSilent(on);
-				Pin(UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f), height);
+				Wire(toggle, on, select, height);
 				return toggle;
 			}
 			catch (Exception e)
@@ -183,21 +196,7 @@ namespace GetReady
 
 			try
 			{
-				var copy = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
-				copy.name = "Tab " + text;
-				copy.SetActive(true);
-				// What the game gave this tab for its own screen is not wanted on ours
-				foreach (var area in copy.GetComponentsInChildren<HoverTooltipArea>(true))
-				{
-					UnityEngine.Object.Destroy(area);
-				}
-
-				var own = copy.GetComponent<AnimatedToggle>();
-				for (int i = own.onValueChanged.GetPersistentEventCount() - 1; i >= 0; i--)
-				{
-					own.onValueChanged.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
-				}
-
+				var copy = CopyToggle(template.gameObject, parent, text).gameObject;
 				var tab = copy.GetComponent<UISpawnableToggle>();
 				tab.Init(group);
 				// The text is sized like the rest of the window (the game's own tabs are made for a big screen of their own)
@@ -206,15 +205,7 @@ namespace GetReady
 				// The hover of these tabs is the same plate as the lit one, animated in: the copy gets no hover from the game's own events, so the
 				// pointer plays that animation itself
 				copy.AddComponent<HoverLight>().Toggle = toggle;
-				toggle.onValueChanged.AddListener(value =>
-				{
-					if (value)
-					{
-						select();
-					}
-				});
-				toggle.ToggleSilent(on);
-				Pin(UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f), height);
+				Wire(toggle, on, select, height);
 				return toggle;
 			}
 			catch (Exception e)
