@@ -176,14 +176,34 @@ namespace GetReady
 				{
 					Tint(frame, new Color(0.9f, 0.2f, 0.18f, 0.45f));
 				}
+				else if (change != null && change.Moved.Contains(CasesStep.PlaceKey(held)))
+				{
+					// Still in the case, but in another cell: Update would only move its record
+					Tint(frame, new Color(0.25f, 0.5f, 0.95f, 0.42f));
+				}
 			}
 
 			foreach (var currency in money)
 			{
-				StripIcon(cells, CasesStep.TemplateOfCurrency(currency), Game.Amount(currency, entry.Money[currency]), entry.Money[currency], currency, Compact(entry.Money[currency]));
+				var frame = StripIcon(cells, CasesStep.TemplateOfCurrency(currency), Game.Amount(currency, entry.Money[currency]), entry.Money[currency], currency, Compact(entry.Money[currency]));
+				int moved;
+				if (change != null && change.Money.TryGetValue(currency, out moved) && moved < 0)
+				{
+					Tint(frame, new Color(0.9f, 0.2f, 0.18f, 0.45f));
+				}
 			}
 
 			// What Update would add, in green after what is tracked
+			// Money it would add: an extra amount in green
+			if (change != null)
+			{
+				foreach (var pair in change.Money.Where(pair => pair.Value > 0))
+				{
+					var frame = StripIcon(cells, CasesStep.TemplateOfCurrency(pair.Key), "Update would add " + Game.Amount(pair.Key, pair.Value), pair.Value, pair.Key, Compact(pair.Value));
+					Tint(frame, new Color(0.25f, 0.8f, 0.3f, 0.4f));
+				}
+			}
+
 			if (anyAdded)
 			{
 				foreach (var added in change.Added)
@@ -262,6 +282,11 @@ namespace GetReady
 				if (change != null && change.RemovedCount > 0)
 				{
 					trackText += $" <color=#ec6a5f>(-{change.RemovedCount})</color>";
+				}
+
+				if (change != null && change.Moved.Count > 0)
+				{
+					trackText += $" <color=#6aa8ff>({change.Moved.Count})</color>";
 				}
 
 				var track = UiKit.PushButton(buttons, trackText, () =>

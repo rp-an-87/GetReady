@@ -115,8 +115,15 @@ namespace GetReady
 			public int RemovedCount => Removed.Sum(item => item.Count);
 			// Money that differs, or (with exact positions) items that sit elsewhere: Update would change these without adding or removing
 			public bool Other;
+			// With exact positions: the recorded items (by PlaceKey) that are still in the case but in another cell
+			public HashSet<string> Moved = new HashSet<string>();
+			// How much more (+) or less (-) money of each currency the case holds than is recorded
+			public Dictionary<string, int> Money = new Dictionary<string, int>();
 			public bool Any => Added.Count > 0 || Removed.Count > 0 || Other;
 		}
+
+		// An item and where it sits, as one string: how the case's items are compared with the recorded ones
+		internal static string PlaceKey(CaseItem item) => $"{item.Template}|{item.Grid}|{item.X}|{item.Y}|{item.Rotation}|{item.Count}";
 
 		internal static CaseChange Diff(CompoundItem container, CaseEntry entry)
 		{
@@ -168,6 +175,7 @@ namespace GetReady
 				if (amount != recorded)
 				{
 					change.Other = true;
+					change.Money[currency] = amount - recorded;
 				}
 			}
 
@@ -187,6 +195,15 @@ namespace GetReady
 
 				var recordedPlaces = entry.Items.Select(item => $"{item.Template}|{item.Grid}|{item.X}|{item.Y}|{item.Rotation}|{item.Count}").ToList();
 				change.Other = !places.OrderBy(place => place).SequenceEqual(recordedPlaces.OrderBy(place => place));
+				var shortOf = new HashSet<string>(change.Removed.Select(item => item.Template));
+				foreach (var item in entry.Items)
+				{
+					var key = PlaceKey(item);
+					if (!places.Contains(key) && !shortOf.Contains(item.Template))
+					{
+						change.Moved.Add(key);
+					}
+				}
 			}
 
 			return change;
