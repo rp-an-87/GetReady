@@ -140,6 +140,7 @@ namespace GetReady
 					label.fontSize = size;
 					label.enableWordWrapping = false;
 					label.overflowMode = TMPro.TextOverflowModes.Ellipsis;
+					label.alignment = TMPro.TextAlignmentOptions.Center;
 				}
 
 				// The picture is the image that is not the tab's own background
@@ -280,6 +281,37 @@ namespace GetReady
 				Plugin.Log.LogWarning($"Game button: could not make one: {e.Message}");
 				return null;
 			}
+		}
+
+		private static readonly System.Collections.Generic.Dictionary<string, Sprite> Found = new System.Collections.Generic.Dictionary<string, Sprite>();
+
+		// A sprite the game keeps in memory, by words in its name (the first word is what is looked for; the list in the log, with Log details on, is
+		// for choosing a better one). Icons first, then the shortest name. Null when none matches.
+		internal static Sprite FindSprite(string key, params string[] words)
+		{
+			Sprite sprite;
+			if (Found.TryGetValue(key, out sprite))
+			{
+				return sprite;
+			}
+
+			try
+			{
+				var matches = Resources.FindObjectsOfTypeAll<Sprite>()
+					.Where(candidate => candidate != null && words.Any(word => candidate.name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0))
+					.OrderBy(candidate => candidate.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0 ? 0 : 1)
+					.ThenBy(candidate => candidate.name.Length)
+					.ToList();
+				sprite = matches.FirstOrDefault();
+				Plugin.Trace($"Sprites for {key}: {matches.Count} found, using {(sprite != null ? sprite.name : "none")}: " + string.Join(", ", matches.Take(30).Select(candidate => candidate.name).ToArray()));
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Sprites for {key}: could not look: {e.Message}");
+			}
+
+			Found[key] = sprite;
+			return sprite;
 		}
 
 		private static Sprite _gear;

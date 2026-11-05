@@ -323,9 +323,22 @@ namespace GetReady
 
 		// One small tab per section of the Setup page: a click scrolls the section to the top
 		// The rows the section buttons break into at the window's width
+		// The section names are long for a small tab: the strip says them shorter
+		private static string StripName(string name)
+		{
+			switch (name)
+			{
+				case "Medicine to bring": return "Medicine";
+				case "Grenades and flares": return "Grenades";
+				case "Treat injuries": return "Injuries";
+				case "Special slots": return "Special";
+				default: return name;
+			}
+		}
+
 		private static List<List<int>> JumpRows()
 		{
-			var widths = SetupPage.Names().Select(name => name.Length * UiKit.Unit * 0.5f + UiKit.Unit * 2f + 6f).ToList();
+			var widths = SetupPage.Names().Select(name => StripName(name).Length * UiKit.Unit * 0.5f + UiKit.Unit * 2f + 6f).ToList();
 			return ReadyWindow.TabRows(widths, _width - 40f).Select(row => row.ToList()).ToList();
 		}
 
@@ -360,7 +373,7 @@ namespace GetReady
 				foreach (int index in rowIndexes)
 				{
 					int section = index;
-					var tab = GameWidgets.Tab(row, names[index], Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton, 0.7f);
+					var tab = GameWidgets.Tab(row, StripName(names[index]), Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton, 0.7f);
 					if (tab != null)
 					{
 						_stripTabs[index] = tab;
