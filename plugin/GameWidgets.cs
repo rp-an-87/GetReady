@@ -49,10 +49,138 @@ namespace GetReady
 			return _tabTemplate;
 		}
 
+		private static AnimatedToggle _navTemplate;
+		private static int _navSearches;
+
+		// One of the tabs of the game's top bar (Character, Traders, Flea market...): dark with a picture and a caption, beige when it is on
+		// or under the mouse
+		private static AnimatedToggle NavTemplate()
+		{
+			if (_navTemplate != null || _navSearches >= 3)
+			{
+				return _navTemplate;
+			}
+
+			_navSearches++;
+			try
+			{
+				var bar = Resources.FindObjectsOfTypeAll<MenuTaskBar>().FirstOrDefault(found => found.gameObject.scene.IsValid());
+				var toggles = bar != null && bar._toggleButtons != null ? bar._toggleButtons.Values.Where(toggle => toggle != null).ToList() : new System.Collections.Generic.List<AnimatedToggle>();
+				_navTemplate = toggles.FirstOrDefault();
+				Plugin.Trace($"Game top bar: {(bar != null ? "found" : "not found")}, {toggles.Count} tabs, using {(_navTemplate != null ? _navTemplate.name : "none")}");
+				if (_navTemplate != null)
+				{
+					DumpTree(_navTemplate.transform, 0);
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Game top bar: could not look for it: {e.Message}");
+			}
+
+			return _navTemplate;
+		}
+
+		private static void DumpTree(Transform node, int depth)
+		{
+			var rect = node as RectTransform;
+			var parts = string.Join(", ", node.GetComponents<Component>().Where(part => part != null && !(part is Transform)).Select(part => part.GetType().Name).ToArray());
+			Plugin.Trace($"Game tab tree: {new string(' ', depth * 2)}{node.name} active={node.gameObject.activeSelf} size={(rect != null ? rect.rect.size.ToString() : "-")} [{parts}]");
+			if (depth < 4)
+			{
+				for (int i = 0; i < node.childCount; i++)
+				{
+					DumpTree(node.GetChild(i), depth + 1);
+				}
+			}
+		}
+
+		// A copy of a top bar tab with our caption and picture; it behaves as the game's own (hover, selected). Null when the bar is not there.
+		private static AnimatedToggle NavTab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height, float textUnits)
+		{
+			var template = NavTemplate();
+			if (template == null)
+			{
+				return null;
+			}
+
+			try
+			{
+				var copy = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
+				copy.name = "Tab " + text;
+				copy.SetActive(true);
+				// The tooltip and behaviour the game gave this tab for its own screen are not wanted on ours
+				foreach (var area in copy.GetComponentsInChildren<HoverTooltipArea>(true))
+				{
+					UnityEngine.Object.Destroy(area);
+				}
+
+				var toggle = copy.GetComponent<AnimatedToggle>();
+				for (int i = toggle.onValueChanged.GetPersistentEventCount() - 1; i >= 0; i--)
+				{
+					toggle.onValueChanged.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
+				}
+
+				toggle.group = group;
+				int size = Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * textUnits));
+				foreach (var label in copy.GetComponentsInChildren<TMPro.TMP_Text>(true))
+				{
+					label.text = text.ToUpper();
+					label.fontSize = size;
+					label.enableWordWrapping = false;
+					label.overflowMode = TMPro.TextOverflowModes.Ellipsis;
+				}
+
+				// The picture is the image that is not the tab's own background
+				Image picture = null;
+				foreach (var image in copy.GetComponentsInChildren<Image>(true))
+				{
+					if (image.gameObject != copy && image.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0)
+					{
+						picture = image;
+						break;
+					}
+				}
+
+				if (picture != null)
+				{
+					picture.gameObject.SetActive(icon != null);
+					if (icon != null)
+					{
+						picture.sprite = icon;
+						picture.preserveAspect = true;
+					}
+				}
+
+				toggle.onValueChanged.AddListener(value =>
+				{
+					if (value)
+					{
+						select();
+					}
+				});
+				toggle.ToggleSilent(on);
+				UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f).minWidth = 0f;
+				return toggle;
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Game top bar tab: could not make one: {e.Message}");
+				return null;
+			}
+		}
+
 		// A copy of the game's tab button in the row: the caption (the game puts it in capitals), an optional picture, lit when it is on; select is
 		// called when it is clicked on. The group makes the tabs of a row switch each other off. Null when the game's tab is not there.
 		internal static AnimatedToggle Tab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height, float textUnits)
 		{
+			// The top bar's tab first (a picture, the game's hover); the generic toggle of the game's screens when the bar is not there
+			var nav = NavTab(parent, text, icon, on, group, select, height, textUnits);
+			if (nav != null)
+			{
+				return nav;
+			}
+
 			var template = TabTemplate();
 			if (template == null)
 			{
