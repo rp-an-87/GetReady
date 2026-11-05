@@ -34,7 +34,7 @@ namespace GetReady
 				"A light green vignette and a green READY on screen for a moment when Get ready has brought everything. Just for show.");
 			DragFadeMode = Config.Bind("1. General", "4. While dragging an item", GetReady.DragFadeMode.Fade,
 				"What the new Get ready window does while you drag an item in the stash: Off leaves it as it is, Fade makes it see-through (and lets the mouse through, so you can drop the item on what is behind it), Hide takes it away until you drop.");
-			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.15f,
+			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.05f,
 				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
 			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
 				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
