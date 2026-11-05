@@ -34,6 +34,16 @@ namespace GetReady
 		// An icon that is not there yet: the page is drawn again shortly
 		internal static void IconPending(Func<bool> isThere) => WaitFor.Add(isThere);
 
+		// Builds something that asks for pictures and takes those requests for itself (an alert), so they do not hold the Get ready page
+		internal static List<Func<bool>> CollectPending(Action build)
+		{
+			int before = WaitFor.Count;
+			build();
+			var added = WaitFor.Skip(before).ToList();
+			WaitFor.RemoveRange(before, WaitFor.Count - before);
+			return added;
+		}
+
 		private static bool AllThere()
 		{
 			foreach (var isThere in WaitFor)

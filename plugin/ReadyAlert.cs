@@ -19,7 +19,10 @@ namespace GetReady
 		private static RectTransform _root;
 		private static List<KeyValuePair<string, PlanLine>> _problems = new List<KeyValuePair<string, PlanLine>>();
 		private static float _captionHeight;
-		private static float _redrawAt;
+		// The window is built out of sight, and shown when the pictures it asked for are there
+		private static List<Func<bool>> _pending = new List<Func<bool>>();
+		private static bool _hidden;
+		private static float _shownAt;
 
 		internal static bool IsOpen => _window != null;
 
@@ -30,7 +33,7 @@ namespace GetReady
 			{
 				if (_window != null)
 				{
-					BuildBody();
+					BuildHidden();
 					return;
 				}
 
@@ -62,9 +65,7 @@ namespace GetReady
 					_root = null;
 				};
 				_window = window;
-				BuildBody();
-				// Pictures the game has not made yet come a moment later: drawn once more then
-				_redrawAt = Time.unscaledTime + 0.7f;
+				BuildHidden();
 			}
 			catch (Exception e)
 			{
@@ -80,13 +81,47 @@ namespace GetReady
 			}
 		}
 
-		// Called every frame: the one redraw for pictures that were not there yet
+		// Out of sight while the pictures are made
+		private static void BuildHidden()
+		{
+			_shownAt = Time.unscaledTime;
+			_pending = ReadyUiWindow.CollectPending(BuildBody);
+			SetShown(AllThere());
+		}
+
+		private static bool AllThere() => _pending.All(isThere => isThere());
+
+		private static void SetShown(bool shown)
+		{
+			_hidden = !shown;
+			if (_window == null)
+			{
+				return;
+			}
+
+			var frame = _window.WindowTransform;
+			var group = frame.GetComponent<CanvasGroup>() ?? frame.gameObject.AddComponent<CanvasGroup>();
+			group.alpha = shown ? 1f : 0f;
+			group.blocksRaycasts = shown;
+			group.interactable = shown;
+		}
+
+		// Called every frame: when the pictures are there the window is drawn once more with them and shown (or after a few seconds, with what there is)
 		internal static void Update()
 		{
-			if (_window != null && _redrawAt > 0f && Time.unscaledTime >= _redrawAt)
+			if (_window == null || !_hidden)
 			{
-				_redrawAt = 0f;
-				BuildBody();
+				return;
+			}
+
+			bool late = Time.unscaledTime - _shownAt > 3f;
+			if (AllThere() || late)
+			{
+				_pending = ReadyUiWindow.CollectPending(BuildBody);
+				if (AllThere() || late)
+				{
+					SetShown(true);
+				}
 			}
 		}
 
@@ -97,7 +132,7 @@ namespace GetReady
 			{
 				new KeyValuePair<string, PlanLine>("Medicine to bring", new PlanLine { Problem = true, Text = "Healing kits: 120/300 HP", Subject = "Salewa", Detail = "Only 120 of the 300 HP you want: the stash has no more.", Template = "544fb45d4bdc2dee738b4568" }),
 				new KeyValuePair<string, PlanLine>("Medicine to bring", new PlanLine { Problem = true, Text = "Bandages", Subject = "Aseptic bandage", Detail = "None in the stash.", Template = "544fb25a4bdc2dfb738b4567" }),
-				new KeyValuePair<string, PlanLine>("Repair", new PlanLine { Problem = true, Text = "Repair", Subject = "6B43 Zabralo-Sh body armor", Detail = "No repair kit can repair it, and there are not enough roubles for a trader." }),
+				new KeyValuePair<string, PlanLine>("Repair", new PlanLine { Problem = true, Text = "Repair", Subject = "6B43 Zabralo-Sh body armor", Detail = "No repair kit can repair it, and there are not enough roubles for a trader.", Template = "545cdb794bdc2d3a198b456a" }),
 				new KeyValuePair<string, PlanLine>("Cash", new PlanLine { Problem = true, Text = "Cash", Subject = "Roubles", Detail = "No place on you takes the money: pockets, vest, backpack and pouch are full.", Template = Game.Roubles })
 			});
 		}
@@ -133,16 +168,20 @@ namespace GetReady
 			}
 
 			_captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
-			frame.sizeDelta = new Vector2(Mathf.Min(UiKit.Unit * 32f, Screen.width * 0.9f), 300f);
-			try
-			{
-				frame.SetInCenter();
-				frame.anchoredPosition += new Vector2(0f, Screen.height * 0.12f);
-			}
-			catch (Exception e)
-			{
-				Plugin.Log.LogWarning($"Alert: could not place it: {e.Message}");
-			}
+			frame.sizeDelta = new Vector2(Mathf.Min(UiKit.Unit * 32f, Parent(frame).rect.width * 0.9f), 300f);
+			Place(frame);
+		}
+
+		private static RectTransform Parent(RectTransform frame) => (RectTransform)frame.parent;
+
+		// In the middle of the game's window area, a little above the centre, and never with its top edge off the screen
+		private static void Place(RectTransform frame)
+		{
+			var area = Parent(frame).rect;
+			frame.anchorMin = frame.anchorMax = new Vector2(0.5f, 0.5f);
+			frame.pivot = new Vector2(0.5f, 0.5f);
+			float room = (area.height - frame.sizeDelta.y) / 2f;
+			frame.anchoredPosition = new Vector2(0f, Mathf.Clamp(area.height * 0.1f, 0f, Mathf.Max(0f, room)));
 		}
 
 		private static void BuildBody()
@@ -204,8 +243,9 @@ namespace GetReady
 
 			// As high as what is in it, up to most of the screen
 			LayoutRebuilder.ForceRebuildLayoutImmediate(content);
-			float wanted = top + 12f + 14f + 20f + LayoutUtility.GetPreferredHeight(content) + UiKit.Unit * 2.2f + 6f;
-			frame.sizeDelta = new Vector2(frame.sizeDelta.x, Mathf.Clamp(wanted, 220f, Screen.height * 0.75f));
+			float wanted = top + 12f + 14f + 20f + content.rect.height + UiKit.Unit * 2.2f + 6f;
+			frame.sizeDelta = new Vector2(frame.sizeDelta.x, Mathf.Clamp(wanted, 220f, Parent(frame).rect.height * 0.75f));
+			Place(frame);
 		}
 	}
 }
