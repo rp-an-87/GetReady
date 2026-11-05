@@ -15,7 +15,7 @@ namespace GetReady
 	internal static class ReadyAlert
 	{
 		// About four problems fit before the list scrolls (a step heading and four rows of an icon, a name and a line or two)
-		private const float MostContent = 17f;
+		private const float MostContent = 25f;
 
 		private static EditBuildNameWindow _window;
 		private static DefaultUIButton _buttonTemplate;
