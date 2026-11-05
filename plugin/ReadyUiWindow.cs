@@ -695,9 +695,19 @@ namespace GetReady
 		// The page keeps out of sight behind the Loading note
 		private static void Hold(bool on)
 		{
-			var group = _content.GetComponent<CanvasGroup>() ?? _content.gameObject.AddComponent<CanvasGroup>();
-			group.alpha = on ? 0f : 1f;
-			group.blocksRaycasts = !on;
+			// The page and its scroll bar: the bar's handle would be seen growing as the sections are added
+			var hidden = new[] { _content.gameObject, _scroll != null && _scroll.verticalScrollbar != null ? _scroll.verticalScrollbar.gameObject : null };
+			foreach (var part in hidden)
+			{
+				if (part == null)
+				{
+					continue;
+				}
+
+				var group = part.GetComponent<CanvasGroup>() ?? part.AddComponent<CanvasGroup>();
+				group.alpha = on ? 0f : 1f;
+				group.blocksRaycasts = !on;
+			}
 			if (_loadingNote != null)
 			{
 				_loadingNote.gameObject.SetActive(on);
