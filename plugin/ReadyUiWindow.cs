@@ -561,7 +561,7 @@ namespace GetReady
 			UiKit.Stretch(root, 0f, 0f, 0f, Mathf.Max(_captionHeight, 30f));
 
 			var tabs = UiKit.HBox(root, 8f);
-			Tab(tabs, "Ready", 0);
+			Tab(tabs, "Status", 0);
 			Tab(tabs, "Setup", 1);
 			if (_tab == 1)
 			{

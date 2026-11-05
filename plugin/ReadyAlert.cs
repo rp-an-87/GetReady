@@ -14,6 +14,9 @@ namespace GetReady
 	// it is closed (the red cross, Got it, or Esc) and does not need the Get ready window to be open. A new run replaces what it shows.
 	internal static class ReadyAlert
 	{
+		// About four problems fit before the list scrolls (a step heading and four rows of an icon, a name and a line or two)
+		private const float MostContent = 17f;
+
 		private static EditBuildNameWindow _window;
 		private static DefaultUIButton _buttonTemplate;
 		private static RectTransform _root;
@@ -168,7 +171,7 @@ namespace GetReady
 			}
 
 			_captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
-			frame.sizeDelta = new Vector2(Mathf.Min(UiKit.Unit * 32f, Parent(frame).rect.width * 0.9f), 300f);
+			frame.sizeDelta = new Vector2(Mathf.Min(UiKit.Unit * 22f, Parent(frame).rect.width * 0.9f), 300f);
 			Place(frame);
 		}
 
@@ -245,7 +248,7 @@ namespace GetReady
 			LayoutRebuilder.ForceRebuildLayoutImmediate(content);
 			float need = content.GetComponent<VerticalLayoutGroup>().preferredHeight;
 			float chrome = top + 12f + 14f + 10f + UiKit.Unit * 2.2f + 8f;
-			frame.sizeDelta = new Vector2(frame.sizeDelta.x, Mathf.Clamp(chrome + need, 200f, Parent(frame).rect.height * 0.75f));
+			frame.sizeDelta = new Vector2(frame.sizeDelta.x, chrome + Mathf.Min(need, UiKit.Unit * MostContent));
 			Place(frame);
 		}
 	}
