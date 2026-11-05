@@ -33,14 +33,14 @@ namespace GetReady.Tests
 		// ---- the ammo rules' order
 
 		[Fact]
-		public void The_ammo_rules_start_in_their_usual_order() => AmmoRules.PointerOrder().Should().Equal("nearest", "others", "loose", "weapon");
+		public void The_ammo_rules_start_in_their_usual_order() => AmmoRules.PointerOrder().Should().Equal("nearest", "others", "loose", "weapon", "anywhere");
 
 		[Fact]
 		public void The_ammo_rules_follow_the_saved_order()
 		{
 			SettingsStore.Current.Ammo.Pointers = new List<string> { "weapon", "loose", "nearest" };
 
-			AmmoRules.PointerOrder().Should().Equal("weapon", "loose", "nearest", "others");
+			AmmoRules.PointerOrder().Should().Equal("weapon", "loose", "nearest", "others", "anywhere");
 		}
 
 		[Fact]
@@ -48,29 +48,29 @@ namespace GetReady.Tests
 		{
 			SettingsStore.Current.Ammo.Pointers = new List<string> { "nearest", "bogus", "nearest" };
 
-			AmmoRules.PointerOrder().Should().Equal("nearest", "others", "loose", "weapon");
+			AmmoRules.PointerOrder().Should().Equal("nearest", "others", "loose", "weapon", "anywhere");
 		}
 
 		[Fact]
 		public void Moving_a_rule_down_and_up_changes_the_saved_order()
 		{
 			AmmoRules.MovePointer("loose", -1);
-			AmmoRules.PointerOrder().Should().Equal("nearest", "loose", "others", "weapon");
+			AmmoRules.PointerOrder().Should().Equal("nearest", "loose", "others", "weapon", "anywhere");
 
 			AmmoRules.MovePointer("weapon", -3);
-			AmmoRules.PointerOrder().Should().Equal("weapon", "nearest", "loose", "others");
+			AmmoRules.PointerOrder().Should().Equal("weapon", "nearest", "loose", "others", "anywhere");
 		}
 
 		[Theory]
 		[InlineData("nearest", -1)]
-		[InlineData("weapon", 1)]
+		[InlineData("anywhere", 1)]
 		[InlineData("loose", 5)]
 		[InlineData("bogus", 1)]
 		public void Moving_a_rule_off_the_list_or_an_unknown_one_changes_nothing(string key, int step)
 		{
 			AmmoRules.MovePointer(key, step);
 
-			AmmoRules.PointerOrder().Should().Equal("nearest", "others", "loose", "weapon");
+			AmmoRules.PointerOrder().Should().Equal("nearest", "others", "loose", "weapon", "anywhere");
 		}
 
 		[Fact]

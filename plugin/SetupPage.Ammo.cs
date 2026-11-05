@@ -1,3 +1,4 @@
+using System.Linq;
 using EFT.InventoryLogic;
 using UnityEngine;
 
@@ -36,6 +37,23 @@ namespace GetReady
 			UiKit.Line(rules);
 			GroupHeading(rules, "EMPTY SPARE MAGAZINES", "The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
 			PriorityList(rules, "What an empty spare magazine on you copies, first match wins", AmmoRules.PointerOrder(), pointer => AmmoRules.PointerName(pointer), (pointer, step) => AmmoRules.MovePointer(pointer, step), null);
+
+			HelpTitle(rules, "When the loose ammo is of several kinds", "Two of the rules above look at loose ammo to tell which ammo an empty magazine gets (in the same container, and anywhere in an equipped container). When that loose ammo is of more than one kind: Conflict does not guess (the next rule is asked, and with none left the magazine is reported), Worst takes the kind with the least penetration (then damage), Best the most, Random any of them.");
+			var conflict = UiKit.HBox(rules, 6f);
+			UiKit.Gap(conflict, UiKit.Unit * 2f);
+			foreach (var mode in new[] { new[] { "conflict", "Conflict", "Nothing is guessed: the next rule is asked, and with none left the magazine is reported" } }.Concat(PickModes))
+			{
+				string key = mode[0];
+				bool on = ammo.PointerConflict == key;
+				Pick(conflict, mode[1], on, () =>
+				{
+					if (!on)
+					{
+						ammo.PointerConflict = key;
+						Changed();
+					}
+				}, mode[2], UiKit.Unit * 5.5f);
+			}
 
 			if (controller != null)
 			{

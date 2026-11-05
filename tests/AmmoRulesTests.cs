@@ -45,6 +45,54 @@ namespace GetReady.Tests
 			plan.Allocation.Select(pair => pair.Key).Should().NotContain(small);
 		}
 
+		[Fact]
+		public void A_spare_follows_loose_ammo_anywhere_you_wear_when_nothing_nearer_says_anything()
+		{
+			InStash(M855, 100);
+			NewAmmo(M855, 20).In(_world.Vest);
+
+			var plan = Plan(SpareOnYou());
+
+			plan.Type.Value.ToString().Should().Be(M855);
+			plan.Reason.Should().Be("loose ammo on you");
+		}
+
+		[Fact]
+		public void Loose_ammo_in_the_stash_is_not_a_pointer()
+		{
+			InStash(M855, 100);
+
+			Plan(SpareOnYou()).Problem.Should().Be("nothing to follow");
+		}
+
+		[Fact]
+		public void Several_kinds_of_loose_ammo_are_not_guessed_by_default_anywhere_either()
+			{
+			InStash(M855, 100);
+			InStash(M995, 100);
+			NewAmmo(M855, 20).In(_world.Vest);
+			NewAmmo(M995, 20).In(_world.Pouch);
+
+			Plan(SpareOnYou()).Problem.Should().Be("nothing to follow");
+		}
+
+		[Theory]
+		[InlineData("worst", M855)]
+		[InlineData("best", M995)]
+		public void The_owners_pick_decides_among_several_kinds_of_loose_ammo(string mode, string expected)
+		{
+			InStash(M855, 100);
+			InStash(M995, 100);
+			OnYou(M855, 20);
+			OnYou(M995, 20);
+			SettingsStore.Current.Ammo.PointerConflict = mode;
+
+			var plan = Plan(SpareOnYou());
+
+			plan.Type.Value.ToString().Should().Be(expected);
+			plan.Reason.Should().StartWith($"the {mode} of the loose ammo");
+		}
+
 		// ---- what is there to put in
 
 		[Fact]
@@ -234,7 +282,7 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void The_only_ammo_you_carry_is_followed_as_a_last_resort()
+		public void The_only_ammo_you_carry_is_followed_by_the_last_rule()
 		{
 			InStash(M995, 100);
 			NewAmmo(M855, 20).In(_world.Pouch);
@@ -242,7 +290,7 @@ namespace GetReady.Tests
 			var plan = Plan(SpareOnYou());
 
 			plan.Type.Value.ToString().Should().Be(M855);
-			plan.Reason.Should().Be("the only compatible ammo you carry");
+			plan.Reason.Should().Be("loose ammo on you");
 		}
 
 		[Fact]
@@ -574,7 +622,7 @@ namespace GetReady.Tests
 		{
 			SettingsStore.Current.Ammo.Pointers = new List<string> { "loose", "nearest", "weapon" };
 
-			AmmoRules.PointerOrder().Should().Equal("loose", "nearest", "weapon", "others");
+			AmmoRules.PointerOrder().Should().Equal("loose", "nearest", "weapon", "others", "anywhere");
 		}
 
 		[Fact]

@@ -82,7 +82,10 @@ namespace GetReady
 		public bool LooseShortIsProblem;
 		// Who decides, first match wins, for an empty spare magazine: loose ammo in the same container, the nearest magazine, an
 		// equipped weapon that takes it
-		public List<string> Pointers = new List<string> { "nearest", "others", "loose", "weapon" };
+		public List<string> Pointers = new List<string> { "nearest", "others", "loose", "weapon", "anywhere" };
+		// What the loose-ammo rules do when the loose ammo is of several kinds: conflict (nothing is guessed, the next rule is asked), or the
+		// worst, the best (penetration, then damage) or a random one of them
+		public string PointerConflict = "conflict";
 		// Spare ammo (how many stacks and where to is the supplies group "spareammo"): when several kinds of ammo are in use for a
 		// caliber, the one brought is the worst, the best (penetration, then damage) or a random one of them
 		public string SparePick = "best";

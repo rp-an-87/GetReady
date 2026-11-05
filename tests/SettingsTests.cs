@@ -23,7 +23,7 @@ namespace GetReady.Tests
 			var settings = SettingsStore.Parse("{}");
 
 			settings.UiScale.Should().Be(1f);
-			settings.Ammo.Pointers.Should().Equal("nearest", "others", "loose", "weapon");
+			settings.Ammo.Pointers.Should().Equal("nearest", "others", "loose", "weapon", "anywhere");
 			settings.FullAuto.Slots.Should().Equal("FirstPrimaryWeapon", "SecondPrimaryWeapon");
 			settings.Repair.Armor.Should().BeTrue();
 			new GroupSetting().ReplaceWorse.Should().BeTrue();

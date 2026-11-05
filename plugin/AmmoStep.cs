@@ -362,23 +362,8 @@ namespace GetReady
 
 				var kinds = inStash.GroupBy(ammo => ammo.TemplateId).Select(kind => kind.First()).ToList();
 				var mode = SettingsStore.Current.Ammo.SparePick;
-				Ammo chosen;
-				if (kinds.Count == 1)
-				{
-					chosen = kinds[0];
-				}
-				else if (mode == "random")
-				{
-					chosen = kinds[Game.RandomIndex(kinds.Count)];
-				}
-				else if (mode == "worst")
-				{
-					chosen = kinds.OrderBy(ammo => ammo.PenetrationPower).ThenBy(ammo => ammo.Damage).First();
-				}
-				else
-				{
-					chosen = kinds.OrderByDescending(ammo => ammo.PenetrationPower).ThenByDescending(ammo => ammo.Damage).First();
-				}
+				// The owner's pick (best when it is none of the three)
+				var chosen = AmmoRules.PickKind(kinds, mode == "worst" || mode == "random" ? mode : "best");
 
 				// Loose on the stash first, non-FiR first (as for the supplies); whole stacks are used before a split is made
 				var sources = inStash.Where(ammo => ammo.TemplateId == chosen.TemplateId)

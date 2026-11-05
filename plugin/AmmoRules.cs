@@ -93,7 +93,7 @@ namespace GetReady
 			}
 		}
 
-		internal static readonly string[] PointerKeys = { "nearest", "others", "loose", "weapon" };
+		internal static readonly string[] PointerKeys = { "nearest", "others", "loose", "weapon", "anywhere" };
 
 		// The pointers in the owner's order (any that is missing from the saved list comes last)
 		internal static List<string> PointerOrder()
@@ -107,6 +107,7 @@ namespace GetReady
 			key == "loose" ? "Loose ammo in the same container"
 				: key == "nearest" ? "What magazines in the same container hold"
 				: key == "others" ? "What magazines in other containers hold"
+				: key == "anywhere" ? "Loose ammo anywhere in an equipped container"
 				: "What an equipped weapon that takes it holds";
 
 		internal static void MovePointer(string key, int step)
@@ -142,6 +143,33 @@ namespace GetReady
 
 		private static string ContainerName(Item container) => container == null ? "your gear" : Game.NameOf(container);
 
+		// One of several kinds of ammo by the owner's mode: the worst or the best (penetration, then damage) or a random one. Null for "conflict":
+		// nothing is guessed. A single kind is always the answer.
+		internal static Ammo PickKind(List<Ammo> kinds, string mode)
+		{
+			if (kinds.Count == 0)
+			{
+				return null;
+			}
+
+			if (kinds.Count == 1)
+			{
+				return kinds[0];
+			}
+
+			if (mode == "random")
+			{
+				return kinds[Game.RandomIndex(kinds.Count)];
+			}
+
+			if (mode == "worst")
+			{
+				return kinds.OrderBy(ammo => ammo.PenetrationPower).ThenBy(ammo => ammo.Damage).First();
+			}
+
+			return mode == "best" ? kinds.OrderByDescending(ammo => ammo.PenetrationPower).ThenByDescending(ammo => ammo.Damage).First() : null;
+		}
+
 		// The ammo to follow, in this order. Only ammo that is in stock counts. Null when there is nothing to follow.
 		//   1. what the magazine already holds
 		//   not equipped (stash): 2. an equipped weapon that takes the magazine and has ammo (in its magazine, or chambered)
@@ -154,6 +182,15 @@ namespace GetReady
 		{
 			bool Available(Item item) => item is Ammo ammo && stacks.Any(stack => stack.TemplateId == ammo.TemplateId);
 			KeyValuePair<MongoID, string>? Found(Item ammo, string reason) => ammo == null ? (KeyValuePair<MongoID, string>?)null : new KeyValuePair<MongoID, string>(ammo.TemplateId, reason);
+
+			// The kind of ammo among these stacks: the only one there is, else the owner's mode (null when nothing is guessed)
+			KeyValuePair<MongoID, string>? OfKinds(IEnumerable<Ammo> found, string reason)
+			{
+				var kinds = found.GroupBy(ammo => ammo.TemplateId).Select(kind => kind.First()).ToList();
+				var mode = SettingsStore.Current.Ammo.PointerConflict;
+				var chosen = PickKind(kinds, mode);
+				return chosen == null ? null : Found(chosen, kinds.Count > 1 ? $"the {mode} of the {reason}" : reason);
+			}
 
 			// The round a weapon has chambered says what you load for it (you put it there)
 			Ammo Chambered(Weapon weapon) => weapon.Chambers.Select(chamber => chamber.ContainedItem as Ammo).FirstOrDefault(ammo => ammo != null && !ammo.IsUsed && Available(ammo));
@@ -222,11 +259,9 @@ namespace GetReady
 				// Each pointer on its own; the order they are tried in is the owner's (Setup > Ammo): the first that gives an answer wins
 				KeyValuePair<MongoID, string>? Loose()
 				{
-					// Loose ammo of more than one kind in the container says nothing about which one: it is not guessed
-					var looseAmmo = siblings.OfType<Ammo>().Where(Available).ToList();
-					return looseAmmo.Select(ammo => ammo.TemplateId).Distinct().Count() == 1
-						? Found(looseAmmo[0], $"loose ammo in your {ContainerName(container)}")
-						: null;
+					// Loose ammo of more than one kind in the container says nothing about which one: by the owner's mode, and with none set it
+					// is not guessed
+					return OfKinds(siblings.OfType<Ammo>().Where(Available), $"loose ammo in your {ContainerName(container)}");
 				}
 
 				KeyValuePair<MongoID, string>? Nearest()
@@ -256,9 +291,16 @@ namespace GetReady
 					return found == null ? null : Found(found.Ammo, $"same as a magazine in your {ContainerName(found.Where)}");
 				}
 
+				KeyValuePair<MongoID, string>? Anywhere()
+				{
+					// Loose ammo in any container you wear (the stash does not count): only its kind is taken from it, the rounds come from where
+					// rounds always come from
+					return OfKinds(view.Carried().Concat(view.Secured()).OfType<Ammo>().Where(ammo => ammo.Parent?.Container is Grid && Available(ammo)), "loose ammo on you");
+				}
+
 				foreach (var pointer in PointerOrder())
 				{
-					var answer = pointer == "loose" ? Loose() : pointer == "nearest" ? Nearest() : pointer == "others" ? Others() : FromWeapons();
+					var answer = pointer == "loose" ? Loose() : pointer == "nearest" ? Nearest() : pointer == "others" ? Others() : pointer == "anywhere" ? Anywhere() : FromWeapons();
 					if (answer != null)
 					{
 						return answer;
