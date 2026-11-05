@@ -92,6 +92,7 @@ namespace GetReady
 
 					_window = null;
 					SetupPage.StopWatching();
+					DragGhost.End();
 					_content = null;
 					_scroll = null;
 					_status = null;

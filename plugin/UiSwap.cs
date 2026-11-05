@@ -55,6 +55,7 @@ namespace GetReady
 			_dragging = true;
 			UiKit.HideTips(true);
 			CursorSwitcher.SetCursor(ECursorType.Hand);
+			DragGhost.Begin(Rect, eventData);
 			Dim(0.5f);
 			foreach (var peer in Peers)
 			{
@@ -67,6 +68,7 @@ namespace GetReady
 
 		public void OnDrag(PointerEventData eventData)
 		{
+			DragGhost.Move(eventData);
 			var next = Nearest(eventData);
 			if (next != _target)
 			{
@@ -79,6 +81,7 @@ namespace GetReady
 		public void OnEndDrag(PointerEventData eventData)
 		{
 			_dragging = false;
+			DragGhost.End();
 			_dragEndFrame = Time.frameCount;
 			UiKit.HideTips(false);
 			CursorSwitcher.SetCursor(_over ? ECursorType.Hand : ECursorType.Idle);

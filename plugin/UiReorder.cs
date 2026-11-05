@@ -52,11 +52,13 @@ namespace GetReady
 			_target = -1;
 			CursorSwitcher.SetCursor(ECursorType.Hand);
 			Light(this, false);
+			DragGhost.Begin(Rows[Index], eventData);
 			Dim(Rows[Index], 0.45f);
 		}
 
 		public void OnDrag(PointerEventData eventData)
 		{
+			DragGhost.Move(eventData);
 			int next = Nearest(eventData);
 			if (next == Index)
 			{
@@ -80,6 +82,7 @@ namespace GetReady
 
 		public void OnEndDrag(PointerEventData eventData)
 		{
+			DragGhost.End();
 			if (_target >= 0)
 			{
 				Light(Rows[_target].GetComponent<ReorderGrip>(), false);
