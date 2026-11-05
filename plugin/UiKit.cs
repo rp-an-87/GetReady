@@ -456,12 +456,20 @@ namespace GetReady
 			track.pivot = new Vector2(1f, 0.5f);
 			track.sizeDelta = new Vector2(ScrollbarWidth, 0f);
 			Fill(track, new Color(0.05f, 0.055f, 0.055f), true);
+			// A thin light border round the track, as the game's own bar has
+			var trackEdge = track.gameObject.AddComponent<Outline>();
+			trackEdge.effectColor = new Color(0.45f, 0.46f, 0.44f);
+			trackEdge.effectDistance = new Vector2(1f, 1f);
 			var area = Node("Sliding Area", track);
 			Stretch(area, 1f, 1f, 1f, 1f);
 			var handle = Node("Handle", area);
 			// A new object is 100 x 100: the scroll bar sets the handle along its own direction only, so the width is set here
 			Stretch(handle, 0f, 0f, 0f, 0f);
-			var image = Fill(handle, new Color(0.42f, 0.43f, 0.41f), true);
+			// Light, with a lighter border, like the game's handle
+			var image = Fill(handle, new Color(0.68f, 0.69f, 0.66f), true);
+			var handleEdge = handle.gameObject.AddComponent<Outline>();
+			handleEdge.effectColor = new Color(0.92f, 0.92f, 0.9f);
+			handleEdge.effectDistance = new Vector2(1f, 1f);
 			var bar = track.gameObject.AddComponent<Scrollbar>();
 			bar.handleRect = handle;
 			bar.targetGraphic = image;
@@ -509,8 +517,9 @@ namespace GetReady
 			scroll.viewport = viewport;
 			scroll.content = content;
 			scroll.verticalScrollbar = ScrollBar(rect);
-			scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
-			scroll.verticalScrollbarSpacing = 0f;
+			// The bar is there only when the content is longer than the view (the view then gives up the room for it)
+			scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHideAndExpandViewport;
+			scroll.verticalScrollbarSpacing = 4f;
 			return scroll;
 		}
 	}

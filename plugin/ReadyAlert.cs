@@ -241,10 +241,11 @@ namespace GetReady
 				UiKit.PushButton(footer, "Got it", Close, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 8f, height: UiKit.Unit * 2.2f);
 			}
 
-			// As high as what is in it, up to most of the screen
+			// As high as what is in it, up to most of the game's window area; above that the list scrolls (and the bar shows only then)
 			LayoutRebuilder.ForceRebuildLayoutImmediate(content);
-			float wanted = top + 12f + 14f + 20f + content.rect.height + UiKit.Unit * 2.2f + 6f;
-			frame.sizeDelta = new Vector2(frame.sizeDelta.x, Mathf.Clamp(wanted, 220f, Parent(frame).rect.height * 0.75f));
+			float need = content.GetComponent<VerticalLayoutGroup>().preferredHeight;
+			float chrome = top + 12f + 14f + 10f + UiKit.Unit * 2.2f + 8f;
+			frame.sizeDelta = new Vector2(frame.sizeDelta.x, Mathf.Clamp(chrome + need, 200f, Parent(frame).rect.height * 0.75f));
 			Place(frame);
 		}
 	}

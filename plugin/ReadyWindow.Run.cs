@@ -18,6 +18,8 @@ namespace GetReady
 		// The button's plain click: do it (ReadyRun) and show what went wrong, if anything
 		internal static async void QuickRun()
 		{
+			// A new run starts from a clean screen: the last alert is closed (it comes back only if this run leaves problems too)
+			ReadyAlert.Close();
 			var problems = await ReadyRun.QuickRun();
 			if (problems != null && problems.Count > 0)
 			{
