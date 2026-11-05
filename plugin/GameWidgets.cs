@@ -83,6 +83,15 @@ namespace GetReady
 			return _navTemplate;
 		}
 
+		// The game's own tab asks for room in its layout settings (a flexible height): the height wanted is fixed, whatever room there is
+		private static void Pin(LayoutElement element, float height)
+		{
+			element.minWidth = 0f;
+			element.minHeight = height;
+			element.preferredHeight = height;
+			element.flexibleHeight = 0f;
+		}
+
 		private static void DumpTree(Transform node, int depth)
 		{
 			var rect = node as RectTransform;
@@ -162,7 +171,7 @@ namespace GetReady
 					}
 				});
 				toggle.ToggleSilent(on);
-				UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f).minWidth = 0f;
+				Pin(UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f), height);
 				return toggle;
 			}
 			catch (Exception e)
@@ -222,7 +231,7 @@ namespace GetReady
 					}
 				});
 				toggle.ToggleSilent(on);
-				UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f).minWidth = 0f;
+				Pin(UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f), height);
 				return toggle;
 			}
 			catch (Exception e)
@@ -257,7 +266,7 @@ namespace GetReady
 				if (flex)
 				{
 					// The row's room shared out equally between such buttons
-					UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f).minWidth = 0f;
+					Pin(UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f), height);
 				}
 				else
 				{
