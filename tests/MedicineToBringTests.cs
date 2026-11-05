@@ -147,13 +147,24 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void Two_items_are_never_brought_when_one_of_them_fills_the_need()
+		public void Two_copies_are_never_brought_when_one_copy_fills_the_need()
+		{
+			Bandages(2).Setting.AllowOvershoot = true;
+			var part = Any(ArmyBandage);
+			part.GetItemComponent<MedKitComponent>().HpResource = 1;
+			var full = Any(ArmyBandage);
+
+			Plan(_step, new Item[0], new[] { part, full }).Where(line => line.Run != null).Should().ContainSingle()
+				.Which.Text.Should().Be("Bring 1x Army bandage");
+		}
+
+		[Fact]
+		public void The_ranking_still_decides_between_different_items_when_a_later_one_would_fill_it_alone()
 		{
 			var def = Bandages(2);
 			def.Setting.Order = new List<string> { AsepticBandage, ArmyBandage };
-			def.Setting.AllowOvershoot = true;
 
-			Texts(Plan(_step, new Item[0], Items(AsepticBandage, ArmyBandage))).Should().Equal("Bandages: 0/2 bandage points", "Bring 1x Army bandage");
+			Texts(Plan(_step, new Item[0], Items(AsepticBandage, ArmyBandage))).Should().Contain("Bring 1x Aseptic bandage");
 		}
 
 		[Fact]

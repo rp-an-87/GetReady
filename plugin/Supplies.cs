@@ -216,11 +216,17 @@ namespace GetReady
 						return !(firstPass && limit > 0 && owned >= limit);
 					}).ToList();
 
-					// Never bring two when one fills it: an item that covers all that is missing comes before a smaller one that would need another
-					var item = (def.Stack ? null : usable.FirstOrDefault(candidate => def.WeightOf(candidate) >= need)) ?? usable.FirstOrDefault();
+					// The ranking decides which item comes next. Among copies of that same item, one that covers all that is missing comes before
+					// a partly used one that would need another copy after it (two splints, a 4/7 and a 7/7, where one 7/7 was enough)
+					var item = usable.FirstOrDefault();
 					if (item == null)
 					{
 						break;
+					}
+
+					if (!def.Stack && def.WeightOf(item) < need)
+					{
+						item = usable.FirstOrDefault(candidate => candidate.TemplateId == item.TemplateId && def.WeightOf(candidate) >= need) ?? item;
 					}
 
 					float weight = def.WeightOf(item);
