@@ -292,18 +292,6 @@ namespace GetReady
 			{
 				HealMe(section);
 			}
-			else
-			{
-				NotYet(section);
-			}
-		}
-
-		// For a section that is still only in the old window
-		private static void NotYet(Transform parent)
-		{
-			var row = UiKit.HBox(parent, 10f);
-			UiKit.Label(row, "This section is still in the old window.", 0.85f, Ui.Dim, flex: true);
-			UiKit.PushButton(row, "Open it", ReadyWindow.ShowSetup, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 		}
 
 		// The ON / OFF switch of a section or of an option

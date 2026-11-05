@@ -24,26 +24,8 @@ namespace GetReady
 
 		private static Vector2 _scroll;
 
-		internal static void Toggle()
-		{
-			_open = !_open;
-			if (_open)
-			{
-				Refresh();
-			}
-		}
-
-		// Opens the IMGUI window on its Setup page (the new window has no Setup page yet)
-		internal static void ShowSetup()
-		{
-			if (!_open)
-			{
-				_open = true;
-				Refresh();
-			}
-
-			_tab = 1;
-		}
+		// The stash button's right click and the open key: the game's own window (the IMGUI one is no longer shown)
+		internal static void Toggle() => ReadyUiWindow.Toggle();
 
 		private static EventSystem _blocked;
 
@@ -89,7 +71,7 @@ namespace GetReady
 		private static bool _escapePending;
 		private static int _escapeFrame = -1;
 
-		// Esc pressed: closes the alert box if it is up, else the window. Returns whether there was something to close (the key is then
+		// Esc pressed: closes the alert if it is up, else the window. Returns whether there was something to close (the key is then
 		// taken, so the game's screen does not also react to it).
 		internal static bool ConsumeEscape()
 		{
@@ -101,24 +83,13 @@ namespace GetReady
 				return true;
 			}
 
-			if (Alerts.Count > 0)
+			if (ReadyUiWindow.IsOpen)
 			{
-				Alerts.Clear();
-				return true;
-			}
-
-			if (_open)
-			{
-				Close();
+				ReadyUiWindow.Close();
 				return true;
 			}
 
 			return false;
-		}
-
-		private static void Close()
-		{
-			_open = false;
 		}
 
 		internal static void Tick()
@@ -137,9 +108,11 @@ namespace GetReady
 			}
 
 			bool shown = ReadyButtonPatch.StashShown;
-			if (_open && !shown)
+			if (!shown)
 			{
-				Close();
+				// Leaving the stash closes the window and any alert
+				ReadyUiWindow.Close();
+				ReadyAlert.Close();
 			}
 
 			// The status is kept up to date while the stash is up, window or not (the button shows it)
@@ -154,7 +127,6 @@ namespace GetReady
 				Watch(null);
 			}
 
-			BlockGameInput();
 			// Cases changed by hand are recorded again once the moving has settled (a drag is a remove and an add)
 			if (shown && !_running && CasesStep.Pending.Count > 0 && Time.unscaledTime - _dirtyAt > 0.3f)
 			{

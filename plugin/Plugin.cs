@@ -16,7 +16,6 @@ namespace GetReady
 		internal static ConfigEntry<bool> ShowButton;
 		internal static ConfigEntry<KeyboardShortcut> OpenHotkey;
 		internal static ConfigEntry<bool> ShowFlash;
-		internal static ConfigEntry<KeyboardShortcut> SpikeHotkey;
 		internal static ConfigEntry<DragFadeMode> DragFadeMode;
 		internal static ConfigEntry<float> DragFadeOpacity;
 		internal static ConfigEntry<bool> DebugLogging;
@@ -52,8 +51,6 @@ namespace GetReady
 			Config.Bind("8. Debugging", "Show a test alert", false,
 				new ConfigDescription("Shows an alert like the one a run leaves behind when something is wrong, with made-up problems.", null,
 					new ConfigurationManagerAttributes { IsAdvanced = true, CustomDrawer = entry => { if (GUILayout.Button("Show a test alert")) { ReadyAlert.ShowTest(); } } }));
-			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
-				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
 				"Hover a magazine in the stash or in a raid inventory and press this to fill it up. It uses the ammo the magazine already holds, or else the highest-penetration ammo it accepts, taken from the stash and your gear. In a raid it is the normal timed load. Unassign the key to turn the feature off.");
 			RepairHotkey = Config.Bind("2. Quick actions", "2. Repair with kit hotkey", new KeyboardShortcut(KeyCode.R),
@@ -80,20 +77,14 @@ namespace GetReady
 			RepairWithKit.Update();
 			ReadyUiWindow.Update();
 			ReadyAlert.Update();
-			if (SpikeHotkey.Value.MainKey != KeyCode.None && SpikeHotkey.Value.IsDown())
-			{
-				ReadyUiWindow.Toggle();
-			}
-
 			if (OpenHotkey.Value.MainKey != KeyCode.None && OpenHotkey.Value.IsDown())
 			{
-				ReadyWindow.Toggle();
+				ReadyUiWindow.Toggle();
 			}
 		}
 
 		private void OnGUI()
 		{
-			ReadyWindow.Draw();
 			ReadyFlash.Draw();
 			MapWarning.Draw();
 		}

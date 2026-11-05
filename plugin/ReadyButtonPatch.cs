@@ -73,7 +73,7 @@ namespace GetReady
 					switch (ActionOf(button))
 					{
 						case ButtonAction.Configure:
-							ReadyWindow.Toggle();
+							ReadyUiWindow.Toggle();
 							break;
 						case ButtonAction.GetReady:
 							ReadyWindow.QuickRun();
