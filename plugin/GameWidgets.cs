@@ -257,7 +257,7 @@ namespace GetReady
 			}
 		}
 
-		// The page that is open: its text in the beige of the game's selected tab, bold, with a bar under it
+		// The page that is open: its button is kept in the game's highlighted state (the one it has under the mouse), whatever the mouse does
 		internal static void Mark(DefaultUIButton button, bool on)
 		{
 			if (!on)
@@ -265,19 +265,33 @@ namespace GetReady
 				return;
 			}
 
-			button._headerLabel.color = new Color(0.95f, 0.9f, 0.72f);
-			button._headerLabel.fontStyle = TMPro.FontStyles.Bold;
-			var bar = new GameObject("Open page", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
-			bar.transform.SetParent(button.transform, false);
-			bar.GetComponent<LayoutElement>().ignoreLayout = true;
-			bar.GetComponent<Image>().color = new Color(0.8f, 0.72f, 0.45f);
-			bar.GetComponent<Image>().raycastTarget = false;
-			var rect = (RectTransform)bar.transform;
-			rect.anchorMin = new Vector2(0.04f, 0f);
-			rect.anchorMax = new Vector2(0.96f, 0f);
-			rect.pivot = new Vector2(0.5f, 0f);
-			rect.sizeDelta = new Vector2(0f, 3f);
-			rect.anchoredPosition = new Vector2(0f, 2f);
+			var tween = button._button != null ? button._button : button.GetComponent<TweenAnimatedButton>();
+			if (tween == null || tween._animation == null)
+			{
+				return;
+			}
+
+			tween._animation.SetState(EButtonAnimationState.Highlighted);
+			button.gameObject.AddComponent<KeepLit>().Tween = tween;
+		}
+
+		// Added after the game's own button script, so it runs after it: when that sends the button back to normal (the mouse leaves, a
+		// click ends), this puts it back to highlighted
+		internal class KeepLit : MonoBehaviour, UnityEngine.EventSystems.IPointerExitHandler, UnityEngine.EventSystems.IPointerUpHandler
+		{
+			internal TweenAnimatedButton Tween;
+
+			public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) => Lit();
+
+			public void OnPointerUp(UnityEngine.EventSystems.PointerEventData eventData) => Lit();
+
+			private void Lit()
+			{
+				if (Tween != null && Tween._animation != null)
+				{
+					Tween._animation.TransitionToState(EButtonAnimationState.Highlighted);
+				}
+			}
 		}
 
 		private static Sprite _gear;
