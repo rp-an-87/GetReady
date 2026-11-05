@@ -202,6 +202,24 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void Empty_spare_magazines_are_filled_from_several_loose_stacks_in_the_stash()
+		{
+			InStash(M855, 70);
+			InStash(M855, 70);
+			InStash(M855, 50);
+			Rifle(10, chambered: true);
+			NewMagazine().In(_world.Backpack);
+			NewMagazine().In(_world.Backpack);
+			NewMagazine().In(_world.Backpack);
+
+			var lines = Plan();
+
+			// all three spare magazines are filled, from the three stacks together (the 50 first, then the 70s)
+			lines.Count(line => line.Text.Contains("+30 ")).Should().Be(3);
+			lines.Should().NotContain(line => line.Problem);
+		}
+
+		[Fact]
 		public void Empty_magazines_with_nothing_to_follow_are_reported_together()
 		{
 			InStash(M855, 100);
