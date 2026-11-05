@@ -22,8 +22,6 @@ namespace GetReady
 
 		internal static string TemplateOfCurrency(string currency) => currency == "RUB" ? Game.Roubles : currency == "EUR" ? Game.Euros : Game.Dollars;
 
-		internal static bool IsMoney(Item item) => Game.CurrencyOf(item.TemplateId.ToString()) != null;
-
 		internal static List<CaseEntry> Entries => SettingsStore.Current.Cases.Cases;
 
 		internal static CaseEntry EntryOf(string caseId) => Entries.FirstOrDefault(entry => entry.CaseId == caseId);

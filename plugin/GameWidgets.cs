@@ -70,10 +70,6 @@ namespace GetReady
 				var toggles = bar != null && bar._toggleButtons != null ? bar._toggleButtons.Values.Where(toggle => toggle != null).ToList() : new System.Collections.Generic.List<AnimatedToggle>();
 				_navTemplate = toggles.FirstOrDefault();
 				Plugin.Trace($"Game top bar: {(bar != null ? "found" : "not found")}, {toggles.Count} tabs, using {(_navTemplate != null ? _navTemplate.name : "none")}");
-				if (_navTemplate != null)
-				{
-					DumpTree(_navTemplate.transform, 0);
-				}
 			}
 			catch (Exception e)
 			{
@@ -90,20 +86,6 @@ namespace GetReady
 			element.minHeight = height;
 			element.preferredHeight = height;
 			element.flexibleHeight = 0f;
-		}
-
-		private static void DumpTree(Transform node, int depth)
-		{
-			var rect = node as RectTransform;
-			var parts = string.Join(", ", node.GetComponents<Component>().Where(part => part != null && !(part is Transform)).Select(part => part.GetType().Name).ToArray());
-			Plugin.Trace($"Game tab tree: {new string(' ', depth * 2)}{node.name} active={node.gameObject.activeSelf} size={(rect != null ? rect.rect.size.ToString() : "-")} [{parts}]");
-			if (depth < 4)
-			{
-				for (int i = 0; i < node.childCount; i++)
-				{
-					DumpTree(node.GetChild(i), depth + 1);
-				}
-			}
 		}
 
 		// A copy of a top bar tab with our caption and picture; it behaves as the game's own (hover, selected). Null when the bar is not there.
@@ -437,31 +419,5 @@ namespace GetReady
 			}
 		}
 
-		// For finding the game's big green Ready button: what buttons the game has in memory, once in the log (with Log details on)
-		private static bool _dumped;
-
-		internal static void DumpButtons()
-		{
-			if (_dumped || Plugin.DebugLogging == null || !Plugin.DebugLogging.Value)
-			{
-				return;
-			}
-
-			_dumped = true;
-			try
-			{
-				var buttons = Resources.FindObjectsOfTypeAll<DefaultUIButton>();
-				Plugin.Trace($"Game buttons: {buttons.Length} found");
-				foreach (var button in buttons.Take(80))
-				{
-					var parent = button.transform.parent;
-					Plugin.Trace($"Game button: {button.name} in {(parent != null ? parent.name : "-")} text '{button.HeaderText}' {(button.gameObject.scene.IsValid() ? "scene" : "prefab")} active={button.gameObject.activeInHierarchy}");
-				}
-			}
-			catch (Exception e)
-			{
-				Plugin.Log.LogWarning($"Game buttons: could not list them: {e.Message}");
-			}
-		}
 	}
 }

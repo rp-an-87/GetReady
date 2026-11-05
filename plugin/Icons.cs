@@ -119,9 +119,6 @@ namespace GetReady
 			return type == null ? null : TypeSprite(type.Value);
 		}
 
-		// Whether the step has an icon type (the sprite may still be missing; Step then draws nothing)
-		internal static bool HasStepIcon(string step) => TypeOfStep(step) != null;
-
 		// Whether the template is in the item tree below the parent
 		internal static bool IsUnder(ItemTemplate template, string parent)
 		{

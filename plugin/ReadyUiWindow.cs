@@ -56,7 +56,6 @@ namespace GetReady
 
 			return true;
 		}
-		private static bool _dumped;
 
 		// Which page shows: 0 = Ready, 1 = Setup
 		private static int _tab;
@@ -143,7 +142,6 @@ namespace GetReady
 				long planned = openWatch.ElapsedMilliseconds;
 				Rebuild();
 				Plugin.Trace($"Get ready window: opened in {openWatch.ElapsedMilliseconds} ms (copy of the game's window {made}, shell and first page {shell - made}, plan {planned - beforePlan}, page {openWatch.ElapsedMilliseconds - planned})");
-				GameWidgets.DumpButtons();
 			}
 			catch (Exception e)
 			{
@@ -360,11 +358,6 @@ namespace GetReady
 				FitBody(frame);
 			});
 			BuildBody(frame);
-			if (!_dumped)
-			{
-				_dumped = true;
-				Dump(frame, 0, 4);
-			}
 		}
 
 		private static float _captionHeight;
@@ -607,23 +600,6 @@ namespace GetReady
 			_freshBody = true;
 			Rebuild();
 			UiResize.ToFront(frame);
-		}
-
-		// What the copy of the window is made of, once in the log, for when something sits in the wrong place
-		private static void Dump(Transform node, int depth, int max)
-		{
-			var rect = node as RectTransform;
-			var parts = string.Join(", ", node.GetComponents<Component>().Where(part => part != null && !(part is Transform)).Select(part => part.GetType().Name).ToArray());
-			Plugin.Trace($"Get ready window tree: {new string(' ', depth * 2)}{node.name} active={node.gameObject.activeSelf} size={(rect != null ? rect.rect.size.ToString() : "-")} [{parts}]");
-			if (depth >= max)
-			{
-				return;
-			}
-
-			for (int i = 0; i < node.childCount; i++)
-			{
-				Dump(node.GetChild(i), depth + 1, max);
-			}
 		}
 
 		internal static void Rebuild()
