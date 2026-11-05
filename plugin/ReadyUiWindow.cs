@@ -199,6 +199,11 @@ namespace GetReady
 				return;
 			}
 
+			if (_content != null)
+			{
+				_tabScroll[_tab] = _content.anchoredPosition.y;
+			}
+
 			UpdateStrip();
 			if (_window == null || _content == null || Time.unscaledTime - _checkedAt < 0.4f)
 			{
@@ -670,6 +675,7 @@ namespace GetReady
 			_width = Mathf.Max(_width, minWidth);
 			_height = Mathf.Max(_height, minHeight);
 			_signature = "";
+			_freshBody = true;
 			Rebuild();
 			UiResize.ToFront(frame);
 		}
@@ -699,7 +705,10 @@ namespace GetReady
 				return;
 			}
 
-			float scroll = _content.anchoredPosition.y;
+			// Where the page is scrolled to: kept from the build already going (the page is empty and at the top meanwhile), else from the
+			// last look at this tab when the whole window body was made again, else where it is now
+			float scroll = _building ? _buildScroll : _freshBody ? _tabScroll[_tab] : _content.anchoredPosition.y;
+			_freshBody = false;
 			for (int i = _content.childCount - 1; i >= 0; i--)
 			{
 				// Switched off at once: a destroyed object stays until the end of the frame, and the page would be twice as tall for that frame
@@ -727,6 +736,10 @@ namespace GetReady
 			ReadyPage(_content);
 			FinishPage(scroll);
 		}
+
+		// Where each tab was scrolled to (updated every frame it is shown), and whether the body was just made again
+		private static readonly float[] _tabScroll = new float[2];
+		private static bool _freshBody;
 
 		// While the Setup page is being filled
 		private static bool _building;
