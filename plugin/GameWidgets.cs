@@ -283,35 +283,31 @@ namespace GetReady
 			}
 		}
 
-		private static readonly System.Collections.Generic.Dictionary<string, Sprite> Found = new System.Collections.Generic.Dictionary<string, Sprite>();
+		private static bool _spritesListed;
 
-		// A sprite the game keeps in memory, by words in its name (the first word is what is looked for; the list in the log, with Log details on, is
-		// for choosing a better one). Icons first, then the shortest name. Null when none matches.
-		internal static Sprite FindSprite(string key, params string[] words)
+		// For choosing icons: the game's sprites whose names have these words, once in the log (with Log details on). Nothing here picks an icon;
+		// the icons the window shows are fixed in Icons.StepSprite.
+		internal static void ListSprites(params string[] words)
 		{
-			Sprite sprite;
-			if (Found.TryGetValue(key, out sprite))
+			if (_spritesListed || Plugin.DebugLogging == null || !Plugin.DebugLogging.Value)
 			{
-				return sprite;
+				return;
 			}
 
+			_spritesListed = true;
 			try
 			{
-				var matches = Resources.FindObjectsOfTypeAll<Sprite>()
-					.Where(candidate => candidate != null && words.Any(word => candidate.name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0))
-					.OrderBy(candidate => candidate.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0 ? 0 : 1)
-					.ThenBy(candidate => candidate.name.Length)
-					.ToList();
-				sprite = matches.FirstOrDefault();
-				Plugin.Trace($"Sprites for {key}: {matches.Count} found, using {(sprite != null ? sprite.name : "none")}: " + string.Join(", ", matches.Take(30).Select(candidate => candidate.name).ToArray()));
+				var all = Resources.FindObjectsOfTypeAll<Sprite>();
+				foreach (var word in words)
+				{
+					var names = all.Where(candidate => candidate != null && candidate.name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0).Select(candidate => candidate.name).Distinct().OrderBy(name => name).Take(60).ToArray();
+					Plugin.Trace($"Sprites with '{word}': {names.Length} " + string.Join(", ", names));
+				}
 			}
 			catch (Exception e)
 			{
-				Plugin.Log.LogWarning($"Sprites for {key}: could not look: {e.Message}");
+				Plugin.Log.LogWarning($"Sprites: could not list them: {e.Message}");
 			}
-
-			Found[key] = sprite;
-			return sprite;
 		}
 
 		private static Sprite _gear;

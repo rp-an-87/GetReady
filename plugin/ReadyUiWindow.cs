@@ -118,6 +118,7 @@ namespace GetReady
 				Rebuild();
 				Plugin.Trace("Get ready window: opened");
 				GameWidgets.DumpButtons();
+				GameWidgets.ListSprites("repair", "money", "cash", "rouble", "wrench");
 			}
 			catch (Exception e)
 			{
