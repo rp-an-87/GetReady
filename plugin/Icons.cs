@@ -110,7 +110,7 @@ namespace GetReady
 			{
 				try
 				{
-					return EFTHardSettings.Instance?.StaticIcons?.GetSmallCurrencySign(new MongoID(Game.Roubles)) ?? TypeSprite(EItemType.Barter);
+					return GameWidgets.ByName("icon_info_moneysum") ?? EFTHardSettings.Instance?.StaticIcons?.GetSmallCurrencySign(new MongoID(Game.Roubles)) ?? TypeSprite(EItemType.Barter);
 				}
 				catch (Exception e)
 				{
@@ -121,7 +121,7 @@ namespace GetReady
 
 			if (step == "Repair")
 			{
-				return GameWidgets.White(TypeSprite(EItemType.Mod)) ?? TypeSprite(EItemType.Armor);
+				return GameWidgets.White(GameWidgets.ByName("icon_repair_required")) ?? TypeSprite(EItemType.Armor);
 			}
 
 			var type = TypeOfStep(step);

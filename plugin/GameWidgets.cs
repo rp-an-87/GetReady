@@ -283,31 +283,42 @@ namespace GetReady
 			}
 		}
 
-		private static bool _spritesListed;
+		private static Sprite[] _allSprites;
+		private static readonly System.Collections.Generic.Dictionary<string, Sprite> Named = new System.Collections.Generic.Dictionary<string, Sprite>();
 
-		// For choosing icons: the game's sprites whose names have these words, once in the log (with Log details on). Nothing here picks an icon;
-		// the icons the window shows are fixed in Icons.StepSprite.
-		internal static void ListSprites(params string[] words)
+		// One of the game's sprites by its exact name (a fixed name written in the code, not a search); null when the game has none by that name
+		internal static UnityEngine.Sprite ByName(string name)
 		{
-			if (_spritesListed || Plugin.DebugLogging == null || !Plugin.DebugLogging.Value)
+			UnityEngine.Sprite sprite;
+			if (Named.TryGetValue(name, out sprite))
 			{
-				return;
+				return sprite;
 			}
 
-			_spritesListed = true;
 			try
 			{
-				var all = Resources.FindObjectsOfTypeAll<Sprite>();
-				foreach (var word in words)
+				if (_allSprites == null)
 				{
-					var names = all.Where(candidate => candidate != null && candidate.name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0).Select(candidate => candidate.name).Distinct().OrderBy(name => name).Take(60).ToArray();
-					Plugin.Trace($"Sprites with '{word}': {names.Length} " + string.Join(", ", names));
+					_allSprites = Resources.FindObjectsOfTypeAll<UnityEngine.Sprite>();
 				}
+
+				sprite = _allSprites.FirstOrDefault(candidate => candidate != null && candidate.name == name);
 			}
 			catch (Exception e)
 			{
-				Plugin.Log.LogWarning($"Sprites: could not list them: {e.Message}");
+				Plugin.Log.LogWarning($"Sprite {name}: could not look for it: {e.Message}");
 			}
+
+			if (sprite == null)
+			{
+				Plugin.Log.LogWarning($"The game has no sprite named {name}");
+			}
+			else
+			{
+				Named[name] = sprite;
+			}
+
+			return sprite;
 		}
 
 		private static readonly System.Collections.Generic.Dictionary<Sprite, Sprite> Whitened = new System.Collections.Generic.Dictionary<Sprite, Sprite>();
