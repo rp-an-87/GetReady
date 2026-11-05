@@ -180,12 +180,12 @@ namespace GetReady
 			// (not the injectors of the Propital row: they have no uses to run down)
 			if (on && !def.Stack && def.Id != "propital")
 			{
-				OptionRow(card, setting.AllowOvershoot, "Go over rather than stay short", "When only a little is missing and the next item in the stash is bigger (1 point short and the next is an Army bandage worth 2), take it anyway. Off: only an item that fits is brought, and you stay short if the stash has none.", value => setting.AllowOvershoot = value);
+				OptionRow(card, setting.AllowOvershoot, "Go over rather than stay short", "When you are a little short, the stash may only have items bigger than what is missing.\n\nExample: you want 300 HP and carry 250, and the stash has a Salewa (400 HP).\n<b>On:</b> the Salewa is brought, so you end up with 650 HP.\n<b>Off:</b> nothing is brought and you stay 50 HP short.", value => setting.AllowOvershoot = value);
 			}
 
 			if (on && !def.Stack && def.Id != "propital")
 			{
-				OptionRow(card, setting.ReplaceWorse, "Swap used kits for fuller ones", "A used or lower-ranked item of this row that you carry is swapped for a better one from the stash. Off: what you carry stays as long as you keep the amount.", value => setting.ReplaceWorse = value);
+				OptionRow(card, setting.ReplaceWorse, "Swap used kits for fuller ones", "A kit you carry that is partly used is swapped for a fuller one from the stash, or for one you rank higher in Items.\n\nExample: you carry a Salewa with 120 HP left and the stash has a full one (400 HP).\n<b>On:</b> the full Salewa replaces the used one.\n<b>Off:</b> you keep the used one, and only the HP you are missing is brought.", value => setting.ReplaceWorse = value);
 			}
 
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))
