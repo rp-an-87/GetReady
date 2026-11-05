@@ -35,7 +35,7 @@ namespace GetReady
 
 			UiKit.Line(rules);
 			GroupHeading(rules, "EMPTY SPARE MAGAZINES", "The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
-			PriorityList(rules, "What an empty spare magazine on you copies, first match wins", AmmoRules.PointerOrder(), pointer => AmmoRules.PointerName(pointer), (pointer, step) => AmmoRules.MovePointer(pointer, step), null, true);
+			PriorityList(rules, "What an empty spare magazine on you copies, first match wins", AmmoRules.PointerOrder(), pointer => AmmoRules.PointerName(pointer), (pointer, step) => AmmoRules.MovePointer(pointer, step), null);
 
 			if (controller != null)
 			{

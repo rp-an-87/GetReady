@@ -62,7 +62,7 @@ namespace GetReady
 						return;
 					}
 
-					Plugin.Log.LogInfo($"Repair key: no kit used for {item.ShortName.Localized()} (reason: {kitWhy ?? "the game's menu doesn't offer Repair"})");
+					Plugin.Trace($"Repair key: no kit used for {item.ShortName.Localized()} (reason: {kitWhy ?? "the game's menu doesn't offer Repair"})");
 					if (kitWhy != null)
 					{
 						Refuse($"Repair: {kitWhy}");
@@ -78,7 +78,7 @@ namespace GetReady
 						FindKit(uiContext, itemContext, controller, false, out why);
 					}
 
-					Plugin.Log.LogInfo($"Repair key: nothing used for {item.ShortName.Localized()} ({why ?? decision.Problem})");
+					Plugin.Trace($"Repair key: nothing used for {item.ShortName.Localized()} ({why ?? decision.Problem})");
 					Refuse($"Repair: {why ?? decision.Problem}");
 					return;
 			}
@@ -147,7 +147,7 @@ namespace GetReady
 					var inStash = new HashSet<Item>(controller.Inventory.GetPlayerItems(EPlayerItems.Stash));
 					foreach (var candidate in fitting)
 					{
-						Plugin.Log.LogInfo($"Repair kit {candidate.Id}: resource {candidate.Resource}, {(inStash.Contains(candidate) ? "in the stash" : "NOT in the stash")}, pin/lock {candidate.PinLockState}, examined {controller.Examined(candidate)}");
+						Plugin.Trace($"Repair kit {candidate.Id}: resource {candidate.Resource}, {(inStash.Contains(candidate) ? "in the stash" : "NOT in the stash")}, pin/lock {candidate.PinLockState}, examined {controller.Examined(candidate)}");
 					}
 
 					var excluded = fitting.OrderBy(candidate => candidate.Resource).FirstOrDefault(candidate => candidate.Resource > 0f);
@@ -358,7 +358,7 @@ namespace GetReady
 						break;
 					}
 
-					Plugin.Log.LogInfo($"Repair: {name} {item.Id} with kit {kit.Id} (resource {kit.Resource:F1}), {amount:F1} of {need:F1} points, price {strategy.GetRepairPrice(amount, collection):F1}");
+					Plugin.Trace($"Repair: {name} {item.Id} with kit {kit.Id} (resource {kit.Resource:F1}), {amount:F1} of {need:F1} points, price {strategy.GetRepairPrice(amount, collection):F1}");
 					repairController.OnSuccessfulRepairChangedEvent += NoListener;
 					IResult result;
 					try
@@ -386,7 +386,7 @@ namespace GetReady
 				var after = NewStrategy(item, repairController);
 				outcome.Whole = after.HowMuchRepairScoresCanAccept() < 0.1f;
 				outcome.Durability = after.Durability();
-				Plugin.Log.LogInfo($"Repair done: {outcome.Steps} step(s), {(outcome.Whole ? "whole" : "not whole, the kits ran out")}");
+				Plugin.Trace($"Repair done: {outcome.Steps} step(s), {(outcome.Whole ? "whole" : "not whole, the kits ran out")}");
 			}
 			catch (Exception e)
 			{
@@ -467,7 +467,7 @@ namespace GetReady
 					return outcome;
 				}
 
-				Plugin.Log.LogInfo($"Repair: {item.ShortName.Localized()} {item.Id} at {NameOfTrader(trader)}, {amount:F1} points for {price:N0} roubles");
+				Plugin.Trace($"Repair: {item.ShortName.Localized()} {item.Id} at {NameOfTrader(trader)}, {amount:F1} points for {price:N0} roubles");
 				repairController.OnSuccessfulRepairChangedEvent += NoListener;
 				IResult result;
 				try

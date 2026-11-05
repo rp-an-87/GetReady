@@ -155,7 +155,7 @@ namespace GetReady
 				ok = font.GetCharacterInfo('H', out info, Ui.Body.fontSize);
 			}
 
-			Plugin.Log.LogInfo($"Alignment: grip {grip}, label {label}, label padding {Ui.Body.padding}, margin {Ui.Body.margin}, size {Ui.Body.fontSize}, font {(font != null ? font.name : "none")} ascent {(font != null ? font.ascent : 0)} lineHeight {(font != null ? font.lineHeight : 0)} fontSize {(font != null ? font.fontSize : 0)}, H minY {(ok ? info.minY : 0)} maxY {(ok ? info.maxY : 0)}");
+			Plugin.Trace($"Alignment: grip {grip}, label {label}, label padding {Ui.Body.padding}, margin {Ui.Body.margin}, size {Ui.Body.fontSize}, font {(font != null ? font.name : "none")} ascent {(font != null ? font.ascent : 0)} lineHeight {(font != null ? font.lineHeight : 0)} fontSize {(font != null ? font.fontSize : 0)}, H minY {(ok ? info.minY : 0)} maxY {(ok ? info.maxY : 0)}");
 		}
 
 		// The entries of a group in the order they are shown: the ones in use in their order, then the ones switched off

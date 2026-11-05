@@ -130,7 +130,7 @@ namespace GetReady
 				if (!_fontsLogged)
 				{
 					_fontsLogged = true;
-					Plugin.Log.LogInfo($"Fonts loaded: TMP assets [{string.Join(", ", assets.Select(a => a.name + (a.sourceFontFile != null ? "*" : "")).Distinct().Take(40).ToArray())}], fonts [{string.Join(", ", fonts.Select(f => f.name).Distinct().Take(40).ToArray())}]");
+					Plugin.Trace($"Fonts loaded: TMP assets [{string.Join(", ", assets.Select(a => a.name + (a.sourceFontFile != null ? "*" : "")).Distinct().Take(40).ToArray())}], fonts [{string.Join(", ", fonts.Select(f => f.name).Distinct().Take(40).ToArray())}]");
 				}
 
 				var asset = assets.FirstOrDefault(candidate => candidate.name.ToLowerInvariant().Contains("bender") && candidate.sourceFontFile != null);
@@ -186,7 +186,7 @@ namespace GetReady
 					Font = FindFont();
 					if (Font != null)
 					{
-						Plugin.Log.LogInfo($"Using the game font {Font.name} (found late)");
+						Plugin.Trace($"Using the game font {Font.name} (found late)");
 						ApplyFont();
 					}
 				}
@@ -201,7 +201,7 @@ namespace GetReady
 			GUI.skin.settings.selectionColor = new Color(0.72f, 0.65f, 0.42f, 0.45f);
 			Font = FindFont();
 			_fontTriedAt = Time.unscaledTime;
-			Plugin.Log.LogInfo(Font != null ? $"Using the game font {Font.name}" : "The game font was not found, using the default one");
+			Plugin.Trace(Font != null ? $"Using the game font {Font.name}" : "The game font was not found, using the default one");
 
 			var edge = new Color(0.27f, 0.28f, 0.27f);
 			Window = Back(new GUIStyle(GUI.skin.window) { padding = new RectOffset(16, 16, 14, 14) }, new Color(0.085f, 0.09f, 0.09f, 0.985f), new Color(0.36f, 0.37f, 0.35f), 2);

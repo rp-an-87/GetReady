@@ -5,6 +5,12 @@ using UnityEngine;
 
 namespace GetReady
 {
+	// Read by the F12 menu (Configuration Manager) by this name: IsAdvanced hides the setting until "Show advanced settings" is ticked
+	internal sealed class ConfigurationManagerAttributes
+	{
+		public bool? IsAdvanced;
+	}
+
 	[BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 	public class Plugin : BaseUnityPlugin
 	{
@@ -47,7 +53,7 @@ namespace GetReady
 			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.05f,
 				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
 			DebugLogging = Config.Bind("8. Debugging", "Log details", false,
-				"Writes what the window does, and how long it takes, to the BepInEx log. For finding out why something is slow.");
+				new ConfigDescription("Writes what GetReady does, and how long it takes, to the BepInEx log (only errors and warnings are written otherwise). For finding out why something is slow or wrong.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
 			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
 				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
@@ -63,7 +69,7 @@ namespace GetReady
 			new DragEndPatch().Enable();
 			new TextWeightButtonPatch().Enable();
 			new TagChangedPatch().Enable();
-			Log.LogInfo($"GetReady {PluginVersion} loaded");
+			Trace($"GetReady {PluginVersion} loaded");
 		}
 
 		private void OnApplicationQuit() => SettingsStore.FlushIfDue(true);

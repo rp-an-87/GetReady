@@ -266,7 +266,7 @@ namespace GetReady
 				return used == 0 ? "none of the medicine you allowed could heal you" : $"used {used} item(s) but you are still hurt: the allowed medicine ran out or can't treat the rest";
 			}
 
-			Plugin.Log?.LogInfo($"Healed with {used} item(s)");
+			Plugin.Trace($"Healed with {used} item(s)");
 			return null;
 		}
 	}

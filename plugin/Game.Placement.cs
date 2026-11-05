@@ -220,7 +220,7 @@ namespace GetReady
 				}
 
 				last = error;
-				Plugin.Log.LogInfo($"{NameOf(item)}: {place} did not take it ({error})");
+				Plugin.Trace($"{NameOf(item)}: {place} did not take it ({error})");
 			}
 
 			return last;

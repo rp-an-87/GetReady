@@ -105,7 +105,7 @@ namespace GetReady
 				_deferred = false;
 				ReadyPlan.Refresh();
 				Rebuild();
-				Plugin.Log.LogInfo("Get ready window: opened");
+				Plugin.Trace("Get ready window: opened");
 			}
 			catch (Exception e)
 			{
@@ -405,7 +405,7 @@ namespace GetReady
 			if (_fitLogged < 3)
 			{
 				_fitLogged++;
-				Plugin.Log.LogInfo($"Get ready window resized: frame {frame.rect.size} (sizeDelta {frame.sizeDelta}, anchors {frame.anchorMin}-{frame.anchorMax}), body {_root.rect.size} (anchors {_root.anchorMin}-{_root.anchorMax})");
+				Plugin.Trace($"Get ready window resized: frame {frame.rect.size} (sizeDelta {frame.sizeDelta}, anchors {frame.anchorMin}-{frame.anchorMax}), body {_root.rect.size} (anchors {_root.anchorMin}-{_root.anchorMax})");
 			}
 		}
 		private static RectTransform _root;
@@ -468,7 +468,7 @@ namespace GetReady
 		{
 			var rect = node as RectTransform;
 			var parts = string.Join(", ", node.GetComponents<Component>().Where(part => part != null && !(part is Transform)).Select(part => part.GetType().Name).ToArray());
-			Plugin.Log.LogInfo($"Get ready window tree: {new string(' ', depth * 2)}{node.name} active={node.gameObject.activeSelf} size={(rect != null ? rect.rect.size.ToString() : "-")} [{parts}]");
+			Plugin.Trace($"Get ready window tree: {new string(' ', depth * 2)}{node.name} active={node.gameObject.activeSelf} size={(rect != null ? rect.rect.size.ToString() : "-")} [{parts}]");
 			if (depth >= max)
 			{
 				return;
