@@ -173,19 +173,26 @@ namespace GetReady
 					continue;
 				}
 
-				for (int i = card.Key.childCount - 1; i >= 0; i--)
-				{
-					var child = card.Key.GetChild(i);
-					child.gameObject.SetActive(false);
-					UnityEngine.Object.Destroy(child.gameObject);
-				}
-
-				card.Value();
-				UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+				Redraw(content, card.Key, card.Value);
 				return true;
 			}
 
 			return false;
+		}
+
+		// A part of the page made again: what is in it goes, the filler puts it back, and the page is laid out
+		private static void Redraw(RectTransform content, RectTransform part, Action fill)
+		{
+			for (int i = part.childCount - 1; i >= 0; i--)
+			{
+				var child = part.GetChild(i);
+				// Switched off at once: a destroyed object stays until the end of the frame and would still take room in the layout
+				child.gameObject.SetActive(false);
+				UnityEngine.Object.Destroy(child.gameObject);
+			}
+
+			fill();
+			UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(content);
 		}
 
 		private static bool Contains(RectTransform rect)
@@ -203,17 +210,7 @@ namespace GetReady
 				return false;
 			}
 
-			var section = Sections[index];
-			for (int i = section.childCount - 1; i >= 0; i--)
-			{
-				var child = section.GetChild(i);
-				// Switched off at once: a destroyed object stays until the end of the frame and would still take room in the layout
-				child.gameObject.SetActive(false);
-				UnityEngine.Object.Destroy(child.gameObject);
-			}
-
-			Fillers[index]();
-			UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate(content);
+			Redraw(content, Sections[index], Fillers[index]);
 			return true;
 		}
 
@@ -226,9 +223,7 @@ namespace GetReady
 					continue;
 				}
 
-				var canvas = Sections[i].GetComponentInParent<Canvas>()?.rootCanvas;
-				var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
-				if (RectTransformUtility.RectangleContainsScreenPoint(Sections[i], Input.mousePosition, camera))
+				if (Contains(Sections[i]))
 				{
 					return i;
 				}
