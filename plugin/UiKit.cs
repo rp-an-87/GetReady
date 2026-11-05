@@ -465,11 +465,8 @@ namespace GetReady
 			var handle = Node("Handle", area);
 			// A new object is 100 x 100: the scroll bar sets the handle along its own direction only, so the width is set here
 			Stretch(handle, 0f, 0f, 0f, 0f);
-			// Light, with a lighter border, like the game's handle
+			// Light, with no border of its own: the border is the track's
 			var image = Fill(handle, new Color(0.68f, 0.69f, 0.66f), true);
-			var handleEdge = handle.gameObject.AddComponent<Outline>();
-			handleEdge.effectColor = new Color(0.92f, 0.92f, 0.9f);
-			handleEdge.effectDistance = new Vector2(1f, 1f);
 			var bar = track.gameObject.AddComponent<Scrollbar>();
 			bar.handleRect = handle;
 			bar.targetGraphic = image;
