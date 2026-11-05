@@ -298,11 +298,11 @@ namespace GetReady
 		private static void Tab(Transform parent, string name, int index)
 		{
 			bool on = _tab == index;
-			// The game's animated button (like Get ready) when it can be copied, the open page marked; else our own
-			var game = GameWidgets.Button(parent, name, () => SetTab(index), 0f, UiKit.Unit * 2f, true);
-			if (game != null)
+			// The game's own tab of the trading screen (Traders / Flea market): the open page is lit, the other animates when the mouse is on it.
+			// Our own buttons when it can't be copied.
+			var group = parent.GetComponent<ToggleGroup>() ?? parent.gameObject.AddComponent<ToggleGroup>();
+			if (GameWidgets.Tab(parent, name, null, on, group, () => SetTab(index), UiKit.Unit * 2f, 1.05f, true) != null)
 			{
-				GameWidgets.Mark(game, on);
 				return;
 			}
 

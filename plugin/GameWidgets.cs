@@ -33,8 +33,10 @@ namespace GetReady
 				var found = Resources.FindObjectsOfTypeAll<UISpawnableToggle>()
 					.Where(tab => tab != null && tab.Toggle != null && tab._headerLabel != null)
 					.ToList();
-				// A prefab asset (not in a scene) has no state of its own from a screen that used it
-				_tabTemplate = found.FirstOrDefault(tab => !tab.gameObject.scene.IsValid()) ?? found.FirstOrDefault();
+				// The tabs of the trading screen (Traders, Flea market) first: they are the ones that light up and animate as the owner wants. Then a
+				// prefab asset (no state from a screen that used it), then any.
+				_tabTemplate = found.FirstOrDefault(tab => tab.name.StartsWith("Rag Fair Toggle") || tab.name.StartsWith("Merchants"))
+					?? found.FirstOrDefault(tab => !tab.gameObject.scene.IsValid()) ?? found.FirstOrDefault();
 				Plugin.Trace($"Game tabs: {found.Count} found, using {(_tabTemplate != null ? _tabTemplate.name + " (" + (_tabTemplate.gameObject.scene.IsValid() ? "in a scene" : "prefab") + ")" : "none")}");
 				if (found.Count > 0)
 				{
@@ -172,10 +174,10 @@ namespace GetReady
 
 		// A copy of the game's tab button in the row: the caption (the game puts it in capitals), an optional picture, lit when it is on; select is
 		// called when it is clicked on. The group makes the tabs of a row switch each other off. Null when the game's tab is not there.
-		internal static AnimatedToggle Tab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height, float textUnits)
+		internal static AnimatedToggle Tab(Transform parent, string text, Sprite icon, bool on, ToggleGroup group, Action select, float height, float textUnits, bool generic = false)
 		{
 			// The top bar's tab first (a picture, the game's hover); the generic toggle of the game's screens when the bar is not there
-			var nav = NavTab(parent, text, icon, on, group, select, height, textUnits);
+			var nav = generic ? null : NavTab(parent, text, icon, on, group, select, height, textUnits);
 			if (nav != null)
 			{
 				return nav;
@@ -192,11 +194,22 @@ namespace GetReady
 				var copy = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
 				copy.name = "Tab " + text;
 				copy.SetActive(true);
+				// What the game gave this tab for its own screen is not wanted on ours
+				foreach (var area in copy.GetComponentsInChildren<HoverTooltipArea>(true))
+				{
+					UnityEngine.Object.Destroy(area);
+				}
+
+				var own = copy.GetComponent<AnimatedToggle>();
+				for (int i = own.onValueChanged.GetPersistentEventCount() - 1; i >= 0; i--)
+				{
+					own.onValueChanged.SetPersistentListenerState(i, UnityEngine.Events.UnityEventCallState.Off);
+				}
+
 				var tab = copy.GetComponent<UISpawnableToggle>();
 				tab.Init(group);
 				// The text is sized like the rest of the window (the game's own tabs are made for a big screen of their own)
 				tab.InitSpawnableButton(text, Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * textUnits)), icon, null);
-				copy.AddComponent<TabHover>().Tab = tab;
 				var toggle = tab.Toggle;
 				toggle.onValueChanged.AddListener(value =>
 				{
@@ -257,54 +270,6 @@ namespace GetReady
 			}
 		}
 
-		// The page that is open: its button is kept in the game's highlighted state (the one it has under the mouse), whatever the mouse does
-		internal static void Mark(DefaultUIButton button, bool on)
-		{
-			if (!on)
-			{
-				return;
-			}
-
-			var tween = button._button != null ? button._button : button.GetComponent<TweenAnimatedButton>();
-			if (tween == null || tween._animation == null)
-			{
-				return;
-			}
-
-			tween._animation.SetState(EButtonAnimationState.Highlighted);
-			// Nothing happens when it is pressed: no press animation, no click sound
-			button._onPointerClickSound = false;
-			button.gameObject.AddComponent<KeepLit>().Tween = tween;
-		}
-
-		// Added after the game's own button script, so it runs after it: when that sends the button back to normal (the mouse leaves, a
-		// click ends), this puts it back to highlighted
-		internal class KeepLit : MonoBehaviour, UnityEngine.EventSystems.IPointerExitHandler, UnityEngine.EventSystems.IPointerUpHandler, UnityEngine.EventSystems.IPointerDownHandler
-		{
-			internal TweenAnimatedButton Tween;
-
-			public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) => Lit();
-
-			public void OnPointerUp(UnityEngine.EventSystems.PointerEventData eventData) => Lit();
-
-			// The game sends it to pressed: straight back, with no animation in between
-			public void OnPointerDown(UnityEngine.EventSystems.PointerEventData eventData)
-			{
-				if (Tween != null && Tween._animation != null)
-				{
-					Tween._animation.SetState(EButtonAnimationState.Highlighted);
-				}
-			}
-
-			private void Lit()
-			{
-				if (Tween != null && Tween._animation != null)
-				{
-					Tween._animation.TransitionToState(EButtonAnimationState.Highlighted);
-				}
-			}
-		}
-
 		private static Sprite _gear;
 
 		// The settings gear of the game's top bar (its Settings tab), for the Options section
@@ -337,17 +302,6 @@ namespace GetReady
 			}
 
 			return _gear;
-		}
-
-		// The game's tab shows no hover of its own here, so the pointer over it gives the bold the game's tab has on hover (and the hand cursor
-		// is the tab's own)
-		internal class TabHover : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
-		{
-			internal UISpawnableToggle Tab;
-
-			public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData) => Tab?.Highlighted();
-
-			public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) => Tab?.Default();
 		}
 
 		// For finding the game's big green Ready button: what buttons the game has in memory, once in the log (with Log details on)
