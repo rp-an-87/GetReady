@@ -408,6 +408,7 @@ namespace GetReady
 		private static readonly List<AnimatedToggle> _stripTabs = new List<AnimatedToggle>();
 		private static int _stripCurrent = -1;
 		private static float _stripAt;
+		private static float _stripSeenY, _stripMovedAt;
 
 		private static void JumpStrip(Transform parent)
 		{
@@ -456,6 +457,20 @@ namespace GetReady
 			}
 
 			_stripAt = Time.unscaledTime;
+			// While the page is moving nothing is changed in the strip (each change plays a tab animation): it follows when the scrolling stops
+			float now = _content.anchoredPosition.y;
+			if (!Mathf.Approximately(now, _stripSeenY))
+			{
+				_stripSeenY = now;
+				_stripMovedAt = Time.unscaledTime;
+				return;
+			}
+
+			if (Time.unscaledTime - _stripMovedAt < 0.25f && _stripCurrent >= 0)
+			{
+				return;
+			}
+
 			int current = 0;
 			float y = _content.anchoredPosition.y;
 			for (int i = 0; i < SetupPage.Sections.Count; i++)
@@ -497,13 +512,17 @@ namespace GetReady
 				return;
 			}
 
+			// Only the two that change get their animation: the one that was lit goes dark, the new one lights up
+			int before = _stripCurrent;
 			_stripCurrent = current;
-			for (int i = 0; i < _stripTabs.Count; i++)
+			if (before >= 0 && before < _stripTabs.Count && _stripTabs[before] != null)
 			{
-				if (_stripTabs[i] != null)
-				{
-					_stripTabs[i].ToggleSilent(i == current);
-				}
+				_stripTabs[before].ToggleSilent(false);
+			}
+
+			if (current < _stripTabs.Count && _stripTabs[current] != null)
+			{
+				_stripTabs[current].ToggleSilent(true);
 			}
 		}
 
