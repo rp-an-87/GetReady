@@ -171,7 +171,7 @@ namespace GetReady
 
 		private static bool Contains(RectTransform rect)
 		{
-			var canvas = rect.GetComponentInParent<Canvas>();
+			var canvas = rect.GetComponentInParent<Canvas>()?.rootCanvas;
 			var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
 			return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, camera);
 		}
@@ -207,7 +207,7 @@ namespace GetReady
 					continue;
 				}
 
-				var canvas = Sections[i].GetComponentInParent<Canvas>();
+				var canvas = Sections[i].GetComponentInParent<Canvas>()?.rootCanvas;
 				var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
 				if (RectTransformUtility.RectangleContainsScreenPoint(Sections[i], Input.mousePosition, camera))
 				{

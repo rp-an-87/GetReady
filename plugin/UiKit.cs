@@ -445,6 +445,21 @@ namespace GetReady
 			return button;
 		}
 
+		// A canvas of its own for this part of the window (nested in the game's): what changes inside it (a hover, an animation, a scroll) is drawn
+		// again for this part only, not for the whole of the game's screen it sits on. It needs its own raycaster to be clicked.
+		internal static void OwnCanvas(GameObject target)
+		{
+			if (target.GetComponent<Canvas>() == null)
+			{
+				target.AddComponent<Canvas>();
+			}
+
+			if (target.GetComponent<GraphicRaycaster>() == null)
+			{
+				target.AddComponent<GraphicRaycaster>();
+			}
+		}
+
 		private const float ScrollbarWidth = 12f;
 
 		// The bar on the right edge of a scroll view: a dark track and a grey handle the size of the visible part
@@ -501,6 +516,8 @@ namespace GetReady
 			content.pivot = new Vector2(0.5f, 1f);
 			content.offsetMin = new Vector2(0f, 0f);
 			content.offsetMax = new Vector2(0f, 0f);
+			// Its own canvas: scrolling moves it, and does not make every element in it again
+			OwnCanvas(content.gameObject);
 			var layout = content.gameObject.AddComponent<VerticalLayoutGroup>();
 			layout.spacing = 8f;
 			layout.padding = new RectOffset(8, 8, 8, 8);

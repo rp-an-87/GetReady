@@ -171,6 +171,7 @@ namespace GetReady
 			}
 
 			_captionHeight = window._captionPanel != null ? ((RectTransform)window._captionPanel.transform).rect.height : 0f;
+			UiKit.OwnCanvas(frame.gameObject);
 			frame.sizeDelta = new Vector2(Mathf.Min(UiKit.Unit * 32f, Parent(frame).rect.width * 0.9f), 300f);
 			Place(frame);
 		}

@@ -84,6 +84,7 @@ namespace GetReady
 					return;
 				}
 
+				var openWatch = System.Diagnostics.Stopwatch.StartNew();
 				var window = UnityEngine.Object.Instantiate(context._editBuildNameWindow, context._infoWindowsContainer, false);
 				window.name = "GetReady Window";
 				var windowContext = ((Window<EditBuildNameWindowContext>)window).Show();
@@ -101,7 +102,9 @@ namespace GetReady
 					Plugin.Log.LogWarning($"Get ready window: no game button to copy: {e.Message}");
 				}
 
+				long made = openWatch.ElapsedMilliseconds;
 				Build(window);
+				long shell = openWatch.ElapsedMilliseconds;
 				window.WindowTransform.SetAsLastSibling();
 				context.RegisterWindow<EditBuildNameWindowContext>(window, windowContext);
 				windowContext.OnClose += () =>
@@ -124,9 +127,11 @@ namespace GetReady
 				_signature = "";
 				_loading = false;
 				_deferred = false;
+				long beforePlan = openWatch.ElapsedMilliseconds;
 				ReadyPlan.Refresh();
+				long planned = openWatch.ElapsedMilliseconds;
 				Rebuild();
-				Plugin.Trace("Get ready window: opened");
+				Plugin.Trace($"Get ready window: opened in {openWatch.ElapsedMilliseconds} ms (copy of the game's window {made}, shell and first page {shell - made}, plan {planned - beforePlan}, page {openWatch.ElapsedMilliseconds - planned})");
 				GameWidgets.DumpButtons();
 			}
 			catch (Exception e)
@@ -302,6 +307,7 @@ namespace GetReady
 				group.enabled = false;
 			}
 
+			UiKit.OwnCanvas(frame.gameObject);
 			frame.sizeDelta = new Vector2(_width, _height);
 			try
 			{
