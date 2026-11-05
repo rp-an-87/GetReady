@@ -12,9 +12,11 @@ namespace GetReady
 	{
 		public string Template;
 		public Func<Item, float> Weight;
+		// Counts for one each, whatever the item (grenades, an injector): no amount to fall short of by a bit, nothing that runs down
+		public bool IsCount;
 		public string Name => Game.TemplateName(Template);
 
-		internal static Entry Count(string template) => new Entry { Template = template, Weight = item => 1f };
+		internal static Entry Count(string template) => new Entry { Template = template, Weight = item => 1f, IsCount = true };
 		internal static Entry Points(string template, float points) => new Entry { Template = template, Weight = item => points };
 		internal static Entry Resource(string template) => new Entry { Template = template, Weight = Game.ResourceOf };
 		internal static Entry Stack(string template) => new Entry { Template = template, Weight = item => item.StackObjectsCount };
@@ -31,6 +33,12 @@ namespace GetReady
 		public string Id;
 		public string Name;
 		public string Unit;
+
+		// Whether the row's items can be bigger than what is missing (they count for more than one each): the "go over" choice means something
+		public bool CanOvershoot => !IsQuota && !Stack && Entries != null && Entries.Any(entry => !entry.IsCount);
+
+		// Whether a carried item can be replaced by a better one: a fuller copy (items that run down) or one ranked higher (several kinds in order)
+		public bool CanSwap => !IsQuota && !Stack && Entries != null && (Entries.Any(entry => !entry.IsCount) || (Entries.Length > 1 && !Random));
 		public int DefaultTarget;
 		public int Max = 10;
 		public int Step = 1;

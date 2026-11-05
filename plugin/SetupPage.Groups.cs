@@ -177,13 +177,13 @@ namespace GetReady
 			}
 
 			// A kit you carry that a better one in the stash can replace (a fuller copy, a higher-ranked item): per row, so it can be left alone
-			// (not the injectors of the Propital row: they have no uses to run down)
-			if (on && !def.Stack && def.Id != "propital")
+			// Only where they mean something: not for grenades, the quota or injectors (one each, nothing runs down, nothing is bigger)
+			if (on && def.CanOvershoot)
 			{
 				OptionRow(card, setting.AllowOvershoot, "Go over rather than stay short", "When you are a little short, the stash may only have items bigger than what is missing.\n\nExample: you want 300 HP and carry 250, and the stash has a Salewa (400 HP).\n<b>On:</b> the Salewa is brought, so you end up with 650 HP.\n<b>Off:</b> nothing is brought and you stay 50 HP short.", value => setting.AllowOvershoot = value);
 			}
 
-			if (on && !def.Stack && def.Id != "propital")
+			if (on && def.CanSwap)
 			{
 				OptionRow(card, setting.ReplaceWorse, "Swap used kits for fuller ones", "A kit you carry that is partly used is swapped for a fuller one from the stash, or for one you rank higher in Items.\n\nExample: you carry a Salewa with 120 HP left and the stash has a full one (400 HP).\n<b>On:</b> the full Salewa replaces the used one.\n<b>Off:</b> you keep the used one, and only the HP you are missing is brought.", value => setting.ReplaceWorse = value);
 			}
