@@ -221,7 +221,7 @@ namespace GetReady
 		internal static DefaultUIButton ButtonTemplate;
 
 		// A copy of the game's button with this text; null when there is no template (the caller then makes its own)
-		internal static DefaultUIButton Button(Transform parent, string text, Action click, float width, float height)
+		internal static DefaultUIButton Button(Transform parent, string text, Action click, float width, float height, bool flex = false)
 		{
 			if (ButtonTemplate == null)
 			{
@@ -238,7 +238,16 @@ namespace GetReady
 				button.OnClick.AddListener(() => click());
 				button.Interactable = true;
 				button.SetHeaderText(text, Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * 1.1f)));
-				UiKit.Size(copy.transform, width: width, height: height);
+				if (flex)
+				{
+					// The row's room shared out equally between such buttons
+					UiKit.Size(copy.transform, width: 1f, height: height, flexWidth: 1f).minWidth = 0f;
+				}
+				else
+				{
+					UiKit.Size(copy.transform, width: width, height: height);
+				}
+
 				return button;
 			}
 			catch (Exception e)
@@ -246,6 +255,63 @@ namespace GetReady
 				Plugin.Log.LogWarning($"Game button: could not make one: {e.Message}");
 				return null;
 			}
+		}
+
+		// The page that is open: its text in the beige of the game's selected tab, bold, with a bar under it
+		internal static void Mark(DefaultUIButton button, bool on)
+		{
+			if (!on)
+			{
+				return;
+			}
+
+			button._headerLabel.color = new Color(0.95f, 0.9f, 0.72f);
+			button._headerLabel.fontStyle = TMPro.FontStyles.Bold;
+			var bar = new GameObject("Open page", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+			bar.transform.SetParent(button.transform, false);
+			bar.GetComponent<LayoutElement>().ignoreLayout = true;
+			bar.GetComponent<Image>().color = new Color(0.8f, 0.72f, 0.45f);
+			bar.GetComponent<Image>().raycastTarget = false;
+			var rect = (RectTransform)bar.transform;
+			rect.anchorMin = new Vector2(0.04f, 0f);
+			rect.anchorMax = new Vector2(0.96f, 0f);
+			rect.pivot = new Vector2(0.5f, 0f);
+			rect.sizeDelta = new Vector2(0f, 3f);
+			rect.anchoredPosition = new Vector2(0f, 2f);
+		}
+
+		private static Sprite _gear;
+
+		// The settings gear of the game's top bar (its Settings tab), for the Options section
+		internal static Sprite SettingsGear()
+		{
+			if (_gear != null)
+			{
+				return _gear;
+			}
+
+			try
+			{
+				var bar = Resources.FindObjectsOfTypeAll<MenuTaskBar>().FirstOrDefault(found => found.gameObject.scene.IsValid());
+				AnimatedToggle toggle;
+				if (bar != null && bar._toggleButtons != null && bar._toggleButtons.TryGetValue(EMenuType.Settings, out toggle) && toggle != null)
+				{
+					foreach (var image in toggle.GetComponentsInChildren<Image>(true))
+					{
+						if (image.gameObject != toggle.gameObject && image.sprite != null && image.name.IndexOf("icon", StringComparison.OrdinalIgnoreCase) >= 0)
+						{
+							_gear = image.sprite;
+							break;
+						}
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Settings gear: could not find it: {e.Message}");
+			}
+
+			return _gear;
 		}
 
 		// The game's tab shows no hover of its own here, so the pointer over it gives the bold the game's tab has on hover (and the hand cursor

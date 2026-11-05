@@ -298,10 +298,11 @@ namespace GetReady
 		private static void Tab(Transform parent, string name, int index)
 		{
 			bool on = _tab == index;
-			// The game's own tab button when it can be copied, else our own
-			var group = parent.GetComponent<ToggleGroup>() ?? parent.gameObject.AddComponent<ToggleGroup>();
-			if (GameWidgets.Tab(parent, name, null, on, group, () => SetTab(index), UiKit.Unit * 2f, 1.05f) != null)
+			// The game's animated button (like Get ready) when it can be copied, the open page marked; else our own
+			var game = GameWidgets.Button(parent, name, () => SetTab(index), 0f, UiKit.Unit * 2f, true);
+			if (game != null)
 			{
+				GameWidgets.Mark(game, on);
 				return;
 			}
 
@@ -332,7 +333,7 @@ namespace GetReady
 		private static int _stripRows;
 
 		// The height of a section button (the game's tab button when it is there)
-		private const float StripButton = 1.8f;
+		private const float StripButton = 1.35f;
 
 		// The game's tab of each section (null where our own button stands in), and the section lit now
 		private static readonly List<AnimatedToggle> _stripTabs = new List<AnimatedToggle>();
@@ -359,7 +360,7 @@ namespace GetReady
 				foreach (int index in rowIndexes)
 				{
 					int section = index;
-					var tab = GameWidgets.Tab(row, names[index], Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton, 0.8f);
+					var tab = GameWidgets.Tab(row, names[index], Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton, 0.7f);
 					if (tab != null)
 					{
 						_stripTabs[index] = tab;
@@ -404,6 +405,19 @@ namespace GetReady
 				current = SetupPage.Sections.Count - 1;
 			}
 
+			// A section you clicked stays lit while the view is where the click put it
+			if (_jumpTarget >= 0)
+			{
+				if (Mathf.Abs(y - _jumpY) < 2f)
+				{
+					current = _jumpTarget;
+				}
+				else
+				{
+					_jumpTarget = -1;
+				}
+			}
+
 			if (current == _stripCurrent)
 			{
 				return;
@@ -430,7 +444,13 @@ namespace GetReady
 			float top = -RectTransformUtility.CalculateRelativeRectTransformBounds(_content, SetupPage.Sections[index]).max.y;
 			float most = Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height);
 			_content.anchoredPosition = new Vector2(0f, Mathf.Clamp(top - 8f, 0f, most));
+			// The one clicked stays lit until you scroll yourself (a short section at the end can't reach the top, and the last one would win)
+			_jumpTarget = index;
+			_jumpY = _content.anchoredPosition.y;
 		}
+
+		private static int _jumpTarget = -1;
+		private static float _jumpY;
 
 		// While an item is dragged in the stash the window is faded or hidden (see DragFade); it lets the mouse through then, so the item can
 		// be dropped on what is behind it

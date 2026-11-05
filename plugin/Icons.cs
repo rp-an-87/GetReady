@@ -100,6 +100,30 @@ namespace GetReady
 		// The game's small icon for a step (null when it has none)
 		internal static Sprite StepSprite(string step)
 		{
+			// Options have the game's settings gear, Cash the rouble sign, Repair the icon of a part
+			if (step == "Options")
+			{
+				return GameWidgets.SettingsGear();
+			}
+
+			if (step == "Cash")
+			{
+				try
+				{
+					return EFTHardSettings.Instance?.StaticIcons?.GetBigCurrencySign(new MongoID(Game.Roubles)) ?? TypeSprite(EItemType.Barter);
+				}
+				catch (Exception e)
+				{
+					Plugin.Log.LogWarning($"No cash sign: {e.Message}");
+					return TypeSprite(EItemType.Barter);
+				}
+			}
+
+			if (step == "Repair")
+			{
+				return TypeSprite(EItemType.Mod) ?? TypeSprite(EItemType.Armor);
+			}
+
 			var type = TypeOfStep(step);
 			return type == null ? null : TypeSprite(type.Value);
 		}
