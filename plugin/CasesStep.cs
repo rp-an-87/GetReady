@@ -113,6 +113,9 @@ namespace GetReady
 			public List<CaseItem> Added = new List<CaseItem>(), Removed = new List<CaseItem>();
 			public int AddedCount => Added.Sum(item => item.Count);
 			public int RemovedCount => Removed.Sum(item => item.Count);
+			// Money that differs, or (with exact positions) items that sit elsewhere: Update would change these without adding or removing
+			public bool Other;
+			public bool Any => Added.Count > 0 || Removed.Count > 0 || Other;
 		}
 
 		internal static CaseChange Diff(CompoundItem container, CaseEntry entry)
@@ -153,6 +156,37 @@ namespace GetReady
 				{
 					change.Removed.Add(new CaseItem { Template = pair.Key, Name = pair.Value.Name, Count = pair.Value.Count - has });
 				}
+			}
+
+			// Money amounts
+			var held = Contents(container);
+			foreach (var currency in Currencies)
+			{
+				int amount = held.Where(item => item.TemplateId.ToString() == TemplateOfCurrency(currency)).Sum(item => item.StackObjectsCount);
+				int recorded;
+				entry.Money.TryGetValue(currency, out recorded);
+				if (amount != recorded)
+				{
+					change.Other = true;
+				}
+			}
+
+			// With exact positions, an item in another cell is a change too
+			if (entry.Exact && !change.Other)
+			{
+				var places = new List<string>();
+				for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
+				{
+					var grid = container.Grids[gridIndex];
+					foreach (var item in grid.Items.Where(item => !IsMoney(item)))
+					{
+						var place = grid.GetItemLocation(item);
+						places.Add($"{item.TemplateId}|{gridIndex}|{place.x}|{place.y}|{(int)place.r}|{item.StackObjectsCount}");
+					}
+				}
+
+				var recordedPlaces = entry.Items.Select(item => $"{item.Template}|{item.Grid}|{item.X}|{item.Y}|{item.Rotation}|{item.Count}").ToList();
+				change.Other = !places.OrderBy(place => place).SequenceEqual(recordedPlaces.OrderBy(place => place));
 			}
 
 			return change;

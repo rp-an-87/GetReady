@@ -20,7 +20,6 @@ namespace GetReady
 		internal static ConfigEntry<DragFadeMode> DragFadeMode;
 		internal static ConfigEntry<float> DragFadeOpacity;
 		internal static ConfigEntry<bool> DebugLogging;
-		internal static ConfigEntry<bool> StripHighlight;
 
 		// A line for the log, only when "Log details" is on (F12): what the window does and how long it takes
 		internal static void Trace(string text)
@@ -49,8 +48,6 @@ namespace GetReady
 				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
 			DebugLogging = Config.Bind("8. Debugging", "Log details", false,
 				new ConfigDescription("Writes what GetReady does, and how long it takes, to the BepInEx log (only errors and warnings are written otherwise). For finding out why something is slow or wrong.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
-		StripHighlight = Config.Bind("8. Debugging", "Light the current section in the Setup strip", true,
-				new ConfigDescription("The section at the top of the view is lit in the strip of section buttons while you scroll. Switch it off to see if it costs frames.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
 			// A button in F12 that shows a made-up alert, for looking at it
 			Config.Bind("8. Debugging", "Show a test alert", false,
 				new ConfigDescription("Shows an alert like the one a run leaves behind when something is wrong, with made-up problems.", null,

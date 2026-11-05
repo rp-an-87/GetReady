@@ -133,6 +133,25 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void Nothing_to_update_means_the_button_has_no_change_to_show()
+		{
+			Put(Key, _case);
+			var entry = Recorded(_case);
+
+			CasesStep.Diff(_case, entry).Any.Should().BeFalse();
+		}
+
+		[Fact]
+		public void An_added_item_is_a_change()
+		{
+			Put(Key, _case);
+			var entry = Recorded(_case);
+			Put(Other, _case);
+
+			CasesStep.Diff(_case, entry).Any.Should().BeTrue();
+		}
+
+		[Fact]
 		public void Recording_keeps_where_each_item_sat()
 		{
 			var grid = _case.Grids[0];

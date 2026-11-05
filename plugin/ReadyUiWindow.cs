@@ -204,7 +204,6 @@ namespace GetReady
 				_tabScroll[_tab] = _content.anchoredPosition.y;
 			}
 
-			UpdateStrip();
 			if (_window == null || _content == null || Time.unscaledTime - _checkedAt < 0.4f)
 			{
 				return;
@@ -409,125 +408,37 @@ namespace GetReady
 		// The height of a section button (the game's tab button when it is there)
 		private const float StripButton = 1.35f;
 
-		// The game's tab of each section (null where our own button stands in), and the section lit now
-		private static readonly List<AnimatedToggle> _stripTabs = new List<AnimatedToggle>();
-		private static int _stripCurrent = -1;
-		private static float _stripAt;
-		private static float _stripSeenY, _stripMovedAt;
-
 		private static void JumpStrip(Transform parent)
 		{
 			var names = SetupPage.Names();
 			var rows = JumpRows();
 			_stripRows = rows.Count;
-			_stripTabs.Clear();
-			for (int i = 0; i < names.Count; i++)
-			{
-				_stripTabs.Add(null);
-			}
-
-			_stripCurrent = -1;
-			// One group for all the rows, so only one section is lit
+			// The tabs are the game's toggles: nothing is lit here, so a clicked one switches itself off again (the group lets it)
 			var group = parent.GetComponent<ToggleGroup>() ?? parent.gameObject.AddComponent<ToggleGroup>();
+			group.allowSwitchOff = true;
 			foreach (var rowIndexes in rows)
 			{
 				var row = UiKit.HBox(parent, 4f);
 				foreach (int index in rowIndexes)
 				{
 					int section = index;
-					var tab = GameWidgets.Tab(row, StripName(names[index]), Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton, 0.7f);
-					if (tab != null)
+					AnimatedToggle made = null;
+					made = GameWidgets.Tab(row, StripName(names[index]), Icons.StepSprite(names[index]), false, group, () =>
 					{
-						_stripTabs[index] = tab;
+						JumpTo(section);
+						if (made != null)
+						{
+							made.ToggleSilent(false);
+						}
+					}, UiKit.Unit * StripButton, 0.7f);
+					if (made != null)
+					{
 						continue;
 					}
 
 					var button = UiKit.PushButton(row, names[index], () => JumpTo(section), new Color(0.15f, 0.155f, 0.155f), new Color(0.22f, 0.23f, 0.22f), Ui.Text, height: UiKit.Unit * 1.5f);
 					button.GetComponent<LayoutElement>().flexibleWidth = 1f;
 				}
-			}
-		}
-
-		// The section at the top of the view lit in the strip, as you scroll (a few times a second)
-		private static void UpdateStrip()
-		{
-			if (Plugin.StripHighlight != null && !Plugin.StripHighlight.Value)
-			{
-				return;
-			}
-
-			if (_tab != 1 || _content == null || _scroll == null || _stripTabs.Count == 0 || Time.unscaledTime - _stripAt < 0.15f)
-			{
-				return;
-			}
-
-			_stripAt = Time.unscaledTime;
-			// While the page is moving nothing is changed in the strip (each change plays a tab animation): it follows when the scrolling stops
-			float now = _content.anchoredPosition.y;
-			if (!Mathf.Approximately(now, _stripSeenY))
-			{
-				_stripSeenY = now;
-				_stripMovedAt = Time.unscaledTime;
-				return;
-			}
-
-			if (Time.unscaledTime - _stripMovedAt < 0.25f && _stripCurrent >= 0)
-			{
-				return;
-			}
-
-			int current = 0;
-			float y = _content.anchoredPosition.y;
-			for (int i = 0; i < SetupPage.Sections.Count; i++)
-			{
-				var section = SetupPage.Sections[i];
-				if (section == null)
-				{
-					continue;
-				}
-
-				float top = TopOf(section);
-				if (top - 12f <= y)
-				{
-					current = i;
-				}
-			}
-
-			// At the very bottom the last section counts, even when it is too short to reach the top
-			if (y >= Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height) - 1f && y > 0f)
-			{
-				current = SetupPage.Sections.Count - 1;
-			}
-
-			// A section you clicked stays lit while the view is where the click put it
-			if (_jumpTarget >= 0)
-			{
-				if (Mathf.Abs(y - _jumpY) < 2f)
-				{
-					current = _jumpTarget;
-				}
-				else
-				{
-					_jumpTarget = -1;
-				}
-			}
-
-			if (current == _stripCurrent)
-			{
-				return;
-			}
-
-			// Only the two that change get their animation: the one that was lit goes dark, the new one lights up
-			int before = _stripCurrent;
-			_stripCurrent = current;
-			if (before >= 0 && before < _stripTabs.Count && _stripTabs[before] != null)
-			{
-				_stripTabs[before].ToggleSilent(false);
-			}
-
-			if (current < _stripTabs.Count && _stripTabs[current] != null)
-			{
-				_stripTabs[current].ToggleSilent(true);
 			}
 		}
 
@@ -545,13 +456,7 @@ namespace GetReady
 			float top = TopOf(SetupPage.Sections[index]);
 			float most = Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height);
 			_content.anchoredPosition = new Vector2(0f, Mathf.Clamp(top - 8f, 0f, most));
-			// The one clicked stays lit until you scroll yourself (a short section at the end can't reach the top, and the last one would win)
-			_jumpTarget = index;
-			_jumpY = _content.anchoredPosition.y;
 		}
-
-		private static int _jumpTarget = -1;
-		private static float _jumpY;
 
 		// While an item is dragged in the stash the window is faded or hidden (see DragFade); it lets the mouse through then, so the item can
 		// be dropped on what is behind it
