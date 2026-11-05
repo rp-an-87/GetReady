@@ -272,18 +272,29 @@ namespace GetReady
 			}
 
 			tween._animation.SetState(EButtonAnimationState.Highlighted);
+			// Nothing happens when it is pressed: no press animation, no click sound
+			button._onPointerClickSound = false;
 			button.gameObject.AddComponent<KeepLit>().Tween = tween;
 		}
 
 		// Added after the game's own button script, so it runs after it: when that sends the button back to normal (the mouse leaves, a
 		// click ends), this puts it back to highlighted
-		internal class KeepLit : MonoBehaviour, UnityEngine.EventSystems.IPointerExitHandler, UnityEngine.EventSystems.IPointerUpHandler
+		internal class KeepLit : MonoBehaviour, UnityEngine.EventSystems.IPointerExitHandler, UnityEngine.EventSystems.IPointerUpHandler, UnityEngine.EventSystems.IPointerDownHandler
 		{
 			internal TweenAnimatedButton Tween;
 
 			public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData) => Lit();
 
 			public void OnPointerUp(UnityEngine.EventSystems.PointerEventData eventData) => Lit();
+
+			// The game sends it to pressed: straight back, with no animation in between
+			public void OnPointerDown(UnityEngine.EventSystems.PointerEventData eventData)
+			{
+				if (Tween != null && Tween._animation != null)
+				{
+					Tween._animation.SetState(EButtonAnimationState.Highlighted);
+				}
+			}
 
 			private void Lit()
 			{
