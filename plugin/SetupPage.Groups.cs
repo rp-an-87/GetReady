@@ -171,7 +171,7 @@ namespace GetReady
 			// (not the injectors of the Propital row: they have no uses to run down)
 			if (on && !def.Stack && def.Id != "propital")
 			{
-				OptionRow(card, setting.ReplaceWorse, "Replace with better ones from the stash", "A used or lower-ranked item of this row that you carry is swapped for a better one from the stash. Off: what you carry stays as long as you keep the amount.", value => setting.ReplaceWorse = value);
+				OptionRow(card, setting.ReplaceWorse, "Swap used kits for fuller ones", "A used or lower-ranked item of this row that you carry is swapped for a better one from the stash. Off: what you carry stays as long as you keep the amount.", value => setting.ReplaceWorse = value);
 			}
 
 			if (def.Entries.Length > 1 && Expanded.Contains(def.Id))
