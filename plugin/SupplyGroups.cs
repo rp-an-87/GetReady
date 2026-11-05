@@ -265,22 +265,6 @@ namespace GetReady
 		// What counts: ordered and without the items switched off
 		public Entry[] ActiveEntries() => OrderedEntries().Where(entry => !Setting.Off.Contains(entry.Template)).ToArray();
 
-		// Moves an item one place up or down, and writes the order out in full
-		public void MoveEntry(string template, int step)
-		{
-			var templates = OrderedEntries().Select(entry => entry.Template).ToList();
-			int index = templates.IndexOf(template);
-			int target = index + step;
-			if (index < 0 || target < 0 || target >= templates.Count)
-			{
-				return;
-			}
-
-			templates.RemoveAt(index);
-			templates.Insert(target, template);
-			Setting.Order = templates;
-		}
-
 		// The most of this item to carry for the group (0: no limit). It is a preference: when nothing else can make up the target,
 		// more of it are brought.
 		public int MaxOf(string template)

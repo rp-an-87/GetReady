@@ -18,45 +18,22 @@ namespace GetReady.Tests
 		private static List<string> Templates(GroupDef def) => def.OrderedEntries().Select(entry => entry.Template).ToList();
 
 		[Fact]
-		public void An_item_moves_one_place_down()
+		public void A_row_dragged_to_another_place_writes_the_order_out_in_full()
 		{
 			var def = Group("a", "b", "c");
 
-			def.MoveEntry("a", 1);
+			def.ReorderEntries(def.ShownEntries(), 0, 2);
 
-			Templates(def).Should().Equal("b", "a", "c");
+			Templates(def).Should().Equal("b", "c", "a");
 		}
 
 		[Fact]
-		public void An_item_moves_one_place_up()
+		public void Switched_off_items_are_shown_after_the_ones_in_use()
 		{
 			var def = Group("a", "b", "c");
+			def.ToggleEntry("a");
 
-			def.MoveEntry("c", -1);
-
-			Templates(def).Should().Equal("a", "c", "b");
-		}
-
-		[Fact]
-		public void The_first_item_cannot_move_up_nor_the_last_down()
-		{
-			var def = Group("a", "b", "c");
-
-			def.MoveEntry("a", -1);
-			def.MoveEntry("c", 1);
-
-			Templates(def).Should().Equal("a", "b", "c");
-			def.Setting.Order.Should().BeEmpty("nothing was written for a move that did not happen");
-		}
-
-		[Fact]
-		public void An_item_that_is_not_in_the_group_does_not_move()
-		{
-			var def = Group("a", "b");
-
-			def.MoveEntry("zzz", 1);
-
-			Templates(def).Should().Equal("a", "b");
+			def.ShownEntries().Select(entry => entry.Template).Should().Equal("b", "c", "a");
 		}
 
 		[Fact]

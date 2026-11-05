@@ -1056,18 +1056,6 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void The_full_name_is_the_one_the_game_gives_else_the_short_one()
-		{
-			MapTags.FullName("Streets").Should().Be("Streets");
-
-			Game.Localize = key => key == "TarkovStreets Name" ? "Streets of Tarkov" : key;
-
-			MapTags.FullName("Streets").Should().Be("Streets of Tarkov");
-			MapTags.FullName("Woods").Should().Be("Woods");
-			MapTags.FullName("Nowhere").Should().Be("Nowhere");
-		}
-
-		[Fact]
 		public void A_case_you_carry_that_is_for_another_map_is_wrong()
 		{
 			var sicc = Case("a", "sicc", "Reserve");

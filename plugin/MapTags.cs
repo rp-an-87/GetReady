@@ -33,20 +33,6 @@ namespace GetReady
 		internal static string MapOf(string locationId) =>
 			string.IsNullOrEmpty(locationId) ? null : Maps.FirstOrDefault(map => map.Ids.Contains(locationId, StringComparer.OrdinalIgnoreCase))?.Name;
 
-		// The map as the game names it ("Streets of Tarkov"), else the short name
-		internal static string FullName(string map)
-		{
-			var def = Maps.FirstOrDefault(candidate => candidate.Name.Equals(map, StringComparison.OrdinalIgnoreCase));
-			if (def == null)
-			{
-				return map;
-			}
-
-			var key = def.Ids[0] + " Name";
-			var name = Game.Localize(key);
-			return string.IsNullOrEmpty(name) || name == key ? def.Name : name;
-		}
-
 		// What is wrong for the map picked: the cases you carry that are for other maps, and the cases set for this map that are not on you
 		internal class Report
 		{
