@@ -17,8 +17,8 @@ namespace GetReady
 		private static void CasesSetup(Transform section, InventoryController controller)
 		{
 			var settings = SettingsStore.Current.Cases;
-			OptionRow(section, settings.AutoUpdate, "Keep tracked items up to date when I move things", "Items you put in or take out of a case you track, by hand in the stash, are added to or removed from what is tracked. What Get ready itself moves is not tracked, and neither are the cases you never tracked.", value => settings.AutoUpdate = value);
-			OptionRow(section, settings.MapWarnings, "Warn on the map screen about cases for another map", "A red bar over the map screen shows the cases you carry that are set to other maps than the one you picked, and the ones set for it that are not on you", value => settings.MapWarnings = value);
+			OptionRow(section, settings.AutoUpdate, "Keep tracked items up to date when I move things", "What you put in or take out of a case you track, by hand in the stash.\n<b>On:</b> it is added to or removed from what the case tracks.\n<b>Off:</b> what is tracked stays as you set it.\n\nWhat Get ready itself moves is never tracked, and neither are the cases you never tracked.", value => settings.AutoUpdate = value);
+			OptionRow(section, settings.MapWarnings, "Warn on the map screen about cases for another map", "The map screen, when you pick a map.\n<b>On:</b> a red bar shows the cases you carry that are set to other maps, and the cases set for this map that are not on you.\n<b>Off:</b> no bar.", value => settings.MapWarnings = value);
 			if (controller == null)
 			{
 				UiKit.Label(section, "Open this in the stash to set up the cases you carry.", 0.85f, Ui.Dim);
@@ -225,7 +225,7 @@ namespace GetReady
 					Changed();
 				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.Size(track, width: 1f, flexWidth: 1f).minWidth = 0f;
-				UiKit.Tip(track, "Remembers what this case holds now (and where each item sits): getting ready brings back what is missing and, with \"Take out the rest\", takes out everything else. Other cases are left alone.");
+				UiKit.Tip(track, "Remembers what this case holds now, and where each item sits.\n\nGetting ready then brings back what is missing and, with <b>Take out the rest</b>, takes out everything else. Other cases are left alone.");
 				if (recorded)
 				{
 					var stop = UiKit.PushButton(buttons, "Stop tracking items", () =>
@@ -265,19 +265,19 @@ namespace GetReady
 				target.StopsCash = !target.StopsCash;
 				CasesStep.Prune(target);
 				Changed();
-			}, stops ? "While you carry this case the Cash step is skipped. Click to let it work again." : "Click to skip the Cash step while you carry this case (it has what it needs, or it is for something else). A case that tracks money does the same.");
+			}, "For a case that has the cash it needs, or is for something else.\n<b>On:</b> the Cash step is skipped while you carry this case.\n<b>Off:</b> the Cash step works as usual.\n\nA case that tracks money skips the step on its own.");
 			if (recorded)
 			{
 				Pick(switches, "Take out the rest", entry.TakeOutRest, () =>
 				{
 					entry.TakeOutRest = !entry.TakeOutRest;
 					Changed();
-				}, entry.TakeOutRest ? "What is not tracked is taken out to the stash, money included (a tracked amount keeps that much, the extra goes out). Click to leave it where it is (only what is missing is brought)." : "Nothing is taken out. Click to take out what is not tracked, money included.");
+				}, "What the case holds that is not tracked.\n<b>On:</b> it is taken out to the stash, money included (a tracked amount keeps that much, the extra goes out).\n<b>Off:</b> it stays where it is; only what is missing is brought.");
 				Pick(switches, "Exact positions", entry.Exact, () =>
 				{
 					entry.Exact = !entry.Exact;
 					Changed();
-				}, entry.Exact ? "Each item goes back to the cell it was in when tracked; a wrong item in a cell goes to the stash. Click to match by type and count only." : "Only the type and the count of each item matter. Click to put each item back in the cell it was in when tracked (what the injector case needs).");
+				}, "Where the tracked items sit in the case.\n<b>On:</b> each item goes back to the cell it was in when tracked; a wrong item in a cell goes to the stash (what an injector case needs).\n<b>Off:</b> only the type and the count of each item matter.");
 			}
 
 			// The maps it is for: none picked is any map

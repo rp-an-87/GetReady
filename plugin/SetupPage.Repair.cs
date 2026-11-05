@@ -25,7 +25,7 @@ namespace GetReady
 			OptionRow(what, repair.Weapons, "Repair my weapons", "The weapons in your weapon slots, with weapon repair kits or a trader, the way the R key does it", value => repair.Weapons = value);
 
 			var traders = SmallCard(section, "Traders");
-			OptionRow(traders, repair.UseTraders, "Use a trader when I have no repair kit", "A worn piece with no kit that can repair it is repaired by a trader for roubles (all or nothing: not enough roubles is an error). A kit that is there but too small is an error too, not a reason to go to a trader.", value => repair.UseTraders = value);
+			OptionRow(traders, repair.UseTraders, "Use a trader when I have no repair kit", "A worn piece that no kit you have can repair.\n<b>On:</b> a trader repairs it for roubles (all or nothing: not enough roubles is an error).\n<b>Off:</b> it is left worn and reported.\n\nA kit that is there but too small is an error either way, not a reason to go to a trader.", value => repair.UseTraders = value);
 			var repairController = RepairWithKit.Controller();
 			if (repair.UseTraders && repairController != null)
 			{

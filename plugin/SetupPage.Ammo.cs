@@ -25,7 +25,7 @@ namespace GetReady
 			UiKit.Size(sub, flexWidth: 1f);
 			var inner = UiKit.VBox(sub, 0f);
 			UiKit.Size(inner, flexWidth: 1f);
-			OptionRow(inner, ammo.LooseShortIsProblem, "A loose stack that can't be filled is a problem", "When on, a loose stack that is short and that the stash has no more of is reported in red, and counted in the box at the top. When off it is just left as it is.", value => ammo.LooseShortIsProblem = value);
+			OptionRow(inner, ammo.LooseShortIsProblem, "A loose stack that can't be filled is a problem", "A loose stack of ammo you carry that is short, when the stash has no more of it to fill it up.\n<b>On:</b> it is reported in red and counted in the box at the top.\n<b>Off:</b> it is just left as it is.", value => ammo.LooseShortIsProblem = value);
 			if (!ammo.TopUpLoose)
 			{
 				var dim = sub.gameObject.AddComponent<CanvasGroup>();

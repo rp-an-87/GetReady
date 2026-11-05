@@ -180,7 +180,7 @@ namespace GetReady
 				Label = place == "Special slots" ? "Special" : place,
 				On = def.PlaceOn(place),
 				Icon = PlaceIconOf(place),
-				Tip = place + "\n" + (def.PlaceOn(place) ? "On: used, in the order of the arrows. Click to switch it off, drag it onto another place to swap them." : "Off: not used. Click to switch it on, or drag it onto a place that is on to take its spot.")
+				Tip = place + "\n" + (def.PlaceOn(place) ? "<b>On:</b> used, in the order of the arrows.\nClick to switch it off, drag it onto another place to swap them." : "<b>Off:</b> not used.\nClick to switch it on, or drag it onto a place that is on to take its spot.")
 			}).ToList();
 			ChipPicker(parent, chips, perRow, place =>
 			{
