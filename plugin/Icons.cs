@@ -121,7 +121,7 @@ namespace GetReady
 
 			if (step == "Repair")
 			{
-				return TypeSprite(EItemType.Armor);
+				return GameWidgets.White(TypeSprite(EItemType.Mod)) ?? TypeSprite(EItemType.Armor);
 			}
 
 			var type = TypeOfStep(step);

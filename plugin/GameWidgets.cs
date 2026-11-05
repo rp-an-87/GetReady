@@ -310,6 +310,55 @@ namespace GetReady
 			}
 		}
 
+		private static readonly System.Collections.Generic.Dictionary<Sprite, Sprite> Whitened = new System.Collections.Generic.Dictionary<Sprite, Sprite>();
+
+		// A copy of a sprite in white with the same shape (its alpha kept), made in memory: for a game icon that is coloured where the others are white
+		internal static Sprite White(Sprite source)
+		{
+			if (source == null)
+			{
+				return null;
+			}
+
+			Sprite copy;
+			if (Whitened.TryGetValue(source, out copy))
+			{
+				return copy;
+			}
+
+			try
+			{
+				var texture = source.texture;
+				var target = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32);
+				Graphics.Blit(texture, target);
+				var previous = RenderTexture.active;
+				RenderTexture.active = target;
+				var rect = source.textureRect;
+				int width = Mathf.RoundToInt(rect.width), height = Mathf.RoundToInt(rect.height);
+				var made = new Texture2D(width, height, TextureFormat.RGBA32, false);
+				made.ReadPixels(new Rect(rect.x, rect.y, width, height), 0, 0);
+				RenderTexture.active = previous;
+				RenderTexture.ReleaseTemporary(target);
+				var pixels = made.GetPixels32();
+				for (int i = 0; i < pixels.Length; i++)
+				{
+					pixels[i] = new Color32(255, 255, 255, pixels[i].a);
+				}
+
+				made.SetPixels32(pixels);
+				made.Apply();
+				copy = Sprite.Create(made, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), source.pixelsPerUnit);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not make {source.name} white: {e.Message}");
+				copy = source;
+			}
+
+			Whitened[source] = copy;
+			return copy;
+		}
+
 		private static Sprite _gear;
 
 		// The settings gear of the game's top bar (its Settings tab), for the Options section
