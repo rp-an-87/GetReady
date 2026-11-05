@@ -436,6 +436,27 @@ namespace GetReady
 			}.WithItem(source);
 		}
 
+		// Takes stacks of this kind from the stash until the amount needed is covered: each one is claimed (nothing else uses it) and handed
+		// over with how many of it to take. Returns what is still missing.
+		private static int Gather(Func<string, IEnumerable<Item>> candidates, string template, int need, HashSet<Item> taken, Action<Item, int> each)
+		{
+			foreach (var source in candidates(template).ToList())
+			{
+				if (need <= 0)
+				{
+					break;
+				}
+
+				int count = Math.Min(source.StackObjectsCount, need);
+				taken.Add(source);
+				Steps.Claimed.Add(source);
+				need -= count;
+				each(source, count);
+			}
+
+			return need;
+		}
+
 		// How a bring or a missing amount reads: money as the game shows it (the sign first), items by count and name
 		private static string BringText(string template, string name, int count, string label) =>
 			Game.CurrencyOf(template) is string currency ? $"Bring {Game.Amount(currency, count)} to {label}" : $"Bring {count}x {name} to {label}";
@@ -476,25 +497,14 @@ namespace GetReady
 				part.InPlace += currency != null ? (have >= wanted.Count ? 1 : 0) : Math.Min(have, wanted.Count);
 				if (have < wanted.Count)
 				{
-					int need = wanted.Count - have;
-					foreach (var source in candidates(wanted.Template).ToList())
+					int missing = Gather(candidates, wanted.Template, wanted.Count - have, taken, (source, count) =>
 					{
-						if (need <= 0)
-						{
-							break;
-						}
-
-						int count = Math.Min(source.StackObjectsCount, need);
-						taken.Add(source);
-						Steps.Claimed.Add(source);
-						need -= count;
 						Brought(brought, wanted.Template, count);
 						brings.Add(Bring(controller, source, count, BringText(wanted.Template, wanted.Name, count, label), container, wanted.Template));
-					}
-
-					if (need > 0)
+					});
+					if (missing > 0)
 					{
-						problems.Add(MissingLine(wanted.Template, wanted.Name, need, label));
+						problems.Add(MissingLine(wanted.Template, wanted.Name, missing, label));
 					}
 				}
 				else if (have > wanted.Count && entry.TakeOutRest)
@@ -575,33 +585,21 @@ namespace GetReady
 					if (held.StackMaxSize > 1 && difference > 0)
 					{
 						// The right stack, too small: topped up from the stash into this very stack
-						int need = difference;
 						var stack = held;
-						foreach (var source in candidates(cell.Template).ToList())
+						int missing = Gather(candidates, cell.Template, difference, taken, (source, count) =>
 						{
-							if (need <= 0)
-							{
-								break;
-							}
-
-							int count = Math.Min(source.StackObjectsCount, need);
-							var from = source;
-							taken.Add(source);
-							Steps.Claimed.Add(source);
-							need -= count;
 							Brought(brought, cell.Template, count);
 							others.Add(new PlanLine
 							{
 								Text = BringText(cell.Template, cell.Name, count, label),
 								Template = cell.Template,
 								Items = 1,
-								Run = () => Game.MergeInto(controller, from, count, stack)
+								Run = () => Game.MergeInto(controller, source, count, stack)
 							}.WithItem(source));
-						}
-
-						if (need > 0)
+						});
+						if (missing > 0)
 						{
-							others.Add(MissingLine(cell.Template, cell.Name, need, label));
+							others.Add(MissingLine(cell.Template, cell.Name, missing, label));
 						}
 
 						continue;
