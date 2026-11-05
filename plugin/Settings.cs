@@ -155,8 +155,6 @@ namespace GetReady
 		public bool Exact;
 		// What is not in the template is taken out to the stash, money too (a recorded amount keeps that much, the extra goes out); off: only what is missing is brought and nothing is taken out
 		public bool TakeOutRest = true;
-		// RUB, EUR and USD it holds
-		public Dictionary<string, int> Money = new Dictionary<string, int>();
 		// While you carry this case the Cash step does nothing
 		public bool StopsCash;
 		// The maps it is for (names of MapTags.Maps); none: any

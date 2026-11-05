@@ -49,8 +49,11 @@ namespace GetReady
 			}
 		}
 
-		private static string MoneyText(CaseEntry entry) =>
-			string.Join("   ", CasesStep.Currencies.Where(currency => entry.Money.ContainsKey(currency)).Select(currency => Game.Amount(currency, entry.Money[currency])));
+		private static string MoneyText(CaseEntry entry)
+		{
+			var money = CasesStep.MoneyOf(entry);
+			return string.Join("   ", CasesStep.Currencies.Where(currency => money.ContainsKey(currency)).Select(currency => Game.Amount(currency, money[currency])));
+		}
 
 		// An amount for a small corner: 1500 is 1.5k, 100000 is 100k, 2500000 is 2.5M
 		private static string Compact(int amount)
@@ -109,21 +112,25 @@ namespace GetReady
 			UiKit.Label(box, name, 0.75f, light ? new Color(0.08f, 0.08f, 0.08f) : Color.white, bold: true, align: TextAlignmentOptions.Center);
 		}
 
-		// An item picture with its amount in the corner and, when asked, its short name at the top, as the game draws a stack
-		private static RectTransform StripIcon(Transform row, string template, string tip, int count, string label, string amountText = null)
+		// An item picture with its amount in the corner and its short name at the top, as the game draws a stack. Money shows its currency and
+		// a short amount (100k). tipPrefix starts the tooltip.
+		private static RectTransform StripIcon(Transform row, string template, string name, int count, string tipPrefix = "")
 		{
+			var currency = Game.CurrencyOf(template);
+			string tip = tipPrefix + (currency != null ? Game.Amount(currency, count) : count > 1 ? $"{name} x{count}" : name);
+			string label = currency ?? name;
 			TemplateIcon(row, template, UiKit.Unit * 2.4f, tip);
 			var frame = row.GetChild(row.childCount - 1);
 			if (!string.IsNullOrEmpty(label))
 			{
-				var name = UiKit.Label(frame, label, 0.45f, new Color(0.92f, 0.92f, 0.88f), align: TextAlignmentOptions.TopRight);
-				name.overflowMode = TextOverflowModes.Truncate;
-				UiKit.Stretch(name.rectTransform, 1f, 1f, 3f, 2f);
+				var shortName = UiKit.Label(frame, label, 0.45f, new Color(0.92f, 0.92f, 0.88f), align: TextAlignmentOptions.TopRight);
+				shortName.overflowMode = TextOverflowModes.Truncate;
+				UiKit.Stretch(shortName.rectTransform, 1f, 1f, 3f, 2f);
 			}
 
 			if (count > 1)
 			{
-				var amount = UiKit.Label(frame, amountText ?? count.ToString(), 0.6f, new Color(0.55f, 0.9f, 0.45f), bold: true, align: TextAlignmentOptions.BottomRight);
+				var amount = UiKit.Label(frame, currency != null ? Compact(count) : count.ToString(), 0.6f, new Color(0.55f, 0.9f, 0.45f), bold: true, align: TextAlignmentOptions.BottomRight);
 				UiKit.Stretch(amount.rectTransform, 0f, 0f, 4f, 2f);
 			}
 
@@ -148,9 +155,8 @@ namespace GetReady
 		{
 			var panel = UiKit.VBox(parent, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
 			var shown = (entry.Exact ? entry.Items.OrderBy(held => held.Grid).ThenBy(held => held.Y).ThenBy(held => held.X) : entry.Items.OrderBy(held => held.Template)).ToList();
-			var money = CasesStep.Currencies.Where(currency => entry.Money.ContainsKey(currency)).ToList();
 			bool anyAdded = change != null && change.Added.Count > 0;
-			if (shown.Count == 0 && money.Count == 0)
+			if (shown.Count == 0)
 			{
 				EmptyNote(panel, "Tracking nothing: getting ready empties this case.");
 				if (!anyAdded)
@@ -171,7 +177,7 @@ namespace GetReady
 			var removed = new HashSet<string>(change != null ? change.Removed.Select(item => item.Template) : new string[0]);
 			foreach (var held in shown)
 			{
-				var frame = StripIcon(cells, held.Template, held.Count > 1 ? $"{held.Name} x{held.Count}" : held.Name, held.Count, held.Name);
+				var frame = StripIcon(cells, held.Template, held.Name, held.Count);
 				if (removed.Contains(held.Template))
 				{
 					Tint(frame, new Color(0.9f, 0.2f, 0.18f, 0.45f));
@@ -183,32 +189,12 @@ namespace GetReady
 				}
 			}
 
-			foreach (var currency in money)
-			{
-				var frame = StripIcon(cells, CasesStep.TemplateOfCurrency(currency), Game.Amount(currency, entry.Money[currency]), entry.Money[currency], currency, Compact(entry.Money[currency]));
-				int moved;
-				if (change != null && change.Money.TryGetValue(currency, out moved) && moved < 0)
-				{
-					Tint(frame, new Color(0.9f, 0.2f, 0.18f, 0.45f));
-				}
-			}
-
 			// What Update would add, in green after what is tracked
-			// Money it would add: an extra amount in green
-			if (change != null)
-			{
-				foreach (var pair in change.Money.Where(pair => pair.Value > 0))
-				{
-					var frame = StripIcon(cells, CasesStep.TemplateOfCurrency(pair.Key), "Update would add " + Game.Amount(pair.Key, pair.Value), pair.Value, pair.Key, Compact(pair.Value));
-					Tint(frame, new Color(0.25f, 0.8f, 0.3f, 0.4f));
-				}
-			}
-
 			if (anyAdded)
 			{
 				foreach (var added in change.Added)
 				{
-					var frame = StripIcon(cells, added.Template, $"Update would add {added.Name}" + (added.Count > 1 ? $" x{added.Count}" : ""), added.Count, added.Name);
+					var frame = StripIcon(cells, added.Template, added.Name, added.Count, "Update would add ");
 					Tint(frame, new Color(0.25f, 0.8f, 0.3f, 0.4f));
 				}
 			}
@@ -292,7 +278,7 @@ namespace GetReady
 				var track = UiKit.PushButton(buttons, trackText, () =>
 				{
 					var saved = CasesStep.Record(item);
-					ReadyPlan._status = $"Tracking {ItemsText(CasesStep.ItemCount(saved))}{(saved.Money.Count > 0 ? " and " + MoneyText(saved) : "")} in {name}.";
+					ReadyPlan._status = $"Tracking {ItemsText(CasesStep.ItemCount(saved))}{(CasesStep.MoneyOf(saved).Count > 0 ? " and " + MoneyText(saved) : "")} in {name}.";
 					Changed();
 				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.Size(track, width: 1f, flexWidth: 1f).minWidth = 0f;

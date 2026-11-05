@@ -70,18 +70,17 @@ namespace GetReady
 			return entry;
 		}
 
-		// Saves what the case holds now as its template (nothing at all is a template too: a case kept empty), item by item with its place.
-		// The other settings of the case are kept.
+		// Saves what the case holds now as its template, item by item with its place. Money is no different: a stack of money is an item whose
+		// count is its amount. The other settings of the case are kept; nothing at all is a template too (a case kept empty).
 		internal static CaseEntry Record(CompoundItem container)
 		{
 			var entry = Touch(container);
 			entry.Recorded = true;
 			entry.Items.Clear();
-			entry.Money.Clear();
 			for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
 			{
 				var grid = container.Grids[gridIndex];
-				foreach (var item in grid.Items.Where(item => !IsMoney(item)))
+				foreach (var item in grid.Items)
 				{
 					var place = grid.GetItemLocation(item);
 					entry.Items.Add(new CaseItem
@@ -92,45 +91,40 @@ namespace GetReady
 				}
 			}
 
-			var held = Contents(container);
-			foreach (var currency in Currencies)
-			{
-				int amount = held.Where(item => item.TemplateId.ToString() == TemplateOfCurrency(currency)).Sum(item => item.StackObjectsCount);
-				if (amount > 0)
-				{
-					entry.Money[currency] = amount;
-				}
-			}
-
 			SettingsStore.Save();
 			return entry;
 		}
 
+		internal static bool IsCurrency(string template) => Game.CurrencyOf(template) != null;
+
+		// What a record holds in money: RUB, EUR and USD with their amounts (the currencies it has none of are left out)
+		internal static Dictionary<string, int> MoneyOf(CaseEntry entry) =>
+			entry.Items.Where(item => IsCurrency(item.Template)).GroupBy(item => Game.CurrencyOf(item.Template)).ToDictionary(group => group.Key, group => group.Sum(item => item.Count));
+
 		// What pressing Update would change: items in the case now that are not tracked (added) and tracked items no longer in it (removed),
-		// counted by kind. Money and positions are not part of it.
+		// counted by kind (money by amount). With exact positions, the tracked items that are still in the case but in another cell.
 		internal class CaseChange
 		{
 			public List<CaseItem> Added = new List<CaseItem>(), Removed = new List<CaseItem>();
-			public int AddedCount => Added.Sum(item => item.Count);
-			public int RemovedCount => Removed.Sum(item => item.Count);
-			// Money that differs, or (with exact positions) items that sit elsewhere: Update would change these without adding or removing
-			public bool Other;
+			// Items, not money: how many items Update would add or take out of the record
+			public int AddedCount => Added.Where(item => !IsCurrency(item.Template)).Sum(item => item.Count);
+			public int RemovedCount => Removed.Where(item => !IsCurrency(item.Template)).Sum(item => item.Count);
 			// With exact positions: the recorded items (by PlaceKey) that are still in the case but in another cell
 			public HashSet<string> Moved = new HashSet<string>();
-			// How much more (+) or less (-) money of each currency the case holds than is recorded
-			public Dictionary<string, int> Money = new Dictionary<string, int>();
-			public bool Any => Added.Count > 0 || Removed.Count > 0 || Other;
+			public bool Any => Added.Count > 0 || Removed.Count > 0 || Moved.Count > 0;
 		}
 
 		// An item and where it sits, as one string: how the case's items are compared with the recorded ones
-		internal static string PlaceKey(CaseItem item) => $"{item.Template}|{item.Grid}|{item.X}|{item.Y}|{item.Rotation}|{item.Count}";
+		internal static string PlaceKey(CaseItem item) => $"{item.Template}|{item.Grid}|{item.X}|{item.Y}|{item.Rotation}";
 
 		internal static CaseChange Diff(CompoundItem container, CaseEntry entry)
 		{
 			var now = new Dictionary<string, CaseItem>();
-			foreach (var grid in container.Grids)
+			var places = new HashSet<string>();
+			for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
 			{
-				foreach (var item in grid.Items.Where(item => !IsMoney(item)))
+				var grid = container.Grids[gridIndex];
+				foreach (var item in grid.Items)
 				{
 					var template = item.TemplateId.ToString();
 					CaseItem found;
@@ -142,6 +136,9 @@ namespace GetReady
 					{
 						now[template] = new CaseItem { Template = template, Name = Game.NameOf(item), Count = item.StackObjectsCount };
 					}
+
+					var place = grid.GetItemLocation(item);
+					places.Add(PlaceKey(new CaseItem { Template = template, Grid = gridIndex, X = place.x, Y = place.y, Rotation = (int)place.r }));
 				}
 			}
 
@@ -165,36 +162,9 @@ namespace GetReady
 				}
 			}
 
-			// Money amounts
-			var held = Contents(container);
-			foreach (var currency in Currencies)
+			// With exact positions, a recorded item in another cell is a change too (unless it is simply gone, which is a removal)
+			if (entry.Exact)
 			{
-				int amount = held.Where(item => item.TemplateId.ToString() == TemplateOfCurrency(currency)).Sum(item => item.StackObjectsCount);
-				int recorded;
-				entry.Money.TryGetValue(currency, out recorded);
-				if (amount != recorded)
-				{
-					change.Other = true;
-					change.Money[currency] = amount - recorded;
-				}
-			}
-
-			// With exact positions, an item in another cell is a change too
-			if (entry.Exact && !change.Other)
-			{
-				var places = new List<string>();
-				for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
-				{
-					var grid = container.Grids[gridIndex];
-					foreach (var item in grid.Items.Where(item => !IsMoney(item)))
-					{
-						var place = grid.GetItemLocation(item);
-						places.Add($"{item.TemplateId}|{gridIndex}|{place.x}|{place.y}|{(int)place.r}|{item.StackObjectsCount}");
-					}
-				}
-
-				var recordedPlaces = entry.Items.Select(item => $"{item.Template}|{item.Grid}|{item.X}|{item.Y}|{item.Rotation}|{item.Count}").ToList();
-				change.Other = !places.OrderBy(place => place).SequenceEqual(recordedPlaces.OrderBy(place => place));
 				var shortOf = new HashSet<string>(change.Removed.Select(item => item.Template));
 				foreach (var item in entry.Items)
 				{
@@ -210,7 +180,7 @@ namespace GetReady
 		}
 
 		// How many items (not money) a template holds
-		internal static int ItemCount(CaseEntry entry) => entry.Items.Sum(item => item.Count);
+		internal static int ItemCount(CaseEntry entry) => entry.Items.Where(item => !IsCurrency(item.Template)).Sum(item => item.Count);
 
 		// Removes the template of a case, whether or not it is on you; its maps and cash switch stay
 		internal static void Forget(string caseId)
@@ -223,7 +193,6 @@ namespace GetReady
 
 			entry.Recorded = false;
 			entry.Items.Clear();
-			entry.Money.Clear();
 			Prune(entry);
 			SettingsStore.Save();
 		}
@@ -257,7 +226,7 @@ namespace GetReady
 			if (entry.Recorded)
 			{
 				int count = ItemCount(entry);
-				parts.Add(entry.Money.Count > 0 ? $"tracking {count} item{(count == 1 ? "" : "s")} and money" : $"tracking {count} item{(count == 1 ? "" : "s")}");
+				parts.Add(MoneyOf(entry).Count > 0 ? $"tracking {count} item{(count == 1 ? "" : "s")} and money" : $"tracking {count} item{(count == 1 ? "" : "s")}");
 			}
 
 			if (entry.Maps.Count > 0)
@@ -422,12 +391,40 @@ namespace GetReady
 			Func<string, IEnumerable<Item>> candidates = template =>
 				Game.Candidates(stash.Where(item => !taken.Contains(item) && !Steps.Claimed.Contains(item) && !Game.InsideTemplatedCase(item)), template);
 
-			var items = entry.Exact ? PlanExact(controller, entry, container, label, candidates, taken) : PlanByType(controller, entry, container, label, candidates, taken);
-			var money = PlanMoney(controller, entry, container, label, candidates, taken);
-			var lines = new List<PlanLine> { Steps.Progress(label, items.InPlace + money.InPlace, items.Total + money.Total, "in place", entry.CaseTemplate) };
+			// What the plan brings in money, per currency: the Cash step counts what the case will hold
+			var brought = new Dictionary<string, int>();
+			var items = entry.Exact ? PlanExact(controller, entry, container, label, candidates, taken, brought) : PlanByType(controller, entry, container, label, candidates, taken, brought);
+			AccountMoney(entry, container, brought);
+			var lines = new List<PlanLine> { Steps.Progress(label, items.InPlace, items.Total, "in place", entry.CaseTemplate) };
 			lines.AddRange(items.Lines);
-			lines.AddRange(money.Lines);
 			return lines;
+		}
+
+		// What the case will hold in money afterwards is added to Steps.CaseMoney (the Cash step counts it), and what it gives up to Steps.Released
+		private static void AccountMoney(CaseEntry entry, CompoundItem container, Dictionary<string, int> brought)
+		{
+			var held = Contents(container);
+			var wanted = MoneyOf(entry);
+			foreach (var currency in Currencies)
+			{
+				var template = TemplateOfCurrency(currency);
+				int have = held.Where(item => item.TemplateId.ToString() == template).Sum(item => item.StackObjectsCount);
+				int want, more;
+				wanted.TryGetValue(currency, out want);
+				brought.TryGetValue(currency, out more);
+				int after = have;
+				if (have < want)
+				{
+					after = have + more;
+				}
+				else if (have > want && entry.TakeOutRest)
+				{
+					after = want;
+					Steps.Add(Steps.Released, currency, have - want);
+				}
+
+				Steps.Add(Steps.CaseMoney, currency, after);
+			}
 		}
 
 		private static PlanLine Bring(InventoryController controller, Item source, int count, string text, CompoundItem container, string template)
@@ -441,8 +438,29 @@ namespace GetReady
 			}.WithItem(source);
 		}
 
-		// By type and count: what is recorded and missing is brought, what is more than recorded or not recorded at all goes out
-		private static Part PlanByType(InventoryController controller, CaseEntry entry, CompoundItem container, string label, Func<string, IEnumerable<Item>> candidates, HashSet<Item> taken)
+		// How a bring or a missing amount reads: money as the game shows it (the sign first), items by count and name
+		private static string BringText(string template, string name, int count, string label) =>
+			Game.CurrencyOf(template) is string currency ? $"Bring {Game.Amount(currency, count)} to {label}" : $"Bring {count}x {name} to {label}";
+
+		private static PlanLine MissingLine(string template, string name, int need, string label) =>
+			Game.CurrencyOf(template) is string currency
+				? Steps.Problem(Game.Symbol(currency), $"Missing {Game.Amount(currency, need)}: not enough in the stash (for {label})", template)
+				: Steps.Problem(name, $"Missing {need}: none left in the stash (for {label})", template);
+
+		private static void Brought(Dictionary<string, int> brought, string template, int count)
+		{
+			var currency = Game.CurrencyOf(template);
+			if (currency != null)
+			{
+				int sofar;
+				brought.TryGetValue(currency, out sofar);
+				brought[currency] = sofar + count;
+			}
+		}
+
+		// By type and count: what is recorded and missing is brought, what is more than recorded or not recorded at all goes out. Money is an
+		// item with an amount for a count (it counts as one in the progress, whatever the amount).
+		private static Part PlanByType(InventoryController controller, CaseEntry entry, CompoundItem container, string label, Func<string, IEnumerable<Item>> candidates, HashSet<Item> taken, Dictionary<string, int> brought)
 		{
 			var part = new Part();
 			var held = Contents(container);
@@ -453,10 +471,11 @@ namespace GetReady
 
 			foreach (var wanted in wantedByType)
 			{
+				var currency = Game.CurrencyOf(wanted.Template);
 				var here = held.Where(item => item.TemplateId.ToString() == wanted.Template).ToList();
 				int have = here.Sum(item => item.StackObjectsCount);
-				part.Total += wanted.Count;
-				part.InPlace += Math.Min(have, wanted.Count);
+				part.Total += currency != null ? 1 : wanted.Count;
+				part.InPlace += currency != null ? (have >= wanted.Count ? 1 : 0) : Math.Min(have, wanted.Count);
 				if (have < wanted.Count)
 				{
 					int need = wanted.Count - have;
@@ -471,18 +490,19 @@ namespace GetReady
 						taken.Add(source);
 						Steps.Claimed.Add(source);
 						need -= count;
-						brings.Add(Bring(controller, source, count, $"Bring {count}x {wanted.Name} to {label}", container, wanted.Template));
+						Brought(brought, wanted.Template, count);
+						brings.Add(Bring(controller, source, count, BringText(wanted.Template, wanted.Name, count, label), container, wanted.Template));
 					}
 
 					if (need > 0)
 					{
-						problems.Add(Steps.Problem(wanted.Name, $"Missing {need}: none left in the stash (for {label})", wanted.Template));
+						problems.Add(MissingLine(wanted.Template, wanted.Name, need, label));
 					}
 				}
 				else if (have > wanted.Count && entry.TakeOutRest)
 				{
 					int extra = have - wanted.Count;
-					foreach (var item in here.AsEnumerable().Reverse())
+					foreach (var item in currency != null ? here.OrderBy(item => item.StackObjectsCount) : here.AsEnumerable().Reverse())
 					{
 						if (extra <= 0)
 						{
@@ -491,16 +511,17 @@ namespace GetReady
 
 						int count = Math.Min(item.StackObjectsCount, extra);
 						extra -= count;
-						removals.Add(Take(controller, item, count, label, wanted.Name, false));
+						removals.Add(Take(controller, item, count, label, currency ?? wanted.Name, currency != null));
 					}
 				}
 			}
 
 			if (entry.TakeOutRest)
 			{
-				foreach (var item in held.Where(item => !IsMoney(item) && !wantedByType.Any(wanted => wanted.Template == item.TemplateId.ToString())))
+				foreach (var item in held.Where(item => !wantedByType.Any(wanted => wanted.Template == item.TemplateId.ToString())))
 				{
-					removals.Add(Take(controller, item, item.StackObjectsCount, label, Game.NameOf(item), false));
+					var currency = Game.CurrencyOf(item.TemplateId.ToString());
+					removals.Add(Take(controller, item, item.StackObjectsCount, label, currency ?? Game.NameOf(item), currency != null));
 				}
 			}
 
@@ -511,8 +532,9 @@ namespace GetReady
 		}
 
 		// Item by item in its cell (the way the injector case always worked): a wrong item goes to the stash and the right one takes its place,
-		// the right ones in another cell of the case are moved first, and what sits in a cell the template leaves empty goes out
-		private static Part PlanExact(InventoryController controller, CaseEntry entry, CompoundItem container, string label, Func<string, IEnumerable<Item>> candidates, HashSet<Item> taken)
+		// the right ones in another cell of the case are moved first, and what sits in a cell the template leaves empty goes out. A stack in its
+		// cell is topped up to the recorded count (a stack of money, of ammo), and trimmed when the rest is taken out.
+		private static Part PlanExact(InventoryController controller, CaseEntry entry, CompoundItem container, string label, Func<string, IEnumerable<Item>> candidates, HashSet<Item> taken, Dictionary<string, int> brought)
 		{
 			var needs = new List<Need>();
 			var others = new List<PlanLine>();
@@ -531,11 +553,6 @@ namespace GetReady
 				int index = gridIndex;
 				strays.AddRange(grid.Items.Where(item =>
 				{
-					if (IsMoney(item))
-					{
-						return false;
-					}
-
 					var spot = grid.GetItemLocation(item);
 					return !cells.Any(cell => cell.Grid == index && cell.X == spot.x && cell.Y == spot.y);
 				}));
@@ -556,34 +573,82 @@ namespace GetReady
 
 				if (held != null && held.TemplateId.ToString() == cell.Template)
 				{
+					int difference = cell.Count - held.StackObjectsCount;
+					if (held.StackMaxSize > 1 && difference > 0)
+					{
+						// The right stack, too small: topped up from the stash into this very stack
+						int need = difference;
+						var stack = held;
+						foreach (var source in candidates(cell.Template).ToList())
+						{
+							if (need <= 0)
+							{
+								break;
+							}
+
+							int count = Math.Min(source.StackObjectsCount, need);
+							var from = source;
+							taken.Add(source);
+							Steps.Claimed.Add(source);
+							need -= count;
+							Brought(brought, cell.Template, count);
+							others.Add(new PlanLine
+							{
+								Text = BringText(cell.Template, cell.Name, count, label),
+								Template = cell.Template,
+								Items = 1,
+								Run = () => Game.MergeInto(controller, from, count, stack)
+							}.WithItem(source));
+						}
+
+						if (need > 0)
+						{
+							others.Add(MissingLine(cell.Template, cell.Name, need, label));
+						}
+
+						continue;
+					}
+
+					if (held.StackMaxSize > 1 && difference < 0 && entry.TakeOutRest)
+					{
+						others.Add(Take(controller, held, -difference, label, Game.CurrencyOf(cell.Template) ?? cell.Name, Game.CurrencyOf(cell.Template) != null));
+					}
+
 					inPlace++;
 					continue;
 				}
 
 				// The item the template wants here: already in the case (not the one that sits here), else from the stash
 				var inCase = pool.FirstOrDefault(item => item != held && !used.Contains(item) && item.TemplateId.ToString() == cell.Template);
-				Item source = inCase;
+				Item source2 = inCase;
 				if (inCase != null)
 				{
 					used.Add(inCase);
 				}
 				else
 				{
-					source = candidates(cell.Template).FirstOrDefault();
-					if (source != null)
+					source2 = candidates(cell.Template).FirstOrDefault();
+					if (source2 != null)
 					{
-						taken.Add(source);
-						Steps.Claimed.Add(source);
+						taken.Add(source2);
+						Steps.Claimed.Add(source2);
 					}
 				}
 
 				var target = cell;
-				var chosen = source;
+				var chosen = source2;
 				if (held == null)
 				{
 					if (chosen == null)
 					{
-						needs.Add(new Need { Name = cell.Name, Template = cell.Template });
+						if (Game.CurrencyOf(cell.Template) != null)
+						{
+							others.Add(MissingLine(cell.Template, cell.Name, cell.Count, label));
+						}
+						else
+						{
+							needs.Add(new Need { Name = cell.Name, Template = cell.Template });
+						}
 					}
 					else if (inCase != null)
 					{
@@ -593,6 +658,18 @@ namespace GetReady
 							Template = cell.Template,
 							Items = 1,
 							Run = () => Game.PlaceAt(controller, chosen, Math.Min(target.Count, chosen.StackObjectsCount), addressOf(target))
+						}.WithItem(chosen));
+					}
+					else if (Game.CurrencyOf(cell.Template) != null)
+					{
+						int count = Math.Min(target.Count, chosen.StackObjectsCount);
+						Brought(brought, cell.Template, count);
+						others.Add(new PlanLine
+						{
+							Text = BringText(cell.Template, cell.Name, count, label),
+							Template = cell.Template,
+							Items = 1,
+							Run = () => Game.PlaceAt(controller, chosen, count, addressOf(target))
 						}.WithItem(chosen));
 					}
 					else
@@ -641,93 +718,14 @@ namespace GetReady
 				foreach (var stray in strays.Where(item => !used.Contains(item)))
 				{
 					part.Total++;
-					var surplus = stray;
-					others.Add(new PlanLine
-					{
-						Text = $"Take {Game.NameOf(stray)} out of {label} to the stash",
-						Template = stray.TemplateId.ToString(),
-						Items = 1,
-						Run = () => Game.MoveTo(controller, surplus, new[] { "Stash" })
-					}.WithItem(stray));
+					var currency = Game.CurrencyOf(stray.TemplateId.ToString());
+					others.Add(Take(controller, stray, stray.StackObjectsCount, label, currency ?? Game.NameOf(stray), currency != null));
 				}
 			}
 
 			part.InPlace = inPlace;
 			// The progress line is made once for the whole case
 			part.Lines = Steps.Summarize(0, 0, "items", needs, others).Skip(1).ToList();
-			return part;
-		}
-
-		// Money: topped up to what is recorded; with "Take out the rest" the extra goes out too (all of a currency that is not recorded).
-		// What the case will hold afterwards is added to Steps.CaseMoney (the Cash step counts it), and what it gives up to Steps.Released.
-		private static Part PlanMoney(InventoryController controller, CaseEntry entry, CompoundItem container, string label, Func<string, IEnumerable<Item>> candidates, HashSet<Item> taken)
-		{
-			var part = new Part();
-			var held = Contents(container);
-			var removals = new List<PlanLine>();
-			var brings = new List<PlanLine>();
-			var problems = new List<PlanLine>();
-			foreach (var currency in Currencies)
-			{
-				var template = TemplateOfCurrency(currency);
-				int want;
-				entry.Money.TryGetValue(currency, out want);
-				var stacks = held.Where(item => item.TemplateId.ToString() == template).ToList();
-				int have = stacks.Sum(item => item.StackObjectsCount);
-				int after = have;
-				if (want > 0)
-				{
-					part.Total++;
-					part.InPlace += have >= want ? 1 : 0;
-				}
-
-				if (have < want)
-				{
-					int need = want - have;
-					foreach (var source in candidates(template).ToList())
-					{
-						if (need <= 0)
-						{
-							break;
-						}
-
-						int count = Math.Min(source.StackObjectsCount, need);
-						taken.Add(source);
-						Steps.Claimed.Add(source);
-						need -= count;
-						brings.Add(Bring(controller, source, count, $"Bring {Game.Amount(currency, count)} to {label}", container, template));
-					}
-
-					after = want - need;
-					if (need > 0)
-					{
-						problems.Add(Steps.Problem(Game.Symbol(currency), $"Missing {Game.Amount(currency, need)}: not enough in the stash (for {label})", template));
-					}
-				}
-				else if (have > want && entry.TakeOutRest)
-				{
-					int extra = have - want;
-					after = want;
-					Steps.Add(Steps.Released, currency, extra);
-					foreach (var stack in stacks.OrderBy(item => item.StackObjectsCount))
-					{
-						if (extra <= 0)
-						{
-							break;
-						}
-
-						int count = Math.Min(stack.StackObjectsCount, extra);
-						extra -= count;
-						removals.Add(Take(controller, stack, count, label, currency, true));
-					}
-				}
-
-				Steps.Add(Steps.CaseMoney, currency, after);
-			}
-
-			part.Lines.AddRange(removals);
-			part.Lines.AddRange(brings);
-			part.Lines.AddRange(problems);
 			return part;
 		}
 	}

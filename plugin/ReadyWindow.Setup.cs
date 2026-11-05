@@ -472,10 +472,6 @@ namespace GetReady
 						pointer => AmmoRules.PointerName(pointer), null, (pointer, step) => AmmoRules.MovePointer(pointer, step),
 						"The first that applies wins. A magazine in the stash only copies what it holds or an equipped weapon. Rounds are taken from the stash first, the pouch last.");
 				}
-				else if (step is CasesStep)
-				{
-					changed |= CasesSetup(controller);
-				}
 				else if (step is HealMeStep)
 				{
 					changed |= HealMeSetup();

@@ -173,7 +173,7 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void Recording_keeps_the_money_apart_from_the_items()
+		public void Recording_keeps_money_as_items_with_the_amount_for_a_count()
 		{
 			Put(Key, _case);
 			Put(RealItems.Roubles, _case, 30000);
@@ -181,8 +181,10 @@ namespace GetReady.Tests
 
 			var entry = Recorded(_case);
 
-			entry.Items.Should().ContainSingle().Which.Template.Should().Be(Key);
-			entry.Money.Should().Equal(new Dictionary<string, int> { { "RUB", 30000 }, { "USD", 500 } });
+			entry.Items.Should().HaveCount(3);
+			CasesStep.ItemCount(entry).Should().Be(1);
+			CasesStep.MoneyOf(entry).Should().Equal(new Dictionary<string, int> { { "RUB", 30000 }, { "USD", 500 } });
+			entry.Items.Single(item => item.Template == RealItems.Roubles).Count.Should().Be(30000);
 		}
 
 		[Fact]
@@ -192,7 +194,7 @@ namespace GetReady.Tests
 
 			entry.Recorded.Should().BeTrue();
 			entry.Items.Should().BeEmpty();
-			entry.Money.Should().BeEmpty();
+			CasesStep.MoneyOf(entry).Should().BeEmpty();
 		}
 
 		[Fact]
@@ -464,7 +466,7 @@ namespace GetReady.Tests
 			var inner = Recorded(holder);
 			Recorded(_case);
 
-			inner.Money.Should().Equal(new Dictionary<string, int> { { "RUB", 1000 } });
+			CasesStep.MoneyOf(inner).Should().Equal(new Dictionary<string, int> { { "RUB", 1000 } });
 			CasesStep.EntryOf(_case.Id.ToString()).Items.Should().ContainSingle().Which.Template.Should().Be(Body.Wallet);
 		}
 
@@ -524,7 +526,7 @@ namespace GetReady.Tests
 			Lines(Plan()).Should().Equal("Scav backpack: 0/0 in place", "Take ₽ 77,230 out of Scav backpack to the stash");
 			Steps.Released["RUB"].Should().Be(77230);
 			Steps.Of(Steps.CaseMoney, "RUB").Should().Be(0);
-			entry.Money.Should().BeEmpty();
+			CasesStep.MoneyOf(entry).Should().BeEmpty();
 		}
 
 		[Fact]
@@ -863,6 +865,41 @@ namespace GetReady.Tests
 			_body.InStash(RealItems.Any(RealItems.Roubles, 150000));
 
 			Lines(Plan()).Should().Equal("Scav backpack: 0/1 in place", "Bring ₽ 70,000 to Scav backpack");
+		}
+
+		[Fact]
+		public void In_an_exact_case_too_much_money_in_its_cell_is_trimmed_to_the_recorded_amount()
+		{
+			Put(RealItems.Roubles, _case, 100000);
+			var entry = Recorded(_case);
+			entry.Exact = true;
+			_case.Grids[0].Items.Single().StackObjectsCount = 150000;
+
+			Lines(Plan()).Should().Equal("Scav backpack: 1/1 in place", "Take ₽ 50,000 out of Scav backpack to the stash");
+		}
+
+		[Fact]
+		public void In_an_exact_case_money_that_is_gone_is_brought_back_to_its_cell()
+		{
+			var stack = Put(RealItems.Roubles, _case, 100000);
+			var entry = Recorded(_case);
+			entry.Exact = true;
+			Take(stack);
+			_body.InStash(RealItems.Any(RealItems.Roubles, 150000));
+
+			Lines(Plan()).Should().Equal("Scav backpack: 0/1 in place", "Bring ₽ 100,000 to Scav backpack");
+		}
+
+		[Fact]
+		public void Money_the_stash_cannot_cover_is_a_problem_in_an_exact_case_too()
+		{
+			Put(RealItems.Roubles, _case, 100000);
+			var entry = Recorded(_case);
+			entry.Exact = true;
+			_case.Grids[0].Items.Single().StackObjectsCount = 30000;
+			_body.InStash(RealItems.Any(RealItems.Roubles, 20000));
+
+			Lines(Plan()).Should().Equal("Scav backpack: 0/1 in place", "Bring ₽ 20,000 to Scav backpack", "₽: Missing ₽ 50,000: not enough in the stash (for Scav backpack)");
 		}
 
 		// ---- the record follows your hand in the stash

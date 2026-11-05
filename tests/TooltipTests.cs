@@ -94,28 +94,5 @@ namespace GetReady.Tests
 
 			return saved;
 		}
-
-		[Fact]
-		public void The_panels_are_wide_enough_for_the_saved_empty_text_at_least()
-		{
-			ReadyWindow.PanelWidth(new CaseEntry[0]).Should().Be(230);
-			ReadyWindow.PanelWidth(new[] { Holding(0), Holding(1) }).Should().Be(230);
-		}
-
-		[Fact]
-		public void The_panels_grow_with_the_fullest_template()
-		{
-			var width = ReadyWindow.PanelWidth(new[] { Holding(1), Holding(6), Holding(2) });
-
-			width.Should().Be(6 * 46 + 24);
-		}
-
-		[Fact]
-		public void A_template_does_not_change_the_width_of_the_others_by_being_smaller()
-		{
-			var all = new[] { Holding(5), Holding(0) };
-
-			ReadyWindow.PanelWidth(all).Should().Be(ReadyWindow.PanelWidth(new[] { Holding(5) }));
-		}
 	}
 }
