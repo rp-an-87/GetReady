@@ -247,16 +247,17 @@ namespace GetReady
 		internal static DefaultUIButton ButtonTemplate;
 
 		// A copy of the game's button with this text; null when there is no template (the caller then makes its own)
-		internal static DefaultUIButton Button(Transform parent, string text, Action click, float width, float height, bool flex = false)
+		internal static DefaultUIButton Button(Transform parent, string text, Action click, float width, float height, bool flex = false, DefaultUIButton template = null)
 		{
-			if (ButtonTemplate == null)
+			template = template != null ? template : ButtonTemplate;
+			if (template == null)
 			{
 				return null;
 			}
 
 			try
 			{
-				var copy = UnityEngine.Object.Instantiate(ButtonTemplate.gameObject, parent, false);
+				var copy = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
 				copy.name = "Button " + text;
 				copy.SetActive(true);
 				var button = copy.GetComponent<DefaultUIButton>();

@@ -21,9 +21,7 @@ namespace GetReady
 			var problems = await ReadyRun.QuickRun();
 			if (problems != null && problems.Count > 0)
 			{
-				Alerts.Clear();
-				Alerts.AddRange(problems);
-				_alertRect = new Rect((Screen.width / Scale - 640) / 2f, Screen.height / Scale * 0.18f, 640, 10);
+				ReadyAlert.Show(problems);
 			}
 		}
 	}

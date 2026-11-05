@@ -95,6 +95,12 @@ namespace GetReady
 		{
 			_escapePending = false;
 			_escapeFrame = Time.frameCount;
+			if (ReadyAlert.IsOpen)
+			{
+				ReadyAlert.Close();
+				return true;
+			}
+
 			if (Alerts.Count > 0)
 			{
 				Alerts.Clear();

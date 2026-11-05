@@ -48,6 +48,10 @@ namespace GetReady
 				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
 			DebugLogging = Config.Bind("8. Debugging", "Log details", false,
 				new ConfigDescription("Writes what GetReady does, and how long it takes, to the BepInEx log (only errors and warnings are written otherwise). For finding out why something is slow or wrong.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
+			// A button in F12 that shows a made-up alert, for looking at it
+			Config.Bind("8. Debugging", "Show a test alert", false,
+				new ConfigDescription("Shows an alert like the one a run leaves behind when something is wrong, with made-up problems.", null,
+					new ConfigurationManagerAttributes { IsAdvanced = true, CustomDrawer = entry => { if (GUILayout.Button("Show a test alert")) { ReadyAlert.ShowTest(); } } }));
 			SpikeHotkey = Config.Bind("9. Experiments", "1. Game window spike key", KeyboardShortcut.Empty,
 				"Opens the experimental Get ready window, made from a copy of a game window (the Ready page only for now). Empty by default.");
 			TopUpHotkey = Config.Bind("2. Quick actions", "1. Magazine top-up hotkey", new KeyboardShortcut(KeyCode.T),
@@ -75,6 +79,7 @@ namespace GetReady
 			MagazineTopUp.Update();
 			RepairWithKit.Update();
 			ReadyUiWindow.Update();
+			ReadyAlert.Update();
 			if (SpikeHotkey.Value.MainKey != KeyCode.None && SpikeHotkey.Value.IsDown())
 			{
 				ReadyUiWindow.Toggle();
