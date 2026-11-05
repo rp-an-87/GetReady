@@ -293,8 +293,8 @@ namespace GetReady
 			}
 		}
 
-		// Switches an item off (it goes to the end of the list) or on (it goes after the ones that are on): a switched off item keeps
-		// no spot
+		// Switches an item off (it goes to the top of the ones that are off) or on (it goes after the ones that are on): a switched off
+		// item keeps no spot
 		public void ToggleEntry(string template)
 		{
 			var setting = Setting;
@@ -307,7 +307,15 @@ namespace GetReady
 
 			var on = order.Where(other => !setting.Off.Contains(other)).ToList();
 			var off = order.Where(other => setting.Off.Contains(other)).ToList();
-			(nowOn ? on : off).Add(template);
+			if (nowOn)
+			{
+				on.Add(template);
+			}
+			else
+			{
+				off.Insert(0, template);
+			}
+
 			setting.Order = on.Concat(off).ToList();
 		}
 

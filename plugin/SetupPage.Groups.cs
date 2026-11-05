@@ -189,9 +189,16 @@ namespace GetReady
 			UiKit.Label(box, def.Random ? "Used, in any order" : "Used, best first (drag a row to move it)", 0.8f, Ui.Dim);
 			var entries = ReadyWindow.ShownEntries(def);
 			var rows = new List<RectTransform>();
+			bool headed = false;
 			foreach (var entry in entries)
 			{
 				bool off = def.Setting.Off.Contains(entry.Template);
+				if (off && !headed)
+				{
+					headed = true;
+					NotUsedHeading(box);
+				}
+
 				var row = UiKit.HBox(box, 8f);
 				if (!def.Random)
 				{
@@ -199,7 +206,7 @@ namespace GetReady
 				}
 
 				TemplateIcon(row, entry.Template, UiKit.Unit * 2f, entry.Name);
-				UiKit.Label(row, off ? "× " + entry.Name : entry.Name, 0.9f, off ? Ui.Dim : Ui.Text, flex: true);
+				UiKit.Label(row, entry.Name, 0.9f, off ? Ui.Dim : Ui.Text, flex: true);
 				if (!def.Random)
 				{
 					MaxControls(row, def, entry);
@@ -211,6 +218,11 @@ namespace GetReady
 					def.ToggleEntry(template);
 					Changed();
 				}, null, UiKit.Unit * 6f);
+				if (off)
+				{
+					DimUnused(row);
+				}
+
 				rows.Add(row);
 			}
 

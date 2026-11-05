@@ -43,6 +43,17 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void An_item_switched_off_goes_to_the_top_of_the_unused_ones()
+		{
+			var def = Group("a", "b", "c", "d");
+
+			def.ToggleEntry("a");
+			def.ToggleEntry("c");
+
+			Templates(def).Should().Equal("b", "d", "c", "a");
+		}
+
+		[Fact]
 		public void Switching_an_item_back_on_does_not_give_it_its_old_spot_back()
 		{
 			var def = Group("a", "b", "c", "d");

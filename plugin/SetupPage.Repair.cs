@@ -102,14 +102,21 @@ namespace GetReady
 			var box = UiKit.VBox(section, 4f, new RectOffset(8, 8, 6, 6), InnerPanel, UiKit.InnerEdge);
 			var entries = ReadyWindow.ShownEntries(def);
 			var rows = new List<RectTransform>();
+			bool headed = false;
 			foreach (var entry in entries)
 			{
 				string template = entry.Template;
 				bool off = !HealMeStep.IsOn(template);
+				if (off && !headed)
+				{
+					headed = true;
+					NotUsedHeading(box);
+				}
+
 				var row = UiKit.HBox(box, 8f);
 				UiKit.Grip(row);
 				TemplateIcon(row, template, UiKit.Unit * 2f, entry.Name);
-				UiKit.Size(UiKit.Label(row, off ? "× " + entry.Name : entry.Name, 0.9f, off ? Ui.Dim : Ui.Text), UiKit.Unit * 10f);
+				UiKit.Size(UiKit.Label(row, entry.Name, 0.9f, off ? Ui.Dim : Ui.Text), UiKit.Unit * 10f);
 				foreach (var trouble in HealMeStep.Troubles)
 				{
 					// A fixed column each, so the pictures line up; nothing where it can't treat
@@ -121,10 +128,6 @@ namespace GetReady
 
 					var sprite = Icons.EffectSprite(trouble.Icon);
 					UiKit.Icon(row, sprite, UiKit.Unit * 1.6f, "Treats " + trouble.Name);
-					if (off)
-					{
-						row.GetChild(row.childCount - 1).gameObject.AddComponent<CanvasGroup>().alpha = 0.4f;
-					}
 				}
 
 				UiKit.Spacer(row);
@@ -133,6 +136,11 @@ namespace GetReady
 					def.ToggleEntry(template);
 					Changed();
 				}, null, UiKit.Unit * 6f);
+				if (off)
+				{
+					DimUnused(row);
+				}
+
 				rows.Add(row);
 			}
 

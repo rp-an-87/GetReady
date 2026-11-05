@@ -190,6 +190,23 @@ namespace GetReady
 		}
 
 		// What is said where a list has nothing: in the middle of its width, with some room round it, so it is not mistaken for a row
+		// The small heading that sets the items that are not used apart from the ones that are
+		internal static void NotUsedHeading(Transform box)
+		{
+			var heading = UiKit.HBox(box, 0f, new RectOffset(0, 0, 8, 2));
+			UiKit.Label(heading, "NOT USED", 0.75f, Ui.Dim, bold: true);
+		}
+
+		// A row of an item that is not used fades, but for its last part (the Used / Not used button), which stays clear to click
+		internal static void DimUnused(RectTransform row)
+		{
+			for (int i = 0; i < row.childCount - 1; i++)
+			{
+				var part = row.GetChild(i).gameObject;
+				(part.GetComponent<CanvasGroup>() ?? part.AddComponent<CanvasGroup>()).alpha = 0.3f;
+			}
+		}
+
 		internal static void EmptyNote(Transform parent, string text)
 		{
 			var row = UiKit.HBox(parent, 0f, new RectOffset(4, 4, 8, 8));
