@@ -106,6 +106,7 @@ namespace GetReady
 				ReadyPlan.Refresh();
 				Rebuild();
 				Plugin.Trace("Get ready window: opened");
+				GameWidgets.DumpButtons();
 			}
 			catch (Exception e)
 			{
@@ -133,6 +134,7 @@ namespace GetReady
 		// Looked at from the plugin's Update: the page is built again when the plan (or the icons that were still loading) changed
 		internal static void Update()
 		{
+			UpdateStrip();
 			if (_window == null || _content == null || Time.unscaledTime - _checkedAt < 0.4f)
 			{
 				return;
@@ -285,6 +287,13 @@ namespace GetReady
 		private static void Tab(Transform parent, string name, int index)
 		{
 			bool on = _tab == index;
+			// The game's own tab button when it can be copied, else our own
+			var group = parent.GetComponent<ToggleGroup>() ?? parent.gameObject.AddComponent<ToggleGroup>();
+			if (GameWidgets.Tab(parent, name, null, on, group, () => SetTab(index), UiKit.Unit * 2f) != null)
+			{
+				return;
+			}
+
 			var button = UiKit.PushButton(parent, name, () => SetTab(index), on ? TabOn : TabOff, on ? new Color(0.31f, 0.29f, 0.19f) : new Color(0.2f, 0.21f, 0.21f), on ? new Color(0.95f, 0.9f, 0.72f) : Ui.Text, height: UiKit.Unit * 1.8f);
 			button.GetComponent<LayoutElement>().flexibleWidth = 1f;
 		}
@@ -311,19 +320,90 @@ namespace GetReady
 		// The rows the strip was built with: the window needs room for them (each row is a child of the body, with its spacing)
 		private static int _stripRows;
 
+		// The height of a section button (the game's tab button when it is there)
+		private const float StripButton = 1.8f;
+
+		// The game's tab of each section (null where our own button stands in), and the section lit now
+		private static readonly List<AnimatedToggle> _stripTabs = new List<AnimatedToggle>();
+		private static int _stripCurrent = -1;
+		private static float _stripAt;
+
 		private static void JumpStrip(Transform parent)
 		{
 			var names = SetupPage.Names();
 			var rows = JumpRows();
 			_stripRows = rows.Count;
+			_stripTabs.Clear();
+			for (int i = 0; i < names.Count; i++)
+			{
+				_stripTabs.Add(null);
+			}
+
+			_stripCurrent = -1;
+			// One group for all the rows, so only one section is lit
+			var group = parent.GetComponent<ToggleGroup>() ?? parent.gameObject.AddComponent<ToggleGroup>();
 			foreach (var rowIndexes in rows)
 			{
 				var row = UiKit.HBox(parent, 4f);
 				foreach (int index in rowIndexes)
 				{
 					int section = index;
+					var tab = GameWidgets.Tab(row, names[index], Icons.StepSprite(names[index]), false, group, () => JumpTo(section), UiKit.Unit * StripButton);
+					if (tab != null)
+					{
+						_stripTabs[index] = tab;
+						continue;
+					}
+
 					var button = UiKit.PushButton(row, names[index], () => JumpTo(section), new Color(0.15f, 0.155f, 0.155f), new Color(0.22f, 0.23f, 0.22f), Ui.Text, height: UiKit.Unit * 1.5f);
 					button.GetComponent<LayoutElement>().flexibleWidth = 1f;
+				}
+			}
+		}
+
+		// The section at the top of the view lit in the strip, as you scroll (a few times a second)
+		private static void UpdateStrip()
+		{
+			if (_tab != 1 || _content == null || _scroll == null || _stripTabs.Count == 0 || Time.unscaledTime - _stripAt < 0.15f)
+			{
+				return;
+			}
+
+			_stripAt = Time.unscaledTime;
+			int current = 0;
+			float y = _content.anchoredPosition.y;
+			for (int i = 0; i < SetupPage.Sections.Count; i++)
+			{
+				var section = SetupPage.Sections[i];
+				if (section == null)
+				{
+					continue;
+				}
+
+				float top = -RectTransformUtility.CalculateRelativeRectTransformBounds(_content, section).max.y;
+				if (top - 12f <= y)
+				{
+					current = i;
+				}
+			}
+
+			// At the very bottom the last section counts, even when it is too short to reach the top
+			if (y >= Mathf.Max(0f, _content.rect.height - _scroll.viewport.rect.height) - 1f && y > 0f)
+			{
+				current = SetupPage.Sections.Count - 1;
+			}
+
+			if (current == _stripCurrent)
+			{
+				return;
+			}
+
+			_stripCurrent = current;
+			for (int i = 0; i < _stripTabs.Count; i++)
+			{
+				if (_stripTabs[i] != null)
+				{
+					_stripTabs[i].ToggleSilent(i == current);
 				}
 			}
 		}
@@ -450,7 +530,7 @@ namespace GetReady
 			float minHeight = Mathf.Max(_captionHeight, 30f) + 20f + UiKit.Unit * 2f + UiKit.Unit * 2.4f + 16f + ScrollMin;
 			if (_tab == 1)
 			{
-				minHeight += _stripRows * (UiKit.Unit * 1.5f + 8f);
+				minHeight += _stripRows * (UiKit.Unit * StripButton + 8f);
 			}
 
 			// The Setup page has two cards side by side, which need room: its minimum is wider
