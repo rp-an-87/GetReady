@@ -5,12 +5,6 @@ using UnityEngine;
 
 namespace GetReady
 {
-	// Read by the F12 menu (Configuration Manager) by this name: IsAdvanced hides the setting until "Show advanced settings" is ticked
-	internal sealed class ConfigurationManagerAttributes
-	{
-		public bool? IsAdvanced;
-	}
-
 	[BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 	public class Plugin : BaseUnityPlugin
 	{
