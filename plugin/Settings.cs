@@ -47,6 +47,8 @@ namespace GetReady
 		public Dictionary<string, int> MaxPer = new Dictionary<string, int>();
 		// Replace what is carried by better items from the stash (a fuller copy, a higher-ranked item, non-FiR); off leaves it as it is
 		public bool ReplaceWorse = true;
+		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
+		public bool AllowOvershoot = true;
 	}
 
 	internal class SuppliesSettings
@@ -54,8 +56,6 @@ namespace GetReady
 		public bool HealingEnabled = true;
 		public bool GrenadesEnabled = true;
 		public bool CashEnabled = true;
-		// When the missing amount is smaller than the next item (1 point missing, an Army bandage next), take it anyway
-		public bool AllowOvershoot = true;
 		// Non-FiR copies of an item go before FiR ones, even when the non-FiR one is in a container and the FiR one lies loose. Between
 		// equals the loose one always goes first. Off: loose before in a container, whatever FiR is.
 		public bool NonFiRBeforeLoose = true;

@@ -371,7 +371,6 @@ namespace GetReady
 			UiKit.Size(percent, UiKit.Unit * 3.5f);
 			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), Ui.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 
-			OptionRow(section, supplies.AllowOvershoot, "Take a bigger item when only a little is missing", "1 point short and the next item is an Army bandage (2): take it anyway", value => supplies.AllowOvershoot = value);
 			OptionRow(section, supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "On: non-FiR first, and between equals the one lying loose on the stash goes before one in a case or bag. Off: loose first, whatever FiR is", value => supplies.NonFiRBeforeLoose = value);
 		}
 

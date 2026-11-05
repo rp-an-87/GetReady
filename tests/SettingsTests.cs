@@ -44,7 +44,7 @@ namespace GetReady.Tests
 			settings.Repair.TraderOrder = new List<string> { "b", "a" };
 			settings.Repair.KeepDamaged.Add(new KeptItem { Id = "x", Name = "Armor" });
 			settings.FullAuto.Slots = new List<string> { "Holster" };
-			settings.Supplies.AllowOvershoot = false;
+			settings.Supplies.Groups["bandage"] = new GroupSetting { AllowOvershoot = false };
 			settings.Cases.Cases.Add(new CaseEntry { CaseId = "c", Maps = new List<string> { "Woods" }, Money = new Dictionary<string, int> { { "RUB", 5 } } });
 			settings.Cases.AutoUpdate = false;
 
@@ -58,7 +58,7 @@ namespace GetReady.Tests
 			read.Repair.TraderOrder.Should().Equal("b", "a");
 			read.Repair.KeepDamaged.Should().ContainSingle().Which.Id.Should().Be("x");
 			read.FullAuto.Slots.Should().Equal("Holster");
-			read.Supplies.AllowOvershoot.Should().BeFalse();
+			read.Supplies.Groups["bandage"].AllowOvershoot.Should().BeFalse();
 			read.Cases.AutoUpdate.Should().BeFalse();
 			read.Cases.Cases.Should().ContainSingle().Which.Maps.Should().Equal("Woods");
 			read.Cases.Cases[0].Money["RUB"].Should().Be(5);

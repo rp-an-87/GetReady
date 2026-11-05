@@ -155,7 +155,7 @@ namespace GetReady
 			}
 
 			int locked = context.Stash.Count(item => active.Contains(item.TemplateId.ToString()) && item.PinLockState == EItemPinLockState.Locked && !context.Planned.Contains(item));
-			var tooBig = def.Stack || context.Settings.AllowOvershoot
+			var tooBig = def.Stack || def.Setting.AllowOvershoot
 				? null
 				: def.Candidates(context.Stash).Where(item => !context.Planned.Contains(item) && def.WeightOf(item) > need).OrderBy(def.WeightOf).FirstOrDefault();
 			if (tooBig != null)
@@ -206,7 +206,7 @@ namespace GetReady
 					}
 
 					float weight = def.WeightOf(item);
-					if (weight <= 0 || (!def.Stack && !context.Settings.AllowOvershoot && weight > need))
+					if (weight <= 0 || (!def.Stack && !def.Setting.AllowOvershoot && weight > need))
 					{
 						continue;
 					}

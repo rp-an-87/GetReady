@@ -140,8 +140,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void A_bigger_item_is_taken_when_only_a_little_is_missing_if_the_option_is_on()
 		{
-			Bandages(1);
-			SettingsStore.Current.Supplies.AllowOvershoot = true;
+			Bandages(1).Setting.AllowOvershoot = true;
 
 			Texts(Plan(_step, new Item[0], Items(ArmyBandage))).Should().Equal("Bandages: 0/1 bandage points", "Bring 1x Army bandage");
 		}
@@ -149,8 +148,7 @@ namespace GetReady.Tests
 		[Fact]
 		public void A_bigger_item_is_not_taken_when_the_option_is_off_and_the_message_names_it()
 		{
-			Bandages(1);
-			SettingsStore.Current.Supplies.AllowOvershoot = false;
+			Bandages(1).Setting.AllowOvershoot = false;
 
 			var lines = Plan(_step, new Item[0], Items(ArmyBandage));
 
@@ -200,7 +198,10 @@ namespace GetReady.Tests
 
 			_step.Groups.First(def => def.Id == "heavybleed").Setting.Target = 1;
 			_step.Groups.First(def => def.Id == "bandage").Setting.Target = 1;
-			SettingsStore.Current.Supplies.AllowOvershoot = false;
+			foreach (var def in _step.Groups)
+			{
+				def.Setting.AllowOvershoot = false;
+			}
 
 			var lines = Plan(_step, new Item[0], Items(AsepticBandage, Cat));
 
