@@ -238,6 +238,23 @@ namespace GetReady
 			return PlaceInto(controller, item, count, new List<Target> { new Target { Container = container } });
 		}
 
+		// Opens a container as its window, the way a double click on it does (the game says why when it cannot: a locked one)
+		internal static void OpenContainer(CompoundItem container)
+		{
+			try
+			{
+				var ui = EFT.UI.ItemUiContext.Instance;
+				if (ui != null && container != null)
+				{
+					ui.OpenItem(container, new DefaultItemContext(container, EItemViewType.Inventory));
+				}
+			}
+			catch (System.Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not open {NameOf(container)}: {e.Message}");
+			}
+		}
+
 		// Waits up to a second for the item to leave the stash (to be on you, or merged into a stack there)
 		internal static async Task<bool> WaitUntilCarried(InventoryController controller, Item item)
 		{

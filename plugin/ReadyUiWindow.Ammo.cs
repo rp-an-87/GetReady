@@ -76,7 +76,19 @@ namespace GetReady
 				string tip = $"{place.Name}: {place.Count:N0} rounds";
 				if (!string.IsNullOrEmpty(place.Template))
 				{
-					CellIcon(row, place.Template, tip);
+					// A case: its picture opens it, as a click on it would in the stash
+					CellIcon(row, place.Template, place.Container != null ? tip + "\nClick to open it" : tip);
+					if (place.Container != null)
+					{
+						var container = place.Container;
+						row.GetChild(row.childCount - 1).gameObject.AddComponent<ReadyButtonPatch.ClickHandler>().OnClick = button =>
+						{
+							if (button == UnityEngine.EventSystems.PointerEventData.InputButton.Left)
+							{
+								Game.OpenContainer(container);
+							}
+						};
+					}
 				}
 				else if (GameWidgets.StashSprite != null)
 				{

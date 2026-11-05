@@ -109,6 +109,8 @@ namespace GetReady
 		public string Template;
 		public string Name;
 		public int Count;
+		// The container itself (null for the stash): its picture opens it
+		public CompoundItem Container;
 	}
 
 	// One item a template wants and the gear lacks: what it is, where it goes, and how to bring it (null when the stash has none)
