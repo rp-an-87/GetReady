@@ -260,6 +260,13 @@ namespace GetReady
 			{
 				_width = frame.sizeDelta.x;
 				_height = frame.sizeDelta.y;
+				// A different width breaks the section buttons into more or fewer rows, which changes the room the window needs
+				if (_tab == 1 && JumpRows().Count != _stripRows)
+				{
+					BuildBody(frame);
+					return;
+				}
+
 				FitBody(frame);
 			});
 			BuildBody(frame);
@@ -293,11 +300,22 @@ namespace GetReady
 		}
 
 		// One small tab per section of the Setup page: a click scrolls the section to the top
+		// The rows the section buttons break into at the window's width
+		private static List<List<int>> JumpRows()
+		{
+			var widths = SetupPage.Names().Select(name => name.Length * UiKit.Unit * 0.5f + UiKit.Unit * 2f + 6f).ToList();
+			return ReadyWindow.TabRows(widths, _width - 40f).Select(row => row.ToList()).ToList();
+		}
+
+		// The rows the strip was built with: the window needs room for them (each row is a child of the body, with its spacing)
+		private static int _stripRows;
+
 		private static void JumpStrip(Transform parent)
 		{
 			var names = SetupPage.Names();
-			var widths = names.Select(name => name.Length * UiKit.Unit * 0.5f + UiKit.Unit * 2f + 6f).ToList();
-			foreach (var rowIndexes in ReadyWindow.TabRows(widths, _width - 40f))
+			var rows = JumpRows();
+			_stripRows = rows.Count;
+			foreach (var rowIndexes in rows)
 			{
 				var row = UiKit.HBox(parent, 4f);
 				foreach (int index in rowIndexes)
@@ -426,6 +444,11 @@ namespace GetReady
 
 			// What the tabs, the footer, the spacing and a little of the page need, so the body always fits the window
 			float minHeight = Mathf.Max(_captionHeight, 30f) + 20f + UiKit.Unit * 2f + UiKit.Unit * 2.4f + 16f + ScrollMin;
+			if (_tab == 1)
+			{
+				minHeight += _stripRows * (UiKit.Unit * 1.5f + 8f);
+			}
+
 			// The Setup page has two cards side by side, which need room: its minimum is wider
 			float minWidth = _tab == 1 ? 2f * (UiKit.Unit * 15.5f + 36f) + 90f : 520f;
 			UiResize.SetMin(frame, new Vector2(minWidth, minHeight));
