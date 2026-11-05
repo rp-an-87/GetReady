@@ -62,27 +62,40 @@ namespace GetReady
 		private static void CellCount(Transform row, float have, float want, bool amber = false) =>
 			CellText(row, $"{have:N0}/{want:N0}", have >= want ? Ui.Ok : amber ? Ui.Warn : Ui.Bad);
 
-		// The ammo to put in: its icon (hover: why it was chosen), its name, and "from" the containers it is taken from (hover: how many from each)
+		// "from" and where the rounds are taken from: the stash by the picture of its "All" filter, a case by its own (hover: how many from each)
+		private static void CellFrom(Transform row, List<PlaceCount> from)
+		{
+			if (from == null || from.Count == 0)
+			{
+				return;
+			}
+
+			CellText(row, "from", Ui.Dim);
+			foreach (var place in from)
+			{
+				string tip = $"{place.Name}: {place.Count:N0} rounds";
+				if (!string.IsNullOrEmpty(place.Template))
+				{
+					CellIcon(row, place.Template, tip);
+				}
+				else if (GameWidgets.StashSprite != null)
+				{
+					UiKit.Icon(row, GameWidgets.StashSprite, CellIconSize, tip);
+				}
+				else
+				{
+					// The picture of the stash is not known yet: its name in a small tag
+					UiKit.Tip(UiKit.Chip(row, place.Name, new Color(0.25f, 0.26f, 0.25f)), tip);
+				}
+			}
+		}
+
+		// The ammo to put in: its icon (hover: why it was chosen), its name, and where it is taken from
 		private static void CellAmmo(Transform row, string template, string name, string why, List<PlaceCount> from)
 		{
 			CellIcon(row, template, name, string.IsNullOrEmpty(why) ? name : $"{name}: {why}");
 			CellText(row, name);
-			if (from != null && from.Count > 0)
-			{
-				CellText(row, "from", Ui.Dim);
-				foreach (var place in from)
-				{
-					if (string.IsNullOrEmpty(place.Template))
-					{
-						// The stash has no icon: its name in a small tag
-						UiKit.Tip(UiKit.Chip(row, place.Name, new Color(0.25f, 0.26f, 0.25f)), $"{place.Name}: {place.Count:N0} rounds");
-					}
-					else
-					{
-						CellIcon(row, place.Template, $"{place.Name}: {place.Count:N0} rounds");
-					}
-				}
-			}
+			CellFrom(row, from);
 		}
 
 		// The chip that says how a set of lines stands: red problems, amber to do, else green
@@ -439,6 +452,7 @@ namespace GetReady
 				CellArrow(row);
 				CellCount(row, Math.Min(line.Want, line.Have + line.Amount), line.Want, true);
 				CellText(row, $"+{line.Amount:N0}", Ui.Dim);
+				CellFrom(row, line.From);
 			}
 			else
 			{

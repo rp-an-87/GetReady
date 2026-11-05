@@ -546,6 +546,7 @@ namespace GetReady
 					Have = have,
 					Want = target.StackMaxSize,
 					Topped = true,
+					From = SourcesOf(stock, picks),
 					Items = 0,
 					Run = async () =>
 					{
@@ -747,8 +748,8 @@ namespace GetReady
 		}
 
 		// The containers the rounds of a fill are taken from, with how many from each
-		private static List<PlaceCount> SourcesOf(AmmoRules.AmmoStock stock, AmmoRules.FillPlan plan) =>
-			plan.Allocation.Where(pair => pair.Key.Parent?.Container?.ParentItem != null)
+		private static List<PlaceCount> SourcesOf(AmmoRules.AmmoStock stock, IEnumerable<KeyValuePair<Ammo, int>> allocation) =>
+			allocation.Where(pair => pair.Key.Parent?.Container?.ParentItem != null)
 				.GroupBy(pair => pair.Key.Parent.Container.ParentItem.Id.ToString())
 				.Select(group =>
 				{
@@ -813,7 +814,7 @@ namespace GetReady
 				Part = "magazine",
 				Amount = plan.Rounds,
 				Why = plan.Reason,
-				From = SourcesOf(stock, plan),
+				From = SourcesOf(stock, plan.Allocation),
 				What = plan.TypeName,
 				Template = plan.Allocation[0].Key.TemplateId.ToString(),
 				Fill = true,

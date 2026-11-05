@@ -29,6 +29,14 @@ namespace GetReady
 		{
 			try
 			{
+				// The picture of the stash's "All" filter (the first tab) is the stash's picture for this window
+				var filterTabs = __instance._filterPanel?._filterTabs;
+				var all = filterTabs != null && filterTabs.Length > 0 && filterTabs[0] != null ? filterTabs[0].GetComponent<FilterTab>()?._filterIcon?.sprite : null;
+				if (all != null)
+				{
+					GameWidgets.StashSprite = all;
+				}
+
 				var pin = __instance._pinModeButton;
 				if (pin == null || pin.transform.parent == null)
 				{

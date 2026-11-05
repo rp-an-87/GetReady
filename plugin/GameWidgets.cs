@@ -371,6 +371,9 @@ namespace GetReady
 			return copy;
 		}
 
+		// The stash's own picture: the one of its "All" filter, taken when the stash opens
+		internal static Sprite StashSprite;
+
 		private static Sprite _gear;
 
 		// The settings gear of the game's top bar (its Settings tab), for the Options section
