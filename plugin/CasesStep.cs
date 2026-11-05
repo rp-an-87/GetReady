@@ -159,7 +159,7 @@ namespace GetReady
 
 			if (entry.Maps.Count > 0)
 			{
-				parts.Add("maps: " + string.Join(", ", entry.Maps));
+				parts.Add(entry.Maps.Count >= MapTags.Maps.Length ? "all maps" : "maps: " + string.Join(", ", entry.Maps));
 			}
 
 			if (entry.StopsCash)

@@ -52,6 +52,37 @@ namespace GetReady
 		private static string MoneyText(CaseEntry entry) =>
 			string.Join("   ", CasesStep.Currencies.Where(currency => entry.Money.ContainsKey(currency)).Select(currency => Game.Amount(currency, entry.Money[currency])));
 
+		// An amount for a small corner: 1500 is 1.5k, 100000 is 100k, 2500000 is 2.5M
+		private static string Compact(int amount)
+		{
+			var culture = System.Globalization.CultureInfo.InvariantCulture;
+			if (amount >= 1000000)
+			{
+				return (amount / 1000000.0).ToString("0.#", culture) + "M";
+			}
+
+			return amount >= 1000 ? (amount / 1000.0).ToString("0.#", culture) + "k" : amount.ToString(culture);
+		}
+
+		// The game's own red cross (a copy of its window's close button) for clearing a case; a plain x when the window has none
+		private static void CrossButton(Transform parent, System.Action click, string tip)
+		{
+			var template = ReadyUiWindow.CloseTemplate;
+			if (template == null)
+			{
+				SquareButton(parent, "x", click, tip);
+				return;
+			}
+
+			var copy = UnityEngine.Object.Instantiate(template.gameObject, parent, false);
+			copy.name = "Cross";
+			var button = copy.GetComponent<UnityEngine.UI.Button>();
+			button.onClick.RemoveAllListeners();
+			button.onClick.AddListener(() => click());
+			UiKit.Size(copy.transform, width: UiKit.Unit * 1.7f, height: UiKit.Unit * 1.7f);
+			UiKit.Tip(button, tip);
+		}
+
 		private static string ItemsText(int count) => count == 1 ? "1 item" : $"{count} items";
 
 		// The name of a saved case that is not on you: its type
@@ -79,7 +110,7 @@ namespace GetReady
 		}
 
 		// An item picture with its amount in the corner and, when asked, its short name at the top, as the game draws a stack
-		private static void StripIcon(Transform row, string template, string tip, int count, string label)
+		private static void StripIcon(Transform row, string template, string tip, int count, string label, string amountText = null)
 		{
 			TemplateIcon(row, template, UiKit.Unit * 2.4f, tip);
 			var frame = row.GetChild(row.childCount - 1);
@@ -92,7 +123,7 @@ namespace GetReady
 
 			if (count > 1)
 			{
-				var amount = UiKit.Label(frame, count.ToString(), 0.6f, new Color(0.55f, 0.9f, 0.45f), bold: true, align: TextAlignmentOptions.BottomRight);
+				var amount = UiKit.Label(frame, amountText ?? count.ToString(), 0.6f, new Color(0.55f, 0.9f, 0.45f), bold: true, align: TextAlignmentOptions.BottomRight);
 				UiKit.Stretch(amount.rectTransform, 0f, 0f, 4f, 2f);
 			}
 		}
@@ -112,7 +143,7 @@ namespace GetReady
 			foreach (var currency in CasesStep.Currencies.Where(currency => entry.Money.ContainsKey(currency)))
 			{
 				string code = currency;
-				pieces.Add(row => StripIcon(row, CasesStep.TemplateOfCurrency(code), Game.Amount(code, entry.Money[code]), entry.Money[code], null));
+				pieces.Add(row => StripIcon(row, CasesStep.TemplateOfCurrency(code), Game.Amount(code, entry.Money[code]), entry.Money[code], code, Compact(entry.Money[code])));
 			}
 
 			if (pieces.Count == 0)
@@ -138,7 +169,7 @@ namespace GetReady
 		{
 			string id = item != null ? item.Id.ToString() : entry.CaseId;
 			bool collapsed = item == null || CasesStep.IsCollapsed(id);
-			var card = UiKit.VBox(parent, 6f, new RectOffset(10, 10, 8, 8), UiKit.CardColor, UiKit.CardEdge);
+			var card = UiKit.VBox(parent, 8f, new RectOffset(10, 10, 10, 10), UiKit.CardColor, UiKit.CardEdge);
 			var header = UiKit.HBox(card, 8f);
 			if (item != null)
 			{
@@ -168,32 +199,13 @@ namespace GetReady
 
 			bool recorded = entry != null && entry.Recorded;
 			int count = recorded ? CasesStep.ItemCount(entry) : item != null ? item.Grids.Sum(grid => grid.Items.Count()) : 0;
-			UiKit.Label(header, $"{name}  -  {ItemsText(count)}" + (recorded ? "  -  tracked" : ""), 0.9f, Ui.Text, flex: true);
-			if (!collapsed)
-			{
-				var track = UiKit.PushButton(header, recorded ? "Update tracked items" : "Track items inside", () =>
-				{
-					var saved = CasesStep.Record(item);
-					ReadyPlan._status = $"Tracking {ItemsText(CasesStep.ItemCount(saved))}{(saved.Money.Count > 0 ? " and " + MoneyText(saved) : "")} in {name}.";
-					Changed();
-				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
-				UiKit.Tip(track, "Remembers what this case holds now (and where each item sits): getting ready brings back what is missing and, with \"Take out the rest\", takes out everything else. Other cases are left alone.");
-				if (recorded)
-				{
-					var stop = UiKit.PushButton(header, "Stop tracking items", () =>
-					{
-						CasesStep.Forget(entry.CaseId);
-						ReadyPlan._status = $"Stopped tracking items in {name}.";
-						Changed();
-					}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
-					UiKit.Tip(stop, "Stops tracking what is in this case (nothing moves). Its maps and the cash switch stay.");
-				}
-			}
-
+			var title = UiKit.Label(header, $"{name}  -  {ItemsText(count)}", 0.9f, Ui.Text, flex: true);
+			title.overflowMode = TextOverflowModes.Ellipsis;
+			UiKit.Size(title, flexWidth: 1f).minWidth = 0f;
 			// The cross at the end of the header clears everything saved for the case, so it leaves the list
 			if (entry != null)
 			{
-				SquareButton(header, "x", () =>
+				CrossButton(header, () =>
 				{
 					CasesStep.Clear(entry.CaseId);
 					ReadyPlan._status = $"Cleared everything saved for {name}.";
@@ -201,7 +213,34 @@ namespace GetReady
 				}, "Clear everything saved for this case: what it tracks, its maps and Skip cash step (nothing moves)");
 			}
 
-			if (entry != null)
+			if (!collapsed)
+			{
+				// The two buttons have a row of their own, so a narrow window does not squeeze them into the header
+				var buttons = UiKit.HBox(card, 8f);
+				buttons.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandWidth = true;
+				var track = UiKit.PushButton(buttons, recorded ? "Update tracked items" : "Track items inside", () =>
+				{
+					var saved = CasesStep.Record(item);
+					ReadyPlan._status = $"Tracking {ItemsText(CasesStep.ItemCount(saved))}{(saved.Money.Count > 0 ? " and " + MoneyText(saved) : "")} in {name}.";
+					Changed();
+				}, ButtonFill, ButtonHover, Ui.Text, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				UiKit.Size(track, width: 1f, flexWidth: 1f).minWidth = 0f;
+				UiKit.Tip(track, "Remembers what this case holds now (and where each item sits): getting ready brings back what is missing and, with \"Take out the rest\", takes out everything else. Other cases are left alone.");
+				if (recorded)
+				{
+					var stop = UiKit.PushButton(buttons, "Stop tracking items", () =>
+					{
+						CasesStep.Forget(entry.CaseId);
+						ReadyPlan._status = $"Stopped tracking items in {name}.";
+						Changed();
+					}, ButtonFill, ButtonHover, Ui.Dim, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+					UiKit.Size(stop, width: 1f, flexWidth: 1f).minWidth = 0f;
+					UiKit.Tip(stop, "Stops tracking what is in this case (nothing moves). Its maps and the cash switch stay.");
+				}
+			}
+
+			// What is saved, for a collapsed card (open, the strip and the buttons below say it)
+			if (entry != null && collapsed)
 			{
 				UiKit.Label(card, "Saved: " + CasesStep.Summary(entry), 0.8f, Ui.Dim, wrap: true, flex: true);
 			}
@@ -216,7 +255,9 @@ namespace GetReady
 				TrackedStrip(card, entry);
 			}
 
-			var switches = UiKit.HBox(card, 8f);
+			var options = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
+			UiKit.Label(options, "Options:", 0.8f, Ui.Dim);
+			var switches = UiKit.HBox(options, 8f);
 			bool stops = entry != null && entry.StopsCash;
 			Pick(switches, "Skip cash step", stops, () =>
 			{
@@ -240,10 +281,11 @@ namespace GetReady
 			}
 
 			// The maps it is for: none picked is any map
-			UiKit.Label(card, entry != null && entry.Maps.Count > 0 ? "For these maps only:" : "For any map (pick the maps it is for):", 0.8f, Ui.Dim);
+			var mapsPanel = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
+			UiKit.Label(mapsPanel, entry != null && entry.Maps.Count > 0 ? "For these maps only:" : "For any map (pick the maps it is for):", 0.8f, Ui.Dim);
 			for (int first = 0; first < MapTags.Maps.Length; first += MapsPerRow)
 			{
-				var row = UiKit.HBox(card, 6f);
+				var row = UiKit.HBox(mapsPanel, 6f);
 				row.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandWidth = true;
 				var maps = MapTags.Maps.Skip(first).Take(MapsPerRow).ToList();
 				foreach (var map in maps)

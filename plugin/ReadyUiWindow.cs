@@ -54,6 +54,9 @@ namespace GetReady
 		// The window's size: what the owner dragged it to is kept while the game runs
 		private static float _width = 900f, _height = 940f;
 
+		// The window's own close button, to copy where the window needs the game's red cross
+		internal static UnityEngine.UI.Button CloseTemplate => _window != null ? _window.CloseButton : null;
+
 		internal static void Toggle()
 		{
 			try
