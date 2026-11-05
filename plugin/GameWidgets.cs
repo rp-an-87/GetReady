@@ -211,6 +211,9 @@ namespace GetReady
 				// The text is sized like the rest of the window (the game's own tabs are made for a big screen of their own)
 				tab.InitSpawnableButton(text, Mathf.Max(8, Mathf.RoundToInt(UiKit.Unit * textUnits)), icon, null);
 				var toggle = tab.Toggle;
+				// The hover of these tabs is the same plate as the lit one, animated in: the copy gets no hover from the game's own events, so the
+				// pointer plays that animation itself
+				copy.AddComponent<HoverLight>().Toggle = toggle;
 				toggle.onValueChanged.AddListener(value =>
 				{
 					if (value)
@@ -302,6 +305,35 @@ namespace GetReady
 			}
 
 			return _gear;
+		}
+
+		// The tab that is not open lights up (the animation of being switched on) while the mouse is on it and goes dark when it leaves
+		internal class HoverLight : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
+		{
+			internal AnimatedToggle Toggle;
+			private static bool _logged;
+
+			public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData)
+			{
+				if (Toggle != null && !Toggle.isOn)
+				{
+					if (!_logged)
+					{
+						_logged = true;
+						Plugin.Trace($"Tab hover: {Toggle.name}, transition {Toggle.transition}, interactable {Toggle.IsInteractable()}");
+					}
+
+					Toggle.TriggerAnimation(true);
+				}
+			}
+
+			public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData)
+			{
+				if (Toggle != null && !Toggle.isOn)
+				{
+					Toggle.TriggerAnimation(false);
+				}
+			}
 		}
 
 		// For finding the game's big green Ready button: what buttons the game has in memory, once in the log (with Log details on)
