@@ -8,7 +8,7 @@ using UnityEngine;
 namespace GetReady
 {
 	// The Setup page of the new window: a section per step (its switch, then what it sets) and the options. Built again after every change.
-	// A section that is not built here yet says so and opens the old window on its Setup page.
+	// Every step has its section here; the strip at the top jumps to them.
 	internal static partial class SetupPage
 	{
 		// Where each section is on the page (in the order of the jump strip), so a click on the strip can scroll to it

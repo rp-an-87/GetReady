@@ -131,15 +131,7 @@ namespace GetReady
 				}
 
 				UiKit.Spacer(row);
-				Pick(row, off ? "Not used" : "Used", !off, () =>
-				{
-					def.ToggleEntry(template);
-					Changed();
-				}, null, UiKit.Unit * 6f);
-				if (off)
-				{
-					DimUnused(row);
-				}
+				UsedPick(row, def, template, off);
 
 				rows.Add(row);
 			}

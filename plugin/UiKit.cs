@@ -27,7 +27,7 @@ namespace GetReady
 		internal static readonly Color PanelColor = new Color(0.12f, 0.125f, 0.125f);
 		internal static readonly Color CardColor = new Color(0.155f, 0.16f, 0.16f);
 		internal static readonly Color InnerColor = new Color(0.07f, 0.075f, 0.075f);
-		// The edges of the old window's boxes: sections, cards and the inner panels of a card
+		// The edges of the boxes: sections, cards and the inner panels of a card
 		internal static readonly Color SectionEdge = new Color(0.33f, 0.34f, 0.32f);
 		internal static readonly Color CardEdge = new Color(0.27f, 0.28f, 0.27f);
 		internal static readonly Color InnerEdge = new Color(0.22f, 0.23f, 0.22f);

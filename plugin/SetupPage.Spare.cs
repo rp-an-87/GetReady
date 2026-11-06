@@ -32,22 +32,8 @@ namespace GetReady
 			var stacks = UiKit.HBox(card, 8f);
 			UiKit.HelpMark(stacks, "How many stacks of spare ammo to carry for each caliber your equipped weapons use (a stack is the ammo's full stack size). Loose ammo of that caliber on you counts toward it, and so does what the top-up of your loose stacks adds; only what is still missing is brought from the stash, and you get a warning when the stash has no more. A weapon model can ask for another number in the list below.");
 			Stepper(stacks, setting.Target > 0 ? $"{setting.Target} stack{(setting.Target == 1 ? "" : "s")} per caliber" : "off", setting.Target > 0 ? UiColors.Text : UiColors.Dim, 11f,
-				() =>
-				{
-					if (setting.Target > 0)
-					{
-						setting.Target = Math.Max(0, setting.Target - def.Step);
-						Changed();
-					}
-				},
-				() =>
-				{
-					if (setting.Target < def.Max)
-					{
-						setting.Target = Math.Min(def.Max, setting.Target + def.Step);
-						Changed();
-					}
-				}, "One stack fewer", "One stack more");
+				() => StepTarget(def, -1),
+				() => StepTarget(def, 1), "One stack fewer", "One stack more");
 
 			// Where the ammo goes (also when the number above is 0 but a weapon model asks for its own)
 			if (setting.Target > 0 || anyOwn)

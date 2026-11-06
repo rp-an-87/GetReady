@@ -11,8 +11,8 @@ using UnityEngine.UI;
 namespace GetReady
 {
 	// The Get ready window made from a copy of a game window (the "name a preset" window of the Builds tab), so it has the game's own
-	// caption bar, red cross, dragging, Esc and stacking, and its pages are built from Unity UI in the game's font. Experimental: opened
-	// by an F12 key, next to the IMGUI window (ReadyWindow), which stays the real one until this one is complete. The Ready page only.
+	// caption bar, red cross, dragging, Esc and stacking, and its pages are built from Unity UI in the game's font. Opened from the stash
+	// button, the open key or a quick run's alert. Two pages: Status (what Get ready will do) and Setup.
 	internal static partial class ReadyUiWindow
 	{
 		private static EditBuildNameWindow _window;
@@ -748,17 +748,9 @@ namespace GetReady
 			}
 		}
 
-		// What the step will do, as a small tag: red for what cannot be done, amber for what Get ready will do
-		private static void StepChip(Transform parent, IStep step, List<PlanLine> lines)
+		// How a set of lines stands, as small tags: red problems, amber to do, else green
+		internal static void StandingChips(Transform parent, int moves, int problems)
 		{
-			if (!step.Enabled || lines == null)
-			{
-				UiKit.Chip(parent, "Off", new Color(0.25f, 0.26f, 0.25f));
-				return;
-			}
-
-			int moves = 0, problems = 0;
-			ReadyPlan.TallyLines(lines, ref moves, ref problems);
 			if (problems > 0)
 			{
 				UiKit.Chip(parent, problems == 1 ? "1 problem" : $"{problems} problems", new Color(0.6f, 0.2f, 0.18f));
@@ -773,6 +765,20 @@ namespace GetReady
 			{
 				UiKit.Chip(parent, "Ready", new Color(0.2f, 0.38f, 0.22f));
 			}
+		}
+
+		// What the step will do, as a small tag: red for what cannot be done, amber for what Get ready will do
+		private static void StepChip(Transform parent, IStep step, List<PlanLine> lines)
+		{
+			if (!step.Enabled || lines == null)
+			{
+				UiKit.Chip(parent, "Off", new Color(0.25f, 0.26f, 0.25f));
+				return;
+			}
+
+			int moves = 0, problems = 0;
+			ReadyPlan.TallyLines(lines, ref moves, ref problems);
+			StandingChips(parent, moves, problems);
 		}
 
 		// The lines of a step: each progress line opens a card, and what follows it (what will be brought, what is wrong) sits in it

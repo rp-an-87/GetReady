@@ -83,14 +83,7 @@ namespace GetReady
 			if (def.Money)
 			{
 				// Typed in: the amounts are too big to click up to
-				UiKit.PushButton(amount, "-", () =>
-				{
-					if (setting.Target > 0)
-					{
-						setting.Target = Math.Max(0, setting.Target - def.Step);
-						Changed();
-					}
-				}, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				UiKit.PushButton(amount, "-", () => StepTarget(def, -1), ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 				UiKit.NumberField(amount, setting.Target.ToString(), UiKit.Unit * 7f, UiKit.Unit * 1.7f, typed =>
 				{
 					int parsed;
@@ -102,34 +95,13 @@ namespace GetReady
 				});
 				var sign = UiKit.Label(amount, Game.Symbol(def.Unit) ?? def.Unit, 0.9f, UiColors.Dim, align: TextAlignmentOptions.Center);
 				UiKit.Size(sign, UiKit.Unit * 1.5f);
-				UiKit.PushButton(amount, "+", () =>
-				{
-					if (setting.Target < def.Max)
-					{
-						setting.Target = Math.Min(def.Max, setting.Target + def.Step);
-						Changed();
-					}
-				}, ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
+				UiKit.PushButton(amount, "+", () => StepTarget(def, 1), ButtonFill, ButtonHover, UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 			}
 			else
 			{
 				Stepper(amount, on ? Game.Amount(def.Unit, setting.Target) : "off", on ? UiColors.Text : UiColors.Dim, compact ? (def.IsQuota ? 9f : 6f) : 9f,
-					() =>
-					{
-						if (setting.Target > 0)
-						{
-							setting.Target = Math.Max(0, setting.Target - def.Step);
-							Changed();
-						}
-					},
-					() =>
-					{
-						if (setting.Target < def.Max)
-						{
-							setting.Target = Math.Min(def.Max, setting.Target + def.Step);
-							Changed();
-						}
-					}, null, null);
+					() => StepTarget(def, -1),
+					() => StepTarget(def, 1), null, null);
 			}
 
 			// The key and the items button, on the right of the amount
@@ -225,15 +197,7 @@ namespace GetReady
 				}
 
 				string template = entry.Template;
-				Pick(row, off ? "Not used" : "Used", !off, () =>
-				{
-					def.ToggleEntry(template);
-					Changed();
-				}, null, UiKit.Unit * 6f);
-				if (off)
-				{
-					DimUnused(row);
-				}
+				UsedPick(row, def, template, off);
 
 				rows.Add(row);
 			}

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace GetReady
 {
-	// The Ammo step of the Ready page in Unity UI (the same panels as ReadyWindow.AmmoPanels): one card per caliber with an inner panel
+	// The Ammo step of the Ready page in Unity UI (see AmmoPanels for the logic): one card per caliber with an inner panel
 	// per equipped weapon and one for the spare ammo, then the cards of the extra magazines and the loose stacks.
 	internal static partial class ReadyUiWindow
 	{
@@ -114,20 +114,7 @@ namespace GetReady
 		private static void StandingChip(Transform parent, List<PlanLine> lines)
 		{
 			int problems = lines.Count(line => line.Problem), moves = lines.Count(line => line.Run != null);
-			if (problems > 0)
-			{
-				UiKit.Chip(parent, problems == 1 ? "1 problem" : $"{problems} problems", new Color(0.6f, 0.2f, 0.18f));
-			}
-
-			if (moves > 0)
-			{
-				UiKit.Chip(parent, $"{moves} to do", new Color(0.42f, 0.36f, 0.16f));
-			}
-
-			if (problems == 0 && moves == 0)
-			{
-				UiKit.Chip(parent, "Ready", new Color(0.2f, 0.38f, 0.22f));
-			}
+			StandingChips(parent, moves, problems);
 		}
 
 		private static void AmmoPanelLines(Transform parent, List<PlanLine> lines)

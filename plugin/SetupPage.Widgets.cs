@@ -16,7 +16,7 @@ namespace GetReady
 		private static readonly Color PickOnFill = new Color(0.25f, 0.23f, 0.15f), PickOnHover = new Color(0.31f, 0.29f, 0.19f);
 		private static readonly Color PickOnText = new Color(0.95f, 0.9f, 0.72f);
 
-		// The thin edges of the old window's buttons: grey, and sand for the one that is lit
+		// The thin edges of the buttons: grey, and sand for the one that is lit
 		internal static readonly Color ButtonEdge = new Color(0.38f, 0.39f, 0.37f), PickEdge = new Color(0.3f, 0.31f, 0.3f), PickOnEdge = new Color(0.72f, 0.65f, 0.42f);
 
 		internal static readonly Color InnerPanel = new Color(0.095f, 0.1f, 0.1f);
@@ -195,6 +195,32 @@ namespace GetReady
 		{
 			var heading = UiKit.HBox(box, 0f, new RectOffset(0, 0, 8, 2));
 			UiKit.Label(heading, "NOT USED", 0.75f, UiColors.Dim, bold: true);
+		}
+
+		// One step of an amount's target, down or up, kept between 0 and the group's most
+		internal static void StepTarget(GroupDef def, int direction)
+		{
+			var setting = def.Setting;
+			int target = Math.Max(0, Math.Min(def.Max, setting.Target + direction * def.Step));
+			if (target != setting.Target)
+			{
+				setting.Target = target;
+				Changed();
+			}
+		}
+
+		// The Used / Not used button at the end of an item's row (a not used row fades but for it)
+		internal static void UsedPick(RectTransform row, GroupDef def, string template, bool off)
+		{
+			Pick(row, off ? "Not used" : "Used", !off, () =>
+			{
+				def.ToggleEntry(template);
+				Changed();
+			}, null, UiKit.Unit * 6f);
+			if (off)
+			{
+				DimUnused(row);
+			}
 		}
 
 		// A row of an item that is not used fades, but for its last part (the Used / Not used button), which stays clear to click
