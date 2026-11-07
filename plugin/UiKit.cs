@@ -208,7 +208,8 @@ namespace GetReady
 			// A 1 px grey edge round a dark square, like the item squares of the game
 			var frame = Node("Icon", parent);
 			Fill(frame, new Color(0.22f, 0.23f, 0.22f));
-			Size(frame, size, size);
+			// A minimum as well, or a row with long text squeezes the picture narrower than the others
+			Size(frame, size, size).minWidth = size;
 			Tip(frame, tip);
 			var inside = Node("Fill", frame);
 			Stretch(inside, 1f, 1f, 1f, 1f);

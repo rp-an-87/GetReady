@@ -21,6 +21,7 @@ namespace GetReady
 			try
 			{
 				MapWarning.Picked(__instance, __instance.SelectedLocation?.Id);
+				NotReadyWarning.Picked(__instance);
 			}
 			catch (Exception e)
 			{
@@ -47,9 +48,11 @@ namespace GetReady
 
 		// The ids of what you carry (the profile of the screen: the one you are about to raid with); null for a scav raid, which takes the scav's
 		// own kit and nothing from your stash
+		internal static bool IsScav(MatchMakerSelectionLocationScreen screen) => SideField != null && SideField.GetValue(screen) is ESideType side && side == ESideType.Savage;
+
 		private static HashSet<string> CarriedIds()
 		{
-			if (SideField != null && SideField.GetValue(_screen) is ESideType side && side == ESideType.Savage)
+			if (IsScav(_screen))
 			{
 				return null;
 			}

@@ -16,6 +16,8 @@ namespace GetReady
 		internal static ConfigEntry<bool> ShowButton;
 		internal static ConfigEntry<KeyboardShortcut> OpenHotkey;
 		internal static ConfigEntry<bool> ShowFlash;
+		internal static ConfigEntry<bool> ShowNotReady;
+		internal static ConfigEntry<bool> ShowCaseMenu;
 		internal static ConfigEntry<DragFadeMode> DragFadeMode;
 		internal static ConfigEntry<float> DragFadeOpacity;
 		internal static ConfigEntry<bool> DebugLogging;
@@ -45,6 +47,10 @@ namespace GetReady
 				"What the new Get ready window does while you drag an item in the stash: Off leaves it as it is, Fade makes it see-through (and lets the mouse through, so you can drop the item on what is behind it), Hide takes it away until you drop.");
 			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.05f,
 				new ConfigDescription("How see-through the window is while dragging an item, when the choice above is Fade.", new AcceptableValueRange<float>(0.05f, 0.5f)));
+			ShowNotReady = Config.Bind("1. General", "6. NOT READY bar on the map screen", true,
+				"A red NOT READY bar under the title of the map screen when you go in as a PMC and Get ready still has a problem or something to fulfil. Click it to go to your character screen (the stash).");
+			ShowCaseMenu = Config.Bind("1. General", "7. Get ready item in the right-click menu of a case", true,
+				"A purple Get ready entry in the right-click menu of a case you carry (stash, hideout, main menu): track or update its template, stop tracking, and set the maps it is for. Takes effect the next time the menu opens.");
 			DebugLogging = Config.Bind("8. Debugging", "Log details", false,
 				new ConfigDescription("Writes what GetReady does, and how long it takes, to the BepInEx log (only errors and warnings are written otherwise). For finding out why something is slow or wrong.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
 			// A button in F12 that shows a made-up alert, for looking at it
@@ -59,6 +65,11 @@ namespace GetReady
 			new InventoryScreenEscapePatch().Enable();
 			new HideoutOverlayEscapePatch().Enable();
 			new MapScreenPatch().Enable();
+			new CaseMenuAddPatch().Enable();
+			new CaseMenuButtonPatch().Enable();
+			new CaseMenuColourPatch().Enable();
+			new CaseMenuSidePatch().Enable();
+			new MapMenuSidePatch().Enable();
 			new DragStartPatch().Enable();
 			new DragEndPatch().Enable();
 			new TagChangedPatch().Enable();
@@ -85,6 +96,7 @@ namespace GetReady
 		{
 			ReadyFlash.Draw();
 			MapWarning.Draw();
+			NotReadyWarning.Draw();
 		}
 	}
 }
