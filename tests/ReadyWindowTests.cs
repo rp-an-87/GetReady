@@ -271,6 +271,18 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public async Task A_line_with_its_own_failure_prefix_shows_its_error_in_its_own_words()
+		{
+			var line = Failing("not enough roubles");
+			line.FailPrefix = "";
+			Add("Insurance", line);
+
+			await ReadyRun.RunPlan();
+
+			ReadyRun.Failures.Single().Value.Detail.Should().Be("not enough roubles");
+		}
+
+		[Fact]
 		public async Task A_line_that_fails_is_reported_as_a_problem_and_the_rest_still_run()
 		{
 			var later = false;

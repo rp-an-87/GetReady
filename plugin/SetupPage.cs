@@ -14,7 +14,7 @@ namespace GetReady
 		// Where each section is on the page (in the order of the jump strip), so a click on the strip can scroll to it
 		internal static readonly List<RectTransform> Sections = new List<RectTransform>();
 
-		internal static List<string> Names() => Steps.DisplayOrder.Select(step => step.Name).Concat(new[] { "Options" }).ToList();
+		internal static List<string> Names() => Steps.Tabs.Select(tab => tab.Name).Concat(new[] { "Options" }).ToList();
 
 		// What fills each section, so one section can be made again without the rest of the page
 		private static readonly List<Action> Fillers = new List<Action>();
@@ -90,18 +90,30 @@ namespace GetReady
 			GearStale.Clear();
 			var controller = Game.Controller();
 			Watch(controller);
-			foreach (var step in Steps.DisplayOrder)
+			foreach (var tab in Steps.Tabs)
 			{
-				var current = step;
+				var current = tab;
 				var section = UiKit.VBox(content, 6f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
-				Action fill = () => FillStep(section, current, controller);
-				if (step is RepairStep || step is AmmoStep)
+				// A tab with several steps shows them one after the other, a line between them
+				Action fill = () =>
+				{
+					for (int i = 0; i < current.Steps.Length; i++)
+					{
+						if (i > 0)
+						{
+							UiKit.Line(section);
+						}
+
+						FillStep(section, current.Steps[i], controller);
+					}
+				};
+				if (tab.Steps.Any(step => step is RepairStep || step is AmmoStep || step is InsuranceStep))
 				{
 					GearSections.Add(Sections.Count);
 				}
 
 				// The cases you carry change with any move of an item, so that section follows the items
-				if (step is CasesStep)
+				if (tab.Steps.Any(step => step is CasesStep))
 				{
 					_casesSection = Sections.Count;
 				}
@@ -282,6 +294,10 @@ namespace GetReady
 			else if (step is RepairStep)
 			{
 				RepairSetup(section, controller);
+			}
+			else if (step is InsuranceStep)
+			{
+				InsuranceSetup(section);
 			}
 			else if (step is HealMeStep)
 			{

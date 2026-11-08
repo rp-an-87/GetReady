@@ -82,6 +82,7 @@ namespace GetReady
 				case "Grenades and flares": return EItemType.Grenade;
 				case "Cash": return EItemType.Barter;
 				case "Repair": return EItemType.Armor;
+				case "Insurance": return EItemType.Armor;
 				case "Ammo": return EItemType.Ammo;
 				case "Full auto": return EItemType.Weapon;
 				default: return null;
@@ -110,7 +111,7 @@ namespace GetReady
 				}
 			}
 
-			if (step == "Repair")
+			if (step == "Repair" || step == "Repair & Insurance")
 			{
 				return GameWidgets.White(GameWidgets.ByName("icon_repair_required")) ?? TypeSprite(EItemType.Armor);
 			}

@@ -117,6 +117,13 @@ namespace GetReady
 		public List<KeptItem> KeepDamaged = new List<KeptItem>();
 	}
 
+	// The Insurance step: what you wear is insured at this trader (its id; empty until you pick one in Setup)
+	internal class InsuranceSettings
+	{
+		public bool Enabled;
+		public string TraderId = "";
+	}
+
 	// The Heal me step: the medicine allowed and its order are kept with the supplies' groups (group "healme")
 	internal class HealMeSettings
 	{
@@ -183,6 +190,7 @@ namespace GetReady
 		public HealMeSettings HealMe = new HealMeSettings();
 		public FullAutoSettings FullAuto = new FullAutoSettings();
 		public RepairSettings Repair = new RepairSettings();
+		public InsuranceSettings Insurance = new InsuranceSettings();
 		public AmmoSettings Ammo = new AmmoSettings();
 		public SuppliesSettings Supplies = new SuppliesSettings();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();

@@ -21,6 +21,7 @@ namespace GetReady
 		internal static int _keys;
 		internal static int _healed;
 		internal static int _modes;
+		internal static int _insured;
 
 		// What could not be moved in the last run, shown with the other problems
 		internal static readonly List<KeyValuePair<string, PlanLine>> Failures = new List<KeyValuePair<string, PlanLine>>();
@@ -61,7 +62,7 @@ namespace GetReady
 			{
 				Play(EUISoundType.ErrorMessage);
 			}
-			else if (_moved > 0 || _keys > 0 || _repaired > 0 || _filled > 0 || _chambered > 0 || _topped > 0 || _healed > 0 || _modes > 0)
+			else if (_moved > 0 || _keys > 0 || _repaired > 0 || _filled > 0 || _chambered > 0 || _topped > 0 || _healed > 0 || _modes > 0 || _insured > 0)
 			{
 				Play(EUISoundType.QuestStarted);
 				ReadyFlash.Show();
@@ -81,7 +82,8 @@ namespace GetReady
 			var keys = _keys > 0 ? $"{_keys} quick-slot key(s) set" : "";
 			var healed = _healed > 0 ? "healed" : "";
 			var modes = _modes > 0 ? $"{_modes} weapon(s) on full auto" : "";
-			var report = string.Join(", ", new[] { brought, repaired, filled, chambered, topped, keys, healed, modes }.Where(part => part != "").ToArray());
+			var insured = _insured > 0 ? $"{_insured} item(s) insured" : "";
+			var report = string.Join(", ", new[] { brought, repaired, insured, filled, chambered, topped, keys, healed, modes }.Where(part => part != "").ToArray());
 			return "Ready for raid: " + (report == "" ? "you already have everything" : report) + ".";
 		}
 
@@ -95,7 +97,7 @@ namespace GetReady
 			_running = true;
 			try
 			{
-				int done = 0, failed = 0, repaired = 0, filled = 0, chambered = 0, topped = 0, healed = 0, modes = 0;
+				int done = 0, failed = 0, repaired = 0, filled = 0, chambered = 0, topped = 0, healed = 0, modes = 0, insured = 0;
 				Failures.Clear();
 				foreach (var entry in Plan.ToList())
 				{
@@ -111,12 +113,13 @@ namespace GetReady
 							topped += line.Topped ? 1 : 0;
 							healed += line.Heal ? 1 : 0;
 							modes += line.Mode ? 1 : 0;
+							insured += line.Insured;
 						}
 						else
 						{
 							failed++;
 							Plugin.Log.LogWarning($"{entry.Key.Name}: {line.Text} failed: {error}");
-							Failures.Add(new KeyValuePair<string, PlanLine>(entry.Key.Name, new PlanLine { Problem = true, Subject = line.Text, Detail = "Could not move it: " + error, Template = line.Template }));
+							Failures.Add(new KeyValuePair<string, PlanLine>(entry.Key.Name, new PlanLine { Problem = true, Subject = line.Text, Detail = line.FailPrefix + error, Template = line.Template }));
 						}
 					}
 				}
@@ -132,6 +135,7 @@ namespace GetReady
 				_topped = topped;
 				_healed = healed;
 				_modes = modes;
+				_insured = insured;
 				_status = failed == 0 ? $"Done: {done} moved." : $"{done} moved, {failed} failed (see the log).";
 			}
 			catch (Exception e)

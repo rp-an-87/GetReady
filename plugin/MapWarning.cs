@@ -137,8 +137,9 @@ namespace GetReady
 
 			float width = content + row * 1.6f;
 			float height = row + row * 0.3f;
-			// Just above the time selection of the screen, in the middle
-			var bar = new Rect((Screen.width - width) / 2f, Screen.height * 0.745f - height, width, height);
+			// Just above the time selection of the screen, in the middle; above the NOT READY bar when that is up
+			float lift = NotReadyWarning.Visible ? NotReadyWarning.StackHeight : 0f;
+			var bar = new Rect((Screen.width - width) / 2f, Screen.height * 0.745f - height - lift, width, height);
 
 			if (Event.current.type == EventType.Repaint)
 			{

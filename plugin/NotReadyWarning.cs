@@ -19,6 +19,11 @@ namespace GetReady
 		private static readonly Color Ink = new Color(0.3f, 0.02f, 0.02f);
 		private static GUIStyle _text;
 
+		// Whether the bar is up, and how much room it takes (with the gap above it) for the bar that stacks on top of it
+		internal static bool Visible => _screen != null && _screen.isActiveAndEnabled && _notReady && !MapWarning.IsScav(_screen);
+
+		internal static float StackHeight => Screen.height * 0.045f * 1.65f;
+
 		internal static void Picked(MatchMakerSelectionLocationScreen screen)
 		{
 			_screen = screen;
@@ -89,8 +94,8 @@ namespace GetReady
 			const string label = "NOT READY";
 			float width = _text.CalcSize(new GUIContent(label)).x + row * 1.6f;
 			float height = row * 1.3f;
-			// Under the title and its "PVE ZONE" line, in the middle
-			var bar = new Rect((Screen.width - width) / 2f, Screen.height * 0.1f, width, height);
+			// Just above the time selection of the screen, in the middle: the bottom of the stack (the wrong-case bar of MapWarning goes above)
+			var bar = new Rect((Screen.width - width) / 2f, Screen.height * 0.745f - height, width, height);
 
 			if (type == EventType.MouseDown && Event.current.button == 0 && bar.Contains(Event.current.mousePosition))
 			{

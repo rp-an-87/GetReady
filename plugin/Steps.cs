@@ -13,6 +13,9 @@ namespace GetReady
 		public bool Problem;
 		public Func<Task<string>> Run; // null, or why it failed
 
+		// What the failure of Run is introduced with in the window (a line that is not about moving says its own)
+		public string FailPrefix = "Could not move it: ";
+
 		// For the window: what it is about (bold), what is wrong or what happens (plain) and an item whose icon goes with it
 		public string Subject;
 		public string Detail;
@@ -40,6 +43,9 @@ namespace GetReady
 		public string Note;
 		// The case behind a skipped line (the one that turns the cash off): its icon, tag and name are drawn after the note
 		public CaseEntry By;
+
+		// The line insures this many items (counted apart in the notification)
+		public int Insured;
 
 		// The line heals you with medicine (counted apart in the notification)
 		public bool Heal;
@@ -136,8 +142,45 @@ namespace GetReady
 	{
 		internal static readonly IStep[] All =
 		{
-			new SpecialSlotsStep(), new CasesStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep(), new FullAutoStep(), new HealMeStep()
+			new SpecialSlotsStep(), new CasesStep(), new HealingStep(), new GrenadesStep(), new CashStep(), new RepairStep(), new AmmoStep(), new FullAutoStep(), new InsuranceStep(), new HealMeStep()
 		};
+
+		// What the traders will take this pass in roubles (repairs at a trader), so the insurance counts only what is left
+		internal static int Spent;
+
+		// A tab of the Setup page: one or more steps that share a section (each step keeps its own switch and settings)
+		internal class Tab
+		{
+			public string Name;
+			public IStep[] Steps;
+		}
+
+		// The tabs in display order: a step on its own gets a tab named after it; Repair and Insurance share one
+		internal static IEnumerable<Tab> Tabs
+		{
+			get
+			{
+				var steps = DisplayOrder.ToList();
+				var tabs = new List<Tab>();
+				foreach (var step in steps)
+				{
+					if (step is InsuranceStep)
+					{
+						continue;
+					}
+
+					if (step is RepairStep)
+					{
+						tabs.Add(new Tab { Name = "Repair & Insurance", Steps = steps.Where(other => other is RepairStep || other is InsuranceStep).ToArray() });
+						continue;
+					}
+
+					tabs.Add(new Tab { Name = step.Name, Steps = new[] { step } });
+				}
+
+				return tabs;
+			}
+		}
 
 		// The order of the Ready and Setup pages (what you tweak most first). Running order is All: Heal me must stay last and the special slots
 		// first, since later steps count what earlier ones bring.
@@ -145,7 +188,7 @@ namespace GetReady
 		{
 			get
 			{
-				string[] order = { "Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair", "Full auto", "Treat injuries", "Cash" };
+				string[] order = { "Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair", "Insurance", "Full auto", "Treat injuries", "Cash" };
 				return All.OrderBy(step => { int index = Array.IndexOf(order, step.Name); return index < 0 ? order.Length : index; });
 			}
 		}
@@ -184,6 +227,7 @@ namespace GetReady
 		{
 			CaseMoney.Clear();
 			Released.Clear();
+			Spent = 0;
 			Claimed.Clear();
 			Bringing.Clear();
 			Owned.Clear();

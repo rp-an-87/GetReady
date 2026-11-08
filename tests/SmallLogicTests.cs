@@ -88,7 +88,24 @@ namespace GetReady.Tests
 		[Fact]
 		public void The_pages_show_the_steps_in_the_order_you_tweak_them_most()
 		{
-			Steps.DisplayOrder.Select(step => step.Name).Should().Equal("Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair", "Full auto", "Treat injuries", "Cash");
+			Steps.DisplayOrder.Select(step => step.Name).Should().Equal("Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair", "Insurance", "Full auto", "Treat injuries", "Cash");
+		}
+
+		[Fact]
+		public void Repair_and_insurance_are_two_steps_in_one_tab()
+		{
+			var tabs = Steps.Tabs.ToList();
+			tabs.Select(tab => tab.Name).Should().Equal("Ammo", "Medicine to bring", "Grenades and flares", "Special slots", "Cases", "Repair & Insurance", "Full auto", "Treat injuries", "Cash");
+			tabs.Single(tab => tab.Name == "Repair & Insurance").Steps.Select(step => step.Name).Should().Equal("Repair", "Insurance");
+			tabs.SelectMany(tab => tab.Steps).Should().HaveCount(Steps.All.Length);
+		}
+
+		[Fact]
+		public void Insurance_runs_after_the_gear_is_in_place_and_before_treating_injuries()
+		{
+			var names = Steps.All.Select(step => step.Name).ToList();
+			names.IndexOf("Insurance").Should().BeGreaterThan(names.IndexOf("Repair"));
+			names.IndexOf("Insurance").Should().BeLessThan(names.IndexOf("Treat injuries"));
 		}
 
 		[Fact]

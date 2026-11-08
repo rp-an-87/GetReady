@@ -127,6 +127,8 @@ namespace GetReady
 				}
 			}
 
+			Steps.Spent += spent;
+
 			// Shown with the first piece that needs work, else the first piece
 			var shown = armor.FirstOrDefault(piece => lines.Any(line => line.Template == piece.TemplateId.ToString())) ?? armor[0];
 			lines.Insert(0, Steps.Progress("Gear", inShape, armor.Count, "in shape", shown.TemplateId.ToString()).WithItem(shown));
