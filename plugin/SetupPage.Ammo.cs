@@ -27,6 +27,51 @@ namespace GetReady
 			var inner = UiKit.VBox(sub, 0f);
 			UiKit.Size(inner, flexWidth: 1f);
 			OptionRow(inner, ammo.LooseShortIsProblem, "A loose stack that can't be filled is a problem", "A loose stack of ammo you carry that is short, when the stash has no more of it to fill it up.\n<b>On:</b> it is reported in red and counted in the box at the top.\n<b>Off:</b> it is just left as it is.", value => ammo.LooseShortIsProblem = value);
+			// The kinds of ammo left out of the filling, like the repair exclusions: what you carry loose, and what is excluded but not on you
+			if (controller == null)
+			{
+				UiKit.Label(inner, "Open this with the stash to pick the ammo to leave out.", 0.85f, UiColors.Dim);
+			}
+			else
+			{
+				UiKit.Label(inner, "Leave these kinds of ammo out of the filling. They still count as spare ammo.", 0.8f, UiColors.Dim);
+				var carried = AmmoStep.LooseKinds(controller);
+				var excluded = ammo.TopUpExcluded;
+				var aside = excluded.Where(entry => !carried.Any(stack => stack.TemplateId.ToString() == entry.Template)).ToList();
+				TwoSections(inner, "LOOSE ON YOU", "No loose ammo on you.", carried.Count > 0, box =>
+				{
+					foreach (var stack in carried)
+					{
+						var kind = stack;
+						string template = kind.TemplateId.ToString();
+						bool left = AmmoStep.IsTopUpExcluded(template);
+						var row = UiKit.HBox(box, 8f);
+						string name = Game.NameOf(kind);
+						ItemIcon(row, kind, UiKit.Unit * 2.2f, name);
+						UiKit.Label(row, left ? name + "  · left out" : name, 0.9f, left ? UiColors.Dim : UiColors.Text, flex: true);
+						Pick(row, left ? "Include again" : "Exclude", left, () =>
+						{
+							AmmoStep.ToggleTopUpExcluded(template, name);
+							Changed();
+						}, left ? "Fill the stacks of this ammo up again" : "Do not fill up the stacks of this ammo. They still count as spare ammo; a shortfall of spare ammo is still brought.", UiKit.Unit * 8f);
+					}
+				}, "NOT ON YOU (they stay excluded until you include them again)", "Excluded ammo you are not carrying will appear here.", aside.Count > 0, box =>
+				{
+					foreach (var entry in aside)
+					{
+						var gone = entry;
+						var row = UiKit.HBox(box, 8f);
+						TemplateIcon(row, gone.Template, UiKit.Unit * 2.2f, gone.Name);
+						UiKit.Label(row, gone.Name, 0.9f, UiColors.Text, flex: true);
+						Pick(row, "Include again", true, () =>
+						{
+							excluded.Remove(gone);
+							Changed();
+						}, "Fills the stacks of this ammo up again when you carry it. It is not on you, so it also leaves this list (only excluded ammo is kept here)", UiKit.Unit * 8f);
+					}
+				});
+			}
+
 			if (!ammo.TopUpLoose)
 			{
 				var dim = sub.gameObject.AddComponent<CanvasGroup>();

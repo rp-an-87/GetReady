@@ -221,6 +221,123 @@ namespace GetReady.Tests
 			_body.Binds.Should().ContainSingle().Which.Key.Should().Be(EBoundItem.Item4);
 		}
 
+		// ---- the second key
+
+		[Fact]
+		public async Task Without_a_second_key_only_the_best_item_is_bound()
+		{
+			OnVest(RealItems.Afak);
+			OnVest(RealItems.Salewa);
+
+			(await Apply()).Should().Be(1);
+			_body.Binds.Should().ContainSingle().Which.Key.Should().Be(EBoundItem.Item4);
+		}
+
+		[Fact]
+		public async Task The_best_goes_on_the_first_key_and_the_next_best_on_the_second()
+		{
+			Group("health").Setting.Hotkey2 = "6";
+			Group("health").Setting.Order = new System.Collections.Generic.List<string> { RealItems.Afak, RealItems.Salewa };
+			var afak = OnVest(RealItems.Afak);
+			var salewa = OnVest(RealItems.Salewa);
+
+			(await Apply()).Should().Be(2);
+
+			_body.Binds.Single(bind => bind.Key == EBoundItem.Item4).Value.Should().BeSameAs(afak);
+			_body.Binds.Single(bind => bind.Key == EBoundItem.Item6).Value.Should().BeSameAs(salewa);
+		}
+
+		[Fact]
+		public async Task Two_of_the_same_kit_take_a_key_each()
+		{
+			Group("health").Setting.Hotkey2 = "6";
+			var one = OnVest(RealItems.Afak);
+			var two = OnVest(RealItems.Afak);
+
+			(await Apply()).Should().Be(2);
+
+			_body.Binds.Select(bind => bind.Value).Should().BeEquivalentTo(new[] { one, two });
+			_body.Binds.Select(bind => bind.Key).Should().BeEquivalentTo(new[] { EBoundItem.Item4, EBoundItem.Item6 });
+		}
+
+		[Fact]
+		public async Task A_second_run_leaves_both_keys_as_they_are()
+		{
+			Group("health").Setting.Hotkey2 = "6";
+			OnVest(RealItems.Afak);
+			OnVest(RealItems.Afak);
+			await Apply();
+
+			(await Apply()).Should().Be(0);
+			_body.Binds.Should().HaveCount(2);
+		}
+
+		[Fact]
+		public async Task With_one_item_only_the_second_key_stays_empty()
+		{
+			Group("health").Setting.Hotkey2 = "6";
+			OnVest(RealItems.Afak);
+
+			(await Apply()).Should().Be(1);
+			_body.Binds.Should().ContainSingle().Which.Key.Should().Be(EBoundItem.Item4);
+		}
+
+		[Fact]
+		public async Task A_second_key_that_is_the_same_as_the_first_is_ignored()
+		{
+			Group("health").Setting.Hotkey2 = "4";
+			OnVest(RealItems.Afak);
+			OnVest(RealItems.Afak);
+
+			(await Apply()).Should().Be(1);
+			_body.Binds.Should().ContainSingle().Which.Key.Should().Be(EBoundItem.Item4);
+		}
+
+		[Fact]
+		public async Task A_second_key_holding_something_no_longer_carried_is_bound_again()
+		{
+			Group("health").Setting.Hotkey2 = "6";
+			var gone = RealItems.Any(RealItems.Salewa).In(_body.StashBox);
+			var first = OnVest(RealItems.Afak);
+			var second = OnVest(RealItems.Afak);
+			_body.Inventory.FastAccess.BoundItems[EBoundItem.Item4] = first;
+			_body.Inventory.FastAccess.BoundItems[EBoundItem.Item6] = gone;
+
+			(await Apply()).Should().Be(1);
+
+			_body.Binds.Should().ContainSingle().Which.Should().Be(new System.Collections.Generic.KeyValuePair<EBoundItem, Item>(EBoundItem.Item6, second));
+		}
+
+		[Fact]
+		public async Task A_group_with_no_first_key_has_no_second_one_either()
+		{
+			Group("health").Setting.Hotkey = "";
+			Group("health").Setting.Hotkey2 = "6";
+			OnVest(RealItems.Afak);
+			OnVest(RealItems.Afak);
+
+			// Only the bandage group (not carried) has a key left
+			(await Apply()).Should().Be(1);
+			_body.Binds.Should().ContainSingle().Which.Key.Should().Be(EBoundItem.Item6);
+		}
+
+		[Fact]
+		public void A_key_another_group_has_is_a_clash_and_a_free_one_is_not()
+		{
+			// Bandages are on 6 by default
+			Hotkeys.Clash(Group("health"), "6").Should().BeTrue();
+			Hotkeys.Clash(Group("health"), "9").Should().BeFalse();
+			Hotkeys.Clash(Group("health"), "").Should().BeFalse();
+		}
+
+		[Fact]
+		public void The_second_key_of_another_group_counts_for_a_clash_too()
+		{
+			Group("bandage").Setting.Hotkey2 = "9";
+
+			Hotkeys.Clash(Group("health"), "9").Should().BeTrue();
+		}
+
 		[Fact]
 		public async Task Several_groups_bind_several_keys()
 		{

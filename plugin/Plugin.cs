@@ -16,6 +16,8 @@ namespace GetReady
 		internal static ConfigEntry<bool> ShowButton;
 		internal static ConfigEntry<KeyboardShortcut> OpenHotkey;
 		internal static ConfigEntry<bool> ShowFlash;
+		internal static ConfigEntry<bool> ShowLoading;
+		internal static ConfigEntry<bool> ShowLoadingSteps;
 		internal static ConfigEntry<bool> ShowNotReady;
 		internal static ConfigEntry<bool> ShowCaseMenu;
 		internal static ConfigEntry<DragFadeMode> DragFadeMode;
@@ -43,6 +45,10 @@ namespace GetReady
 				"Opens and closes the window without the button. Empty by default.");
 			ShowFlash = Config.Bind("1. General", "3. READY flash after a successful run", true,
 				"A light green vignette and a green READY on screen for a moment when Get ready has brought everything. Just for show.");
+			ShowLoading = Config.Bind("1. General", "3a. Loading bar while Get ready works", true,
+				"The screen goes a little darker and a thin bar slides across the middle while Get ready works. Just for show.");
+			ShowLoadingSteps = Config.Bind("1. General", "3b. Name every step in the loading bar", true,
+				"The loading bar names each step that worked (Supplies, Ammo, Repair...) for a moment, one after the other, so quick steps show too. A run with many steps keeps the bar up a little longer (2 seconds at most). Off: the bar only shows the step it is at when it is drawn, so quick steps are never seen.");
 			DragFadeMode = Config.Bind("1. General", "4. While dragging an item", GetReady.DragFadeMode.Fade,
 				"What the new Get ready window does while you drag an item in the stash: Off leaves it as it is, Fade makes it see-through (and lets the mouse through, so you can drop the item on what is behind it), Hide takes it away until you drop.");
 			DragFadeOpacity = Config.Bind("1. General", "5. Opacity while dragging", 0.05f,
@@ -50,7 +56,7 @@ namespace GetReady
 			ShowNotReady = Config.Bind("1. General", "6. NOT READY bar on the map screen", true,
 				"A red NOT READY bar under the title of the map screen when you go in as a PMC and Get ready still has a problem or something to fulfil. Click it to go to your character screen (the stash).");
 			ShowCaseMenu = Config.Bind("1. General", "7. Get ready item in the right-click menu of a case", true,
-				"A purple Get ready entry in the right-click menu of a case you carry (stash, hideout, main menu): track or update its template, stop tracking, and set the maps it is for. Takes effect the next time the menu opens.");
+				"A purple Get ready entry in the right-click menu (stash, hideout, main menu): on a case you carry, track or update its template, stop tracking, its maps and its settings; on armor and weapons, leave them out of the repairs; on ammo, leave it out of the filling of loose stacks. An entry is only there while the feature it changes is switched on in Setup. Takes effect the next time the menu opens.");
 			DebugLogging = Config.Bind("8. Debugging", "Log details", false,
 				new ConfigDescription("Writes what GetReady does, and how long it takes, to the BepInEx log (only errors and warnings are written otherwise). For finding out why something is slow or wrong.", null, new ConfigurationManagerAttributes { IsAdvanced = true }));
 			// A button in F12 that shows a made-up alert, for looking at it
@@ -69,7 +75,10 @@ namespace GetReady
 			new CaseMenuButtonPatch().Enable();
 			new CaseMenuColourPatch().Enable();
 			new CaseMenuSidePatch().Enable();
+				new CaseMenuKeepOpenUpdatePatch().Enable();
+				new CaseMenuKeepOpenClosePatch().Enable();
 			new MapMenuSidePatch().Enable();
+				new SettingMenuSidePatch().Enable();
 			new DragStartPatch().Enable();
 			new DragEndPatch().Enable();
 			new TagChangedPatch().Enable();
@@ -94,6 +103,7 @@ namespace GetReady
 
 		private void OnGUI()
 		{
+			ReadyLoading.Draw();
 			ReadyFlash.Draw();
 			MapWarning.Draw();
 			NotReadyWarning.Draw();

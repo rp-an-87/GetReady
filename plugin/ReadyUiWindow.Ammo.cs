@@ -48,11 +48,12 @@ namespace GetReady
 		}
 
 		// A line of a panel: its label, then what it says. The tooltip is the whole text of the plan line behind it.
-		private static void AmmoRow(Transform parent, string label, Action<Transform> content, string tip = null)
+		// A row with something to do has its label in amber, the status rows keep it dim.
+		private static void AmmoRow(Transform parent, string label, Action<Transform> content, string tip = null, bool todo = false)
 		{
 			var row = UiKit.HBox(parent, 6f);
 			UiKit.Gap(row, UiKit.Unit * 2.4f);
-			var name = UiKit.Label(row, label, 0.8f, UiColors.Dim);
+			var name = UiKit.Label(row, label, 0.8f, todo ? UiColors.Warn : UiColors.Dim);
 			UiKit.Size(name, UiKit.Unit * 6f);
 			content(row);
 			UiKit.Tip(row, tip);
@@ -165,8 +166,8 @@ namespace GetReady
 		}
 
 		// One thing Get ready will do for the weapon, numbered in the order it runs (no number when it is the only one)
-		private static void AmmoStepRow(Transform parent, int number, int of, string label, Action<Transform> content, string tip) =>
-			AmmoRow(parent, of > 1 ? $"{number}  {label}" : label, content, tip);
+		private static void AmmoStepRow(Transform parent, int number, int of, string label, Action<Transform> content, string tip, bool todo = true) =>
+			AmmoRow(parent, of > 1 ? $"{number}  {label}" : label, content, tip, todo);
 
 		private static void AmmoWeapon(Transform parent, AmmoPanels.WeaponPanel panel)
 		{
@@ -285,9 +286,12 @@ namespace GetReady
 					}
 					else
 					{
+						// Before and after, like the fill: the chamber is empty now
+						CellText(row, "empty", UiColors.Warn);
+						CellArrow(row);
 						CellAmmo(row, chamber.Template, chamber.What, chamber.Why, string.IsNullOrEmpty(chamber.Place) ? null : new List<PlaceCount> { new PlaceCount { Template = chamber.PlaceTemplate, Name = chamber.Place, Count = 1 } });
 					}
-				}, AmmoPanels.Tip(chamber));
+				}, AmmoPanels.Tip(chamber), todo: !chamber.Problem);
 			}
 
 			foreach (var line in other)

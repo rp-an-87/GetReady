@@ -32,48 +32,69 @@ namespace GetReady
 			}
 		}
 
-		// Binds the best carried item of every group that has a key. A key that already holds an item of the group you still
-		// carry is left alone. Returns how many keys were set.
+		// The groups that can have keys: the ones of the steps that are switched on
+		private static System.Collections.Generic.IEnumerable<GroupDef> KeyedGroups() =>
+			Steps.All.Where(step => step.Enabled).OfType<SuppliesStep>().SelectMany(step => step.Groups).Where(def => def.Bindable);
+
+		// Another group that has the key too (its first or its second): only one item can be on a key, so the later one would take it
+		internal static bool Clash(GroupDef def, string choice) =>
+			choice != "" && KeyedGroups().Any(other => other != def && (other.HotkeyChoice == choice || other.HotkeyChoice2 == choice));
+
+		// Binds the best carried item of every group that has a key, and the next best on its second key. A key that already holds an item of
+		// the group you still carry is left alone; the second key never takes the item that is on the first. Returns how many keys were set.
 		internal static async Task<int> Apply(InventoryController controller)
 		{
 			int set = 0;
-			var groups = Steps.All.Where(step => step.Enabled).OfType<SuppliesStep>().SelectMany(step => step.Groups);
-			foreach (var def in groups)
+			foreach (var def in KeyedGroups())
 			{
-				var key = KeyOf(def.HotkeyChoice);
-				if (key == null || !def.Bindable || def.Setting.Target <= 0)
+				if (def.Setting.Target <= 0)
 				{
 					continue;
 				}
 
-				var carried = Game.Carried(Game.InventoryOf(controller)).Where(item => def.WeightOf(item) > 0 && controller.IsAtBindablePlace(item)).ToList();
-				var best = carried.OrderBy(def.PriorityOf).ThenByDescending(Game.ResourceOf).FirstOrDefault();
-				if (best == null)
+				var carried = Game.Carried(Game.InventoryOf(controller)).Where(item => def.WeightOf(item) > 0 && controller.IsAtBindablePlace(item))
+					.OrderBy(def.PriorityOf).ThenByDescending(Game.ResourceOf).ToList();
+				var used = new System.Collections.Generic.List<Item>();
+				string first = def.HotkeyChoice;
+				foreach (var choice in new[] { first, def.HotkeyChoice2 })
 				{
-					continue;
-				}
+					var key = KeyOf(choice);
+					// A second key that is the same as the first is ignored
+					if (key == null || (used.Count > 0 && choice == first))
+					{
+						continue;
+					}
 
-				Item bound;
-				if (Game.InventoryOf(controller).FastAccess.BoundItems.TryGetValue(key.Value, out bound) && carried.Contains(bound))
-				{
-					continue;
-				}
+					Item bound;
+					if (Game.InventoryOf(controller).FastAccess.BoundItems.TryGetValue(key.Value, out bound) && carried.Contains(bound) && !used.Contains(bound))
+					{
+						used.Add(bound);
+						continue;
+					}
 
-				var operation = BindResult.Run(controller, best, key.Value, true);
-				if (operation.Failed)
-				{
-					Plugin.Log.LogWarning($"Could not bind {Game.NameOf(best)} to {def.HotkeyChoice}: {operation.Error}");
-					continue;
-				}
+					var best = carried.FirstOrDefault(item => !used.Contains(item));
+					if (best == null)
+					{
+						continue;
+					}
 
-				var outcome = await Game.RunOperation(controller, (OperationResult)operation);
-				if (outcome.Failed)
-				{
-					Plugin.Log.LogWarning($"Could not bind {Game.NameOf(best)} to {def.HotkeyChoice}: {outcome.Error}");
-					continue;
-				}
+					var operation = BindResult.Run(controller, best, key.Value, true);
+					if (operation.Failed)
+					{
+						Plugin.Log.LogWarning($"Could not bind {Game.NameOf(best)} to {choice}: {operation.Error}");
+						continue;
+					}
 
-				set++;
+					var outcome = await Game.RunOperation(controller, (OperationResult)operation);
+					if (outcome.Failed)
+					{
+						Plugin.Log.LogWarning($"Could not bind {Game.NameOf(best)} to {choice}: {outcome.Error}");
+						continue;
+					}
+
+					used.Add(best);
+					set++;
+				}
 			}
 
 			return set;

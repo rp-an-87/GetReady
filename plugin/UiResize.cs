@@ -18,6 +18,10 @@ namespace GetReady
 
 		private Vector2 _last;
 		private bool _down;
+		// The window follows the mouse at once, but its body is laid out again (the costly part) at most this often while dragging, and once more on release
+		private const float FitEvery = 0.05f;
+		private float _fitted = -1f;
+		private bool _fitDue;
 
 		public void OnPointerDown(PointerEventData eventData)
 		{
@@ -29,6 +33,11 @@ namespace GetReady
 		{
 			_down = false;
 			CursorSwitcher.SetCursor(default(ECursorType));
+			if (_fitDue)
+			{
+				_fitDue = false;
+				OnResized?.Invoke();
+			}
 		}
 
 		public void OnPointerEnter(PointerEventData eventData) => CursorSwitcher.SetCursor(Cursor);
@@ -59,7 +68,16 @@ namespace GetReady
 			Frame.sizeDelta = next;
 			// The top-left corner stays put, whatever the pivot is
 			Frame.anchoredPosition += new Vector2(Frame.pivot.x * change.x, -(1f - Frame.pivot.y) * change.y);
-			OnResized?.Invoke();
+			if (Time.unscaledTime - _fitted >= FitEvery)
+			{
+				_fitted = Time.unscaledTime;
+				_fitDue = false;
+				OnResized?.Invoke();
+			}
+			else
+			{
+				_fitDue = true;
+			}
 		}
 	}
 

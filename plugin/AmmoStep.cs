@@ -473,14 +473,43 @@ namespace GetReady
 			return result;
 		}
 
+		// Whether the right-click menu offers to leave this ammo out of the filling: a stack in a grid, while the filling is on
+		internal static bool OffersTopUpExclusion(Item item)
+		{
+			var ammo = SettingsStore.Current.Ammo;
+			return item is Ammo && ammo.Enabled && ammo.TopUpLoose && item.Parent?.Container is Grid;
+		}
+
+		internal static bool IsTopUpExcluded(string template) => SettingsStore.Current.Ammo.TopUpExcluded.Any(entry => entry.Template == template);
+
+		// Leaves a kind of ammo out of the filling of the loose stacks, or puts it back
+		internal static void ToggleTopUpExcluded(string template, string name)
+		{
+			var list = SettingsStore.Current.Ammo.TopUpExcluded;
+			if (list.RemoveAll(entry => entry.Template == template) == 0)
+			{
+				list.Add(new ItemRef { Template = template, Name = name });
+			}
+		}
+
+		// The kinds of ammo you carry loose (one stack of each, to show), for the list of what is left out of the filling
+		internal static List<Ammo> LooseKinds(InventoryController controller)
+		{
+			var view = AmmoRules.AmmoView.Of(controller);
+			return view.Carried().Concat(view.Secured()).OfType<Ammo>()
+				.Where(stack => stack.Parent?.Container is Grid && stack.StackObjectsCount > 0)
+				.GroupBy(stack => stack.TemplateId).Select(kind => kind.First())
+				.OrderBy(stack => Game.NameOf(stack)).ToList();
+		}
+
 		// The loose stacks of ammo you carry (vest, pockets, backpack, pouch; not in magazines or boxes) filled up to a full stack with
 		// the same ammo from the stash. After the magazines, which use loose rounds first. A stack the magazines use up completely
-		// is left out (it will be gone), and so is a locked one. Only stacks you already carry: no new kinds of ammo.
+		// is left out (it will be gone), and so is a locked one, and a kind the owner left out (it still counts as spare ammo). Only stacks you already carry: no new kinds of ammo.
 		private static void AddLoose(InventoryController controller, AmmoRules.AmmoStock stock, List<PlanLine> lines)
 		{
 			var view = AmmoRules.AmmoView.Of(controller);
 			var mine = view.Carried().Concat(view.Secured()).OfType<Ammo>()
-				.Where(stack => stack.Parent?.Container is Grid && stack.PinLockState != EItemPinLockState.Locked && stock.Left(stack) > 0)
+				.Where(stack => stack.Parent?.Container is Grid && stack.PinLockState != EItemPinLockState.Locked && stock.Left(stack) > 0 && !IsTopUpExcluded(stack.TemplateId.ToString()))
 				.OrderBy(stack => Game.NameOf(stack.Parent.Container.ParentItem))
 				.ThenBy(stack => Game.NameOf(stack))
 				.ToList();

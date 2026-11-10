@@ -13,7 +13,14 @@ namespace GetReady
 		public IReadOnlyList<GroupDef> Groups => new GroupDef[0];
 		public bool Enabled { get => SettingsStore.Current.Repair.Enabled; set => SettingsStore.Current.Repair.Enabled = value; }
 
-		private static bool IsArmor(Item item) =>
+		// Whether the right-click menu offers to leave this item out of the repairs: armor or a weapon, anywhere, while the repairs of that kind are on
+		internal static bool OffersExclusion(Item item)
+		{
+			var repair = SettingsStore.Current.Repair;
+			return repair.Enabled && ((repair.Armor && IsArmor(item)) || (repair.Weapons && item is Weapon));
+		}
+
+		internal static bool IsArmor(Item item) =>
 			item.GetItemComponent<ArmorHolderComponent>() != null || item.GetItemComponentsInChildren<ArmorComponent>(true).Any();
 
 		// What you wear that is armor (vest, helmet, armored rig, masks with armor) and, when switched on, the weapons in your weapon slots

@@ -475,22 +475,61 @@ namespace GetReady
 		internal static Func<InventoryController, Ammo, Magazine, int, Task<Comfort.Common.IResult>> LoadRounds = (controller, ammo, magazine, count) => controller.LoadMagazine(ammo, magazine, count);
 
 		// Loads what the plan says, with the controller's own LoadMagazine (in a raid the timed load). Returns the rounds loaded.
+		// One call of the game's load does not always move all that was asked: it adds only what fits into the last stack of cartridges in the
+		// magazine (a stack holds at most the ammo's stack size), and counts that as done. So each stack is loaded again until its share of
+		// the plan is in, and stops when a call adds nothing.
 		internal static async Task<int> Load(InventoryController controller, FillPlan plan)
 		{
-			int loaded = 0;
+			var magazine = plan.Magazine;
+			int start = magazine.Count;
+			int want = plan.Rounds;
+			Plugin.Log.LogInfo($"Load: magazine {magazine.Id} at {start}/{magazine.MaxCount}, {want} planned from {plan.Allocation.Count} stack(s)");
+
+			bool refused = false;
 			foreach (var pair in plan.Allocation)
 			{
-				int before = plan.Magazine.Count;
-				var result = await LoadRounds(controller, pair.Key, plan.Magazine, pair.Value);
-				loaded += plan.Magazine.Count - before;
-				if (result.Failed)
+				int left = pair.Value;
+				// A call that moves the whole stack leaves it in the magazine: its share is then done, and it is not asked about again
+				for (int call = 1; left > 0 && !refused && magazine.Count < magazine.MaxCount && pair.Key.Parent?.Container is Grid && call <= MostCalls; call++)
 				{
-					Plugin.Log.LogWarning($"Loading {plan.Magazine.Id} failed: {result.Error}");
-					break;
+					int got = await LoadOne(controller, magazine, new KeyValuePair<Ammo, int>(pair.Key, left), call, start, want);
+					if (got < 0)
+					{
+						refused = true;
+					}
+					else if (got == 0)
+					{
+						break;
+					}
+					else
+					{
+						left -= got;
+					}
 				}
 			}
 
+			int loaded = magazine.Count - start;
+			Plugin.Log.LogInfo($"Load: magazine {magazine.Id} now {magazine.Count}/{magazine.MaxCount}, {loaded} of {want} loaded");
 			return loaded;
+		}
+
+		private const int MostCalls = 20;
+
+		// One call of the load, with what the stack and the magazine held either side. Returns the rounds that arrived, or -1 when the game refused.
+		private static async Task<int> LoadOne(InventoryController controller, Magazine magazine, KeyValuePair<Ammo, int> pair, int call, int start, int want)
+		{
+			int before = magazine.Count;
+			int stackBefore = pair.Key.StackObjectsCount;
+			var result = await LoadRounds(controller, pair.Key, magazine, pair.Value);
+			int got = magazine.Count - before;
+			Plugin.Log.LogInfo($"Load (call {call}): stack {pair.Key.Id} asked {pair.Value}, stack had {stackBefore} and has {pair.Key.StackObjectsCount}, magazine {before} -> {magazine.Count} (+{got}); {start}+{want} wanted");
+			if (result.Failed)
+			{
+				Plugin.Log.LogWarning($"Loading {magazine.Id} failed: {result.Error}");
+				return -1;
+			}
+
+			return got;
 		}
 	}
 }

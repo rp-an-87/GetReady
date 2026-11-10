@@ -43,6 +43,8 @@ namespace GetReady
 		public List<string> Off = new List<string>();
 		// The quick-slot key (4 to 9, 0 or G): null is the group's default, "" none
 		public string Hotkey;
+		// A second key, for the next best item of the group (two AI-2 kits: 4 and 6): null or "" none
+		public string Hotkey2;
 		// The most of one item to carry for the group, by template (missing or 0: no limit)
 		public Dictionary<string, int> MaxPer = new Dictionary<string, int>();
 		// Replace what is carried by better items from the stash (a fuller copy, a higher-ranked item, non-FiR); off leaves it as it is
@@ -78,6 +80,8 @@ namespace GetReady
 		public bool Chamber = true;
 		// The loose stacks of ammo you carry are filled up (from the stash) to a full stack
 		public bool TopUpLoose = true;
+		// Kinds of ammo (by template) whose loose stacks are not filled up. They still count as spare ammo.
+		public List<ItemRef> TopUpExcluded = new List<ItemRef>();
 		// A loose stack that is short and cannot be filled (the stash has no more of it) is a problem, not just left as it is
 		public bool LooseShortIsProblem;
 		// Who decides, first match wins, for an empty spare magazine: loose ammo in the same container, the nearest magazine, an

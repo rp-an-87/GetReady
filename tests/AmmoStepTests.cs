@@ -712,6 +712,74 @@ namespace GetReady.Tests
 			lines.Where(line => line.Part == "spare").Should().NotContain(line => line.Run != null || line.Problem);
 		}
 
+		// ---- kinds of ammo left out of the filling
+
+		[Fact]
+		public void A_kind_of_ammo_the_owner_left_out_is_not_topped_up()
+		{
+			InStash(M855, 400);
+			Rifle(30, chambered: true);
+			NewAmmo(M855, 30).In(_world.Vest);
+			AmmoStep.ToggleTopUpExcluded(M855, "M855");
+
+			var lines = Plan();
+
+			lines.Should().NotContain(line => line.Topped);
+			lines.Should().NotContain(line => line.Problem);
+		}
+
+		[Fact]
+		public void A_kind_that_is_not_left_out_is_still_topped_up()
+		{
+			InStash(M855, 400);
+			Rifle(30, chambered: true);
+			NewAmmo(M855, 30).In(_world.Vest);
+
+			Plan().Should().Contain(line => line.Topped && line.Amount == 30);
+		}
+
+		[Fact]
+		public void A_stack_left_out_of_the_filling_still_counts_as_spare_ammo()
+		{
+			InStash(M855, 400);
+			Rifle(30, chambered: true);
+			NewAmmo(M855, 50).In(_world.Pouch);
+			AmmoStep.Spare.Setting.Target = 1;
+			AmmoStep.ToggleTopUpExcluded(M855, "M855");
+
+			var lines = Plan();
+
+			lines.Should().NotContain(line => line.Topped);
+			// 50 of the 60 asked are on you, so only the 10 that are short are brought
+			lines.Should().ContainSingle(line => line.Run != null && line.Text.StartsWith("Bring ")).Which.Amount.Should().Be(10);
+		}
+
+		[Fact]
+		public void A_stack_left_out_of_the_filling_that_covers_the_spare_ammo_brings_nothing()
+		{
+			InStash(M855, 400);
+			Rifle(30, chambered: true);
+			NewAmmo(M855, 60).In(_world.Pouch);
+			AmmoStep.Spare.Setting.Target = 1;
+			AmmoStep.ToggleTopUpExcluded(M855, "M855");
+
+			Plan().Should().NotContain(line => line.Run != null);
+		}
+
+		[Fact]
+		public void Leaving_a_kind_out_is_switched_on_and_off_by_the_same_call()
+		{
+			AmmoStep.IsTopUpExcluded(M855).Should().BeFalse();
+
+			AmmoStep.ToggleTopUpExcluded(M855, "M855");
+			AmmoStep.IsTopUpExcluded(M855).Should().BeTrue();
+			SettingsStore.Current.Ammo.TopUpExcluded.Should().ContainSingle().Which.Name.Should().Be("M855");
+
+			AmmoStep.ToggleTopUpExcluded(M855, "M855");
+			AmmoStep.IsTopUpExcluded(M855).Should().BeFalse();
+			SettingsStore.Current.Ammo.TopUpExcluded.Should().BeEmpty();
+		}
+
 		// ---- a loose stack that cannot be filled
 
 		[Fact]

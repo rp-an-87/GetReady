@@ -110,11 +110,24 @@ namespace GetReady
 			if (def.Bindable)
 			{
 				string key = def.HotkeyChoice;
-				Pick(side, Hotkeys.Label(key), key != "", () =>
+				string clash = Hotkeys.Clash(def, key) ? "\n\n<color=#ff8a80>Another group is set to this key too: only one of them can have it.</color>" : "";
+				Pick(side, Hotkeys.Label(key) + (clash != "" ? " !" : ""), key != "", () =>
 				{
 					setting.Hotkey = Hotkeys.Next(key);
 					Changed();
-				}, "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be).", UiKit.Unit * 5.5f);
+				}, "The quick-slot key this goes on. After getting ready, the best one you carry is put on it (only items in the pockets or the tactical vest can be)." + clash, UiKit.Unit * 5.5f);
+
+				// The second key: for the next best one (two AI-2 kits: 4 and 6). Only when there is a first key.
+				if (key != "")
+				{
+					string key2 = def.HotkeyChoice2;
+					string clash2 = Hotkeys.Clash(def, key2) || (key2 != "" && key2 == key) ? "\n\n<color=#ff8a80>This key is also used by another group (or is the first key here): only one can have it.</color>" : "";
+					Pick(side, (key2 == "" ? "2nd key" : key2) + (clash2 != "" ? " !" : ""), key2 != "", () =>
+					{
+						setting.Hotkey2 = Hotkeys.Next(key2);
+						Changed();
+					}, "A second quick-slot key, for the next best one you carry (two kits: the best on the first key, the other on this one). None by default." + clash2, UiKit.Unit * 5.5f);
+				}
 			}
 
 			if (def.Entries.Length > 1)

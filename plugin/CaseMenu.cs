@@ -14,7 +14,10 @@ namespace GetReady
 	// A "Get ready" entry in the right-click menu of a case you carry (stash, hideout, main menu): it opens a submenu with what Setup > Cases
 	// does for that case, and a second one for the maps. The game's menu is built from an enum of buttons; our entries are a button added as a
 	// dynamic interaction (so the game lists it) whose hover opens a menu of our own, built the way the game builds its own submenus.
-	internal enum ECaseAction { Maps, Track, Update, StopTracking }
+	internal enum ECaseAction { Maps, Track, Update, StopTracking, Settings, Repair, TopUp }
+
+	// The switches of a case in the submenu "Case settings"
+	internal enum ECaseSetting { SkipCash, TakeOutRest, Exact }
 
 	// The ten maps of MapTags.Maps, in that order
 	internal enum EMapAction { Customs, Factory, Woods, Interchange, Shoreline, Reserve, Lighthouse, Streets, GroundZero, Labs }
@@ -36,7 +39,18 @@ namespace GetReady
 			return controller == null ? null : CasesStep.FindCases(controller.Inventory).FirstOrDefault(item => item.Id.ToString() == id);
 		}
 
-		// Called when the game makes the interactions of an item: adds our entry for a case you carry, while the stash is up
+		// The items our entry was added to, by id (the game hands the entry's id back when it makes the button), and whether each is a case
+		private static readonly Dictionary<string, KeyValuePair<Item, bool>> Known = new Dictionary<string, KeyValuePair<Item, bool>>();
+
+		// Whether there is anything to offer on this item: the submenu has an entry that is on
+		internal static bool Offers(Item item, bool isCase)
+		{
+			var actions = new CaseActions(null, item, isCase);
+			return Enum.GetValues(typeof(ECaseAction)).Cast<ECaseAction>().Any(action => actions.IsActive(action));
+		}
+
+		// Called when the game makes the interactions of an item: adds our entry when there is something to offer on it (a case you carry, armor
+		// or a weapon, an ammo stack), while the stash is up
 		internal static void Add(ItemContext itemContext, ContextInteractions<EItemInfoButton> interactions)
 		{
 			if (interactions == null || Plugin.ShowCaseMenu == null || !Plugin.ShowCaseMenu.Value || !ReadyButtonPatch.StashShown)
@@ -44,26 +58,36 @@ namespace GetReady
 				return;
 			}
 
-			var item = itemContext?.Item as CompoundItem;
-			if (item == null || CaseById(item.Id.ToString()) == null)
-			{
-				return;
-			}
-
-			interactions.method_2(item.Id.ToString(), MenuKey, null, ButtonIcon.Get());
-		}
-
-		// Our button, instead of the game's plain dynamic one: with the arrow, and the hover opening the submenu
-		internal static void CreateTop(InteractionButtonsContainer container, DynamicContextInteraction interaction)
-		{
-			var item = CaseById(interaction.Id);
+			var item = itemContext?.Item;
 			if (item == null)
 			{
 				return;
 			}
 
+			string id = item.Id.ToString();
+			bool isCase = item is CompoundItem && CaseById(id) != null;
+			if (!Offers(item, isCase))
+			{
+				return;
+			}
+
+			Known[id] = new KeyValuePair<Item, bool>(item, isCase);
+			interactions.method_2(id, MenuKey, null, ButtonIcon.Get());
+		}
+
+		// Our button, instead of the game's plain dynamic one: with the arrow, and the hover opening the submenu
+		internal static void CreateTop(InteractionButtonsContainer container, DynamicContextInteraction interaction)
+		{
+			KeyValuePair<Item, bool> known;
+			if (!Known.TryGetValue(interaction.Id, out known))
+			{
+				return;
+			}
+
+			var item = known.Key;
+			bool isCase = known.Value;
 			SimpleContextMenuButton button = null;
-			Action open = () => Open(container, button, item);
+			Action open = () => Open(container, button, item, isCase);
 			button = container.CreateContextButton(interaction.Key, interaction.Key, container._buttonTemplate, container._buttonsContainer, interaction.Icon, open, open, true, false);
 			button.SetButtonInteraction(SuccessfulResult.New);
 			container.BindButton(button);
@@ -75,11 +99,11 @@ namespace GetReady
 			}
 		}
 
-		private static void Open(InteractionButtonsContainer container, SimpleContextMenuButton button, CompoundItem item)
+		private static void Open(InteractionButtonsContainer container, SimpleContextMenuButton button, Item item, bool isCase)
 		{
 			SubMenuButtonField?.SetValue(container, button);
 			container.CloseSubMenu();
-			container.SetSubInteractions(new CaseActions(ItemUiContext.Instance, item));
+			container.SetSubInteractions(new CaseActions(ItemUiContext.Instance, item, isCase));
 		}
 
 		private static readonly FieldInfo SubMenuField = typeof(InteractionButtonsContainer).GetField("_subMenu", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -126,6 +150,21 @@ namespace GetReady
 			rect.position = new Vector3(Mathf.Round(rightEdge + rect.pivot.x * width), position.y, position.z);
 		}
 
+		// A notification (it has a sound of its own, so none is added with it) or a click for what an entry did; the entry's work is done either way
+		internal static void Feedback(string text, EUISoundType? sound)
+		{
+			try
+			{
+				ReadyRun.Say(text, sound);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log?.LogWarning($"No feedback: {e.Message}");
+			}
+		}
+
+		internal static SimpleContextMenu SubMenuOf(InteractionButtonsContainer container) => SubMenuField?.GetValue(container) as SimpleContextMenu;
+
 		internal static Sprite IconOf(string name)
 		{
 			try
@@ -171,35 +210,55 @@ namespace GetReady
 		}
 	}
 
-	// The submenu of the case: track or update, stop tracking, and the maps
+	// The submenu of the "Get ready" entry: for a case, track or update, stop tracking, the maps and its settings; for armor or a weapon, leave it
+	// out of the repairs; for an ammo stack, leave its kind out of the filling. What is on depends on the item and on what is switched on in Setup.
 	internal class CaseActions : ContextInteractions<ECaseAction>
 	{
-		private readonly CompoundItem _item;
+		private readonly Item _item;
+		private readonly CompoundItem _case;
 		private readonly string _id;
 
-		internal CaseActions(ItemUiContext uiContext, CompoundItem item) : base(uiContext)
+		internal CaseActions(ItemUiContext uiContext, Item item, bool isCase = true) : base(uiContext)
 		{
 			_item = item;
+			_case = isCase ? item as CompoundItem : null;
 			_id = item.Id.ToString();
 		}
+
+		private bool CasesOn => _case != null && SettingsStore.Current.Cases.Enabled;
 
 		private CaseEntry Entry => CasesStep.EntryOf(_id);
 
 		private bool Tracked => Entry != null && Entry.Recorded;
 
-		public override IEnumerable<ECaseAction> SubInteractions => new[] { ECaseAction.Maps };
+		public override IEnumerable<ECaseAction> SubInteractions => new[] { ECaseAction.Maps, ECaseAction.Settings };
 
 		public override Dictionary<ECaseAction, string> CustomNames => new Dictionary<ECaseAction, string>
 		{
 			{ ECaseAction.Track, "Track items inside" },
 			{ ECaseAction.Update, "Update template" },
 			{ ECaseAction.StopTracking, "Stop tracking items" },
-			{ ECaseAction.Maps, "Maps" }
+			{ ECaseAction.Maps, "Maps" },
+			{ ECaseAction.Settings, "Case settings" },
+			{ ECaseAction.Repair, RepairStep.IsKept(_item) ? "Include in repairs" : "Exclude from repairs" },
+			{ ECaseAction.TopUp, AmmoStep.IsTopUpExcluded(_item.TemplateId.ToString()) ? "Include in top-up" : "Leave out of top-up" }
 		};
 
 		public override bool TryGetCustomIcon(ECaseAction key, out Sprite icon)
 		{
-			icon = CaseMenu.IconOf(key == ECaseAction.Track ? "Tag" : key == ECaseAction.Update ? "TopUp" : key == ECaseAction.StopTracking ? "Discard" : "ViewMap");
+			string name;
+			switch (key)
+			{
+				case ECaseAction.Track: name = "Tag"; break;
+				case ECaseAction.Update: name = "TopUp"; break;
+				case ECaseAction.StopTracking: name = "Discard"; break;
+				case ECaseAction.Settings: name = "Modding"; break;
+				case ECaseAction.Repair: name = "Repair"; break;
+				case ECaseAction.TopUp: name = "TopUp"; break;
+				default: name = "ViewMap"; break;
+			}
+
+			icon = CaseMenu.IconOf(name);
 			return icon != null;
 		}
 
@@ -208,21 +267,25 @@ namespace GetReady
 			switch (button)
 			{
 				case ECaseAction.Track:
-					return !Tracked;
+					return CasesOn && !Tracked;
 				case ECaseAction.Update:
 				case ECaseAction.StopTracking:
-					return Tracked;
+					return CasesOn && Tracked;
+				case ECaseAction.Repair:
+					return RepairStep.OffersExclusion(_item);
+				case ECaseAction.TopUp:
+					return AmmoStep.OffersTopUpExclusion(_item);
 				default:
-					return true;
+					return CasesOn;
 			}
 		}
 
 		// Update is greyed out when nothing changed since the case was tracked, like its button in Setup
 		public override IResult IsInteractive(ECaseAction button)
 		{
-			if (button == ECaseAction.Update && Entry != null)
+			if (button == ECaseAction.Update && Entry != null && _case != null)
 			{
-				var change = CasesStep.Diff(_item, Entry);
+				var change = CasesStep.Diff(_case, Entry);
 				if (change != null && !change.Any)
 				{
 					return new FailedResult("Nothing has changed since it was tracked", 0);
@@ -234,7 +297,19 @@ namespace GetReady
 
 		public override void CreateSubInteractions(ECaseAction parentInteraction, ISubInteractionsWrapper wrapper)
 		{
-			wrapper.SetSubInteractions(new MapActions(UIContext, _item));
+			if (_case == null)
+			{
+				return;
+			}
+
+			if (parentInteraction == ECaseAction.Settings)
+			{
+				wrapper.SetSubInteractions(new SettingActions(UIContext, _case));
+			}
+			else
+			{
+				wrapper.SetSubInteractions(new MapActions(UIContext, _case));
+			}
 		}
 
 		public override void ExecuteInteractionInternal(ECaseAction interaction)
@@ -246,13 +321,23 @@ namespace GetReady
 					case ECaseAction.Track:
 					case ECaseAction.Update:
 					{
-						var saved = CasesStep.Record(_item);
-						ReadyPlan._status = $"Tracking {saved.Items.Count} item(s) in {Game.NameOf(_item)}.";
+						var saved = CasesStep.Record(_case);
+						ReadyPlan._status = $"Tracking {saved.Items.Count} item(s) in {Game.NameOf(_case)}.";
+						CaseMenu.Feedback(ReadyPlan._status, null);
 						break;
 					}
 					case ECaseAction.StopTracking:
 						CasesStep.Forget(_id);
-						ReadyPlan._status = $"Stopped tracking items in {Game.NameOf(_item)}.";
+						ReadyPlan._status = $"Stopped tracking items in {Game.NameOf(_case)}.";
+						CaseMenu.Feedback(ReadyPlan._status, null);
+						break;
+					case ECaseAction.Repair:
+						RepairStep.ToggleKept(_item);
+						CaseMenu.Feedback(RepairStep.IsKept(_item) ? $"{Game.NameOf(_item)} left out of the repairs." : $"{Game.NameOf(_item)} is repaired again.", null);
+						break;
+					case ECaseAction.TopUp:
+						AmmoStep.ToggleTopUpExcluded(_item.TemplateId.ToString(), Game.NameOf(_item));
+						CaseMenu.Feedback(AmmoStep.IsTopUpExcluded(_item.TemplateId.ToString()) ? $"{Game.NameOf(_item)} left out of the top-up." : $"{Game.NameOf(_item)} is topped up again.", null);
 						break;
 					default:
 						return;
@@ -263,6 +348,100 @@ namespace GetReady
 			catch (Exception e)
 			{
 				Plugin.Log.LogError($"Case menu failed: {e}");
+			}
+		}
+	}
+
+	// The switches of a case, in the submenu "Case settings": each switches on or off and the menu stays open. The ones that are on carry a mark.
+	internal class SettingActions : ContextInteractions<ECaseSetting>
+	{
+		private readonly CompoundItem _item;
+		private readonly string _id;
+		// The menu reads the names once and keeps that dictionary: so it is one object, changed in place by Refresh()
+		private readonly Dictionary<ECaseSetting, string> _names = new Dictionary<ECaseSetting, string>();
+
+		internal SettingActions(ItemUiContext uiContext, CompoundItem item) : base(uiContext)
+		{
+			_item = item;
+			_id = item.Id.ToString();
+		}
+
+		private CaseEntry Entry => CasesStep.EntryOf(_id);
+
+		private bool Tracked => Entry != null && Entry.Recorded;
+
+		private static string NameOf(ECaseSetting setting) => setting == ECaseSetting.SkipCash ? "Skip cash step" : setting == ECaseSetting.TakeOutRest ? "Take out the rest" : "Exact positions";
+
+		private bool IsOn(ECaseSetting setting)
+		{
+			var entry = Entry;
+			if (entry == null)
+			{
+				return false;
+			}
+
+			return setting == ECaseSetting.SkipCash ? entry.StopsCash : setting == ECaseSetting.TakeOutRest ? entry.TakeOutRest : entry.Exact;
+		}
+
+		public override Dictionary<ECaseSetting, string> CustomNames
+		{
+			get
+			{
+				Refresh();
+				return _names;
+			}
+		}
+
+		private void Refresh()
+		{
+			foreach (ECaseSetting setting in Enum.GetValues(typeof(ECaseSetting)))
+			{
+				_names[setting] = IsOn(setting) ? "<color=#c9a0ff>" + NameOf(setting) + "</color>" : NameOf(setting);
+			}
+		}
+
+		public override bool TryGetCustomIcon(ECaseSetting key, out Sprite icon)
+		{
+			icon = CaseMenu.IconOf(IsOn(key) ? "AddToFavorites" : "RemoveFromFavorites");
+			return icon != null;
+		}
+
+		// Like Setup: the cash switch only while the Cash step is on, the other two only for a case that is tracked
+		public override bool IsActive(ECaseSetting button) => button == ECaseSetting.SkipCash ? SettingsStore.Current.Supplies.CashEnabled : Tracked;
+
+		public override IResult IsInteractive(ECaseSetting button) => SuccessfulResult.New;
+
+		public override void ExecuteInteractionInternal(ECaseSetting interaction)
+		{
+			try
+			{
+				if (interaction == ECaseSetting.SkipCash)
+				{
+					var target = Entry ?? CasesStep.Touch(_item);
+					target.StopsCash = !target.StopsCash;
+					CasesStep.Prune(target);
+				}
+				else if (Entry != null)
+				{
+					if (interaction == ECaseSetting.TakeOutRest)
+					{
+						Entry.TakeOutRest = !Entry.TakeOutRest;
+					}
+					else
+					{
+						Entry.Exact = !Entry.Exact;
+					}
+				}
+
+				// The menu stays open (CaseMenuKeepOpen): have it draw the marks and names again
+				Refresh();
+				method_0();
+				CaseMenu.Feedback(null, EUISoundType.ButtonClick);
+				SetupPage.Changed();
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogError($"Case settings menu failed: {e}");
 			}
 		}
 	}
@@ -283,9 +462,28 @@ namespace GetReady
 
 		private bool IsOn(EMapAction map) => CasesStep.EntryOf(_id)?.Maps.Contains(NameOf(map)) == true;
 
-		// The maps the case is for: the game's own filled and outlined heart icons (filled: on), and the name in the colour of the Get ready button
-		public override Dictionary<EMapAction, string> CustomNames =>
-			Enum.GetValues(typeof(EMapAction)).Cast<EMapAction>().ToDictionary(map => map, map => IsOn(map) ? "<color=#c9a0ff>" + NameOf(map) + "</color>" : NameOf(map));
+		// The maps the case is for: the game's own filled and outlined heart icons (filled: on), and the name in the colour of the Get ready button.
+		// The menu reads the names once, when it opens, and keeps that dictionary: so it is one object, and Refresh() changes it in place.
+		private readonly Dictionary<EMapAction, string> _names = new Dictionary<EMapAction, string>();
+
+		private string Caption(EMapAction map) => IsOn(map) ? "<color=#c9a0ff>" + NameOf(map) + "</color>" : NameOf(map);
+
+		public override Dictionary<EMapAction, string> CustomNames
+		{
+			get
+			{
+				Refresh();
+				return _names;
+			}
+		}
+
+		private void Refresh()
+		{
+			foreach (EMapAction map in Enum.GetValues(typeof(EMapAction)))
+			{
+				_names[map] = Caption(map);
+			}
+		}
 
 		public override bool TryGetCustomIcon(EMapAction key, out Sprite icon)
 		{
@@ -309,6 +507,10 @@ namespace GetReady
 				}
 
 				CasesStep.Prune(target);
+				// The menu stays open (CaseMenuKeepOpen): have it draw the hearts and names again
+				Refresh();
+				method_0();
+				CaseMenu.Feedback(null, EUISoundType.ButtonClick);
 				SetupPage.Changed();
 			}
 			catch (Exception e)
@@ -316,6 +518,63 @@ namespace GetReady
 				Plugin.Log.LogError($"Case map menu failed: {e}");
 			}
 		}
+	}
+
+	// The maps menu and the case settings menu stay open after a click, so several can be switched in a row. The game closes a menu in two places: every context menu
+	// closes itself when a mouse button is released (SimpleContextMenu.Update), and a clicked button closes its container (autoClose). Both are
+	// skipped while the pointer is over that menu; the menus above it (the item's, the case's) are skipped too, or they would close it with them.
+	internal static class CaseMenuKeepOpen
+	{
+		private static readonly FieldInfo ContainerField = typeof(SimpleContextMenu).GetField("_interactionButtonsContainer", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+		// The last submenu on screen (the maps or the case settings), set when the game opens it (see MapMenuSidePatch, SettingMenuSidePatch)
+		internal static SimpleContextMenu Leaf;
+
+		internal static bool PointerOnLeaf()
+		{
+			if (Leaf == null || !Leaf.gameObject.activeInHierarchy)
+			{
+				return false;
+			}
+
+			var rect = (RectTransform)Leaf.transform;
+			var canvas = Leaf.GetComponentInParent<Canvas>();
+			var camera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+			return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, camera);
+		}
+
+		internal static bool IsLeafContainer(InteractionButtonsContainer container) => Leaf != null && container != null && ContainerField?.GetValue(Leaf) == container;
+	}
+
+	internal class CaseMenuKeepOpenUpdatePatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod() => typeof(SimpleContextMenu).GetMethod(nameof(SimpleContextMenu.Update), BindingFlags.Instance | BindingFlags.Public);
+
+		[PatchPrefix]
+		private static bool Prefix()
+		{
+			try
+			{
+				if (CaseMenuKeepOpen.Leaf != null && (Input.GetMouseButtonUp(0) || Input.GetMouseButtonUp(1) || Input.GetMouseButtonUp(2)) && CaseMenuKeepOpen.PointerOnLeaf())
+				{
+					return false;
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogError($"Case menu keep-open failed: {e}");
+			}
+
+			return true;
+		}
+	}
+
+	internal class CaseMenuKeepOpenClosePatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod() => typeof(InteractionButtonsContainer).GetMethod(nameof(InteractionButtonsContainer.Close), BindingFlags.Instance | BindingFlags.Public);
+
+		[PatchPrefix]
+		private static bool Prefix(InteractionButtonsContainer __instance) => !(CaseMenuKeepOpen.IsLeafContainer(__instance) && CaseMenuKeepOpen.PointerOnLeaf());
 	}
 
 	internal class CaseMenuAddPatch : ModulePatch
@@ -387,7 +646,23 @@ namespace GetReady
 		protected override MethodBase GetTargetMethod() => typeof(InteractionButtonsContainer).GetMethod(nameof(InteractionButtonsContainer.SetSubInteractions), BindingFlags.Instance | BindingFlags.Public).MakeGenericMethod(typeof(EMapAction));
 
 		[PatchPostfix]
-		private static void Postfix(InteractionButtonsContainer __instance) => CaseMenuSidePatch.Run(__instance);
+		private static void Postfix(InteractionButtonsContainer __instance)
+		{
+			CaseMenuKeepOpen.Leaf = CaseMenu.SubMenuOf(__instance);
+			CaseMenuSidePatch.Run(__instance);
+		}
+	}
+
+	internal class SettingMenuSidePatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod() => typeof(InteractionButtonsContainer).GetMethod(nameof(InteractionButtonsContainer.SetSubInteractions), BindingFlags.Instance | BindingFlags.Public).MakeGenericMethod(typeof(ECaseSetting));
+
+		[PatchPostfix]
+		private static void Postfix(InteractionButtonsContainer __instance)
+		{
+			CaseMenuKeepOpen.Leaf = CaseMenu.SubMenuOf(__instance);
+			CaseMenuSidePatch.Run(__instance);
+		}
 	}
 
 	// Every button the menus make passes here: ours are coloured by their key

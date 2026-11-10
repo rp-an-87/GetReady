@@ -26,6 +26,28 @@ namespace GetReady
 		// What could not be moved in the last run, shown with the other problems
 		internal static readonly List<KeyValuePair<string, PlanLine>> Failures = new List<KeyValuePair<string, PlanLine>>();
 
+		// A notification (when there is a text, it has its own sound) and a sound (when given) for something done outside a run, like the case menu's entries. Never throws.
+		[System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+		internal static void Say(string text, EUISoundType? sound)
+		{
+			try
+			{
+				if (!string.IsNullOrEmpty(text))
+				{
+					NotificationManager.DisplayMessageNotification(text);
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not show the notification: {e.Message}");
+			}
+
+			if (sound != null)
+			{
+				Play(sound.Value);
+			}
+		}
+
 		private static void Play(EUISoundType sound)
 		{
 			try
@@ -49,6 +71,8 @@ namespace GetReady
 
 			Refresh();
 			await RunPlan();
+			// The bar finishes first: the sound, the notification, the flash and the red box come after it
+			await ReadyLoading.WhenDone();
 			var problems = Failures.Concat(Problems()).ToList();
 
 			// The red box says what is wrong, so a notification is only for when all went well
@@ -97,13 +121,16 @@ namespace GetReady
 			_running = true;
 			try
 			{
+				ReadyLoading.Begin(Plan.Sum(entry => entry.Value.Count(line => line.Run != null)));
 				int done = 0, failed = 0, repaired = 0, filled = 0, chambered = 0, topped = 0, healed = 0, modes = 0, insured = 0;
 				Failures.Clear();
 				foreach (var entry in Plan.ToList())
 				{
 					foreach (var line in entry.Value.Where(line => line.Run != null))
 					{
+						ReadyLoading.Step(entry.Key.Name);
 						var error = await line.Run();
+						ReadyLoading.LineDone();
 						if (error == null)
 						{
 							done += line.Items;
@@ -119,7 +146,7 @@ namespace GetReady
 						{
 							failed++;
 							Plugin.Log.LogWarning($"{entry.Key.Name}: {line.Text} failed: {error}");
-							Failures.Add(new KeyValuePair<string, PlanLine>(entry.Key.Name, new PlanLine { Problem = true, Subject = line.Text, Detail = line.FailPrefix + error, Template = line.Template }));
+							Failures.Add(new KeyValuePair<string, PlanLine>(entry.Key.Name, new PlanLine { Problem = true, Subject = line.Fill && !string.IsNullOrEmpty(line.Label) ? $"{line.Label}: {line.Have}/{line.Want}" : line.Text, Detail = line.FailPrefix + error, Template = line.Template }));
 						}
 					}
 				}
@@ -145,6 +172,7 @@ namespace GetReady
 			}
 			finally
 			{
+				ReadyLoading.Finish();
 				_running = false;
 				Refresh();
 			}

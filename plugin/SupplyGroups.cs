@@ -158,6 +158,9 @@ namespace GetReady
 		// The key it goes on: the owner's choice, else the default
 		public string HotkeyChoice => Setting.Hotkey ?? DefaultHotkey;
 
+		// The second key: none unless the owner sets one
+		public string HotkeyChoice2 => Setting.Hotkey2 ?? "";
+
 		// The places that can be clicked on in the window: Special slots, Pockets, Vest, Backpack, Pouch, or the cases for money
 		public IEnumerable<string> PickablePlaces =>
 			(Locations ?? new[] { "Special slots", "Pockets", "Vest", "Backpack", "Pouch" })

@@ -160,6 +160,22 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void The_menu_keeps_one_names_dictionary_and_a_click_updates_it_in_place()
+		{
+			// The game reads the names once when the menu opens and keeps that object; the menu stays open after a click, so it must change
+			var maps = Maps();
+			var kept = maps.CustomNames;
+
+			maps.ExecuteInteractionInternal(EMapAction.Woods);
+
+			maps.CustomNames.Should().BeSameAs(kept);
+			kept[EMapAction.Woods].Should().Contain("<color=");
+
+			maps.ExecuteInteractionInternal(EMapAction.Woods);
+			kept[EMapAction.Woods].Should().NotContain("<color=");
+		}
+
+		[Fact]
 		public void Maps_add_up_and_keep_a_tracked_case_when_the_last_one_goes()
 		{
 			CasesStep.Record(_case);
@@ -190,6 +206,184 @@ namespace GetReady.Tests
 			// No button: nothing to colour, and no failure
 			Action nothing = () => CaseMenu.Colour(null, CaseMenu.MenuKey);
 			nothing.Should().NotThrow();
+		}
+
+		// ---- the entries on armor, weapons and ammo, and what hides them
+
+		private const string Armor = "5c0e5bab86f77461f55ed1f3";
+
+		private static CaseActions Plain(EFT.InventoryLogic.Item item) => new CaseActions(null, item, false);
+
+		private static System.Collections.Generic.IEnumerable<ECaseAction> ActiveOf(CaseActions actions) =>
+			System.Enum.GetValues(typeof(ECaseAction)).Cast<ECaseAction>().Where(action => actions.IsActive(action)).ToList();
+
+		[Fact]
+		public void Armor_offers_leaving_it_out_of_the_repairs_only_while_repairing_armor_is_on()
+		{
+			var armor = RealItems.Any(Armor);
+			SettingsStore.Current.Repair.Enabled = true;
+			SettingsStore.Current.Repair.Armor = true;
+			ActiveOf(Plain(armor)).Should().Equal(ECaseAction.Repair);
+
+			SettingsStore.Current.Repair.Armor = false;
+			ActiveOf(Plain(armor)).Should().BeEmpty();
+
+			SettingsStore.Current.Repair.Armor = true;
+			SettingsStore.Current.Repair.Enabled = false;
+			ActiveOf(Plain(armor)).Should().BeEmpty("the Repair step is off");
+		}
+
+		[Fact]
+		public void A_weapon_offers_leaving_it_out_of_the_repairs_only_while_repairing_weapons_is_on()
+		{
+			var weapon = Gear.NewWeapon();
+			SettingsStore.Current.Repair.Enabled = true;
+			SettingsStore.Current.Repair.Armor = false;
+			SettingsStore.Current.Repair.Weapons = true;
+			ActiveOf(Plain(weapon)).Should().Equal(ECaseAction.Repair);
+
+			SettingsStore.Current.Repair.Weapons = false;
+			ActiveOf(Plain(weapon)).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void An_item_that_is_not_repaired_gets_no_entry()
+		{
+			SettingsStore.Current.Repair.Enabled = true;
+			SettingsStore.Current.Repair.Armor = true;
+			SettingsStore.Current.Repair.Weapons = true;
+
+			CaseMenu.Offers(RealItems.Any(RealItems.ArmyBandage), false).Should().BeFalse();
+		}
+
+		[Fact]
+		public void The_repair_entry_leaves_the_piece_out_and_puts_it_back_with_its_wording()
+		{
+			var armor = RealItems.Any(Armor);
+			SettingsStore.Current.Repair.Enabled = true;
+			SettingsStore.Current.Repair.Armor = true;
+			var actions = Plain(armor);
+			actions.CustomNames[ECaseAction.Repair].Should().Be("Exclude from repairs");
+
+			actions.ExecuteInteractionInternal(ECaseAction.Repair);
+			RepairStep.IsKept(armor).Should().BeTrue();
+			Plain(armor).CustomNames[ECaseAction.Repair].Should().Be("Include in repairs");
+
+			actions.ExecuteInteractionInternal(ECaseAction.Repair);
+			RepairStep.IsKept(armor).Should().BeFalse();
+		}
+
+		[Fact]
+		public void Ammo_in_a_grid_offers_leaving_it_out_of_the_filling_only_while_the_filling_is_on()
+		{
+			var ammo = Gear.NewAmmo(Gear.M855, 30).In(_body.StashBox);
+			SettingsStore.Current.Ammo.Enabled = true;
+			SettingsStore.Current.Ammo.TopUpLoose = true;
+			ActiveOf(Plain(ammo)).Should().Equal(ECaseAction.TopUp);
+
+			SettingsStore.Current.Ammo.TopUpLoose = false;
+			ActiveOf(Plain(ammo)).Should().BeEmpty();
+
+			SettingsStore.Current.Ammo.TopUpLoose = true;
+			SettingsStore.Current.Ammo.Enabled = false;
+			ActiveOf(Plain(ammo)).Should().BeEmpty("the Ammo step is off");
+		}
+
+		[Fact]
+		public void The_ammo_entry_leaves_its_kind_out_and_puts_it_back_with_its_wording()
+		{
+			var ammo = Gear.NewAmmo(Gear.M855, 30).In(_body.StashBox);
+			SettingsStore.Current.Ammo.Enabled = true;
+			var actions = Plain(ammo);
+			actions.CustomNames[ECaseAction.TopUp].Should().Be("Leave out of top-up");
+
+			actions.ExecuteInteractionInternal(ECaseAction.TopUp);
+			AmmoStep.IsTopUpExcluded(Gear.M855).Should().BeTrue();
+			Plain(ammo).CustomNames[ECaseAction.TopUp].Should().Be("Include in top-up");
+
+			actions.ExecuteInteractionInternal(ECaseAction.TopUp);
+			AmmoStep.IsTopUpExcluded(Gear.M855).Should().BeFalse();
+		}
+
+		[Fact]
+		public void The_case_entries_are_hidden_while_the_Cases_step_is_off()
+		{
+			SettingsStore.Current.Cases.Enabled = false;
+
+			ActiveOf(Actions()).Should().BeEmpty();
+			CaseMenu.Offers(_case, true).Should().BeFalse();
+		}
+
+		[Fact]
+		public void A_case_is_offered_its_entries_while_the_Cases_step_is_on()
+		{
+			ActiveOf(Actions()).Should().Contain(new[] { ECaseAction.Track, ECaseAction.Maps, ECaseAction.Settings });
+			CaseMenu.Offers(_case, true).Should().BeTrue();
+		}
+
+		// ---- the case settings submenu
+
+		private SettingActions Settings() => new SettingActions(null, _case);
+
+		[Fact]
+		public void The_take_out_and_exact_switches_are_only_there_for_a_tracked_case()
+		{
+			var settings = Settings();
+			settings.IsActive(ECaseSetting.TakeOutRest).Should().BeFalse();
+			settings.IsActive(ECaseSetting.Exact).Should().BeFalse();
+			settings.IsActive(ECaseSetting.SkipCash).Should().BeTrue();
+
+			CasesStep.Record(_case);
+			settings.IsActive(ECaseSetting.TakeOutRest).Should().BeTrue();
+			settings.IsActive(ECaseSetting.Exact).Should().BeTrue();
+		}
+
+		[Fact]
+		public void The_skip_cash_switch_is_hidden_while_the_Cash_step_is_off()
+		{
+			SettingsStore.Current.Supplies.CashEnabled = false;
+
+			Settings().IsActive(ECaseSetting.SkipCash).Should().BeFalse();
+		}
+
+		[Fact]
+		public void The_skip_cash_switch_works_on_an_untracked_case_and_the_record_goes_when_it_is_switched_off()
+		{
+			var settings = Settings();
+
+			settings.ExecuteInteractionInternal(ECaseSetting.SkipCash);
+			CasesStep.EntryOf(Id).StopsCash.Should().BeTrue();
+
+			settings.ExecuteInteractionInternal(ECaseSetting.SkipCash);
+			CasesStep.EntryOf(Id).Should().BeNull("a case with nothing set for it is not kept");
+		}
+
+		[Fact]
+		public void The_take_out_and_exact_switches_flip_the_record()
+		{
+			CasesStep.Record(_case);
+			var settings = Settings();
+			bool takeOut = CasesStep.EntryOf(Id).TakeOutRest;
+			bool exact = CasesStep.EntryOf(Id).Exact;
+
+			settings.ExecuteInteractionInternal(ECaseSetting.TakeOutRest);
+			settings.ExecuteInteractionInternal(ECaseSetting.Exact);
+
+			CasesStep.EntryOf(Id).TakeOutRest.Should().Be(!takeOut);
+			CasesStep.EntryOf(Id).Exact.Should().Be(!exact);
+		}
+
+		[Fact]
+		public void The_settings_menu_keeps_one_names_dictionary_and_a_click_updates_it_in_place()
+		{
+			var settings = Settings();
+			var kept = settings.CustomNames;
+			kept[ECaseSetting.SkipCash].Should().NotContain("<color=");
+
+			settings.ExecuteInteractionInternal(ECaseSetting.SkipCash);
+
+			settings.CustomNames.Should().BeSameAs(kept);
+			kept[ECaseSetting.SkipCash].Should().Contain("<color=");
 		}
 	}
 }

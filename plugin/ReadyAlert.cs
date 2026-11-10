@@ -15,7 +15,7 @@ namespace GetReady
 	internal static class ReadyAlert
 	{
 		// About four problems fit before the list scrolls (a step heading and four rows of an icon, a name and a line or two)
-		private const float MostContent = 25f;
+		private const float MostContent = 36f;
 
 		private static EditBuildNameWindow _window;
 		private static DefaultUIButton _buttonTemplate;
@@ -165,7 +165,12 @@ namespace GetReady
 			UiKit.Stretch(root, 0f, 0f, 0f, top);
 
 			var scroll = UiKit.Scroll(root, out var content);
-			UiKit.Size(scroll, flexWidth: 1f, flexHeight: 1f);
+			UiKit.Size(scroll, flexWidth: 1f);
+			// The list is as high as what is in it, up to MostContent: the clamp follows the layout (the text wraps after the first pass)
+			var grow = content.gameObject.AddComponent<GrowToContent>();
+			grow.Target = scroll.GetComponent<LayoutElement>();
+			grow.Most = UiKit.Unit * MostContent;
+			grow.Changed = () => Fit(frame, top);
 			var red = new Color(0.9f, 0.4f, 0.35f);
 			foreach (var step in _problems.GroupBy(pair => pair.Key))
 			{
@@ -200,12 +205,64 @@ namespace GetReady
 				UiKit.PushButton(footer, "Got it", Close, new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 8f, height: UiKit.Unit * 2.2f);
 			}
 
-			// As high as what is in it, up to most of the game's window area; above that the list scrolls (and the bar shows only then)
 			LayoutRebuilder.ForceRebuildLayoutImmediate(content);
-			float need = content.GetComponent<VerticalLayoutGroup>().preferredHeight;
+			grow.Refresh();
+		}
+
+		// The window follows the list: caption, the list, the button row and the paddings
+		private static void Fit(RectTransform frame, float top)
+		{
+			if (_window == null || _window.WindowTransform != frame)
+			{
+				return;
+			}
+
+			var list = _root == null ? null : _root.GetComponentInChildren<GrowToContent>();
+			if (list == null)
+			{
+				return;
+			}
+
 			float chrome = top + 12f + 14f + 10f + UiKit.Unit * 2.2f + 8f;
-			frame.sizeDelta = new Vector2(frame.sizeDelta.x, chrome + Mathf.Min(need, UiKit.Unit * MostContent));
+			frame.sizeDelta = new Vector2(frame.sizeDelta.x, chrome + list.Target.preferredHeight);
 			Place(frame);
+		}
+	}
+
+	// Puts the preferred height of the list as high as its content, up to a most, every time the content changes size (after the text has wrapped)
+	internal class GrowToContent : UnityEngine.EventSystems.UIBehaviour
+	{
+		internal LayoutElement Target;
+		internal float Most;
+		internal Action Changed;
+		private float _last = -1f;
+
+		protected override void OnRectTransformDimensionsChange()
+		{
+			base.OnRectTransformDimensionsChange();
+			Refresh();
+		}
+
+		private void LateUpdate() => Refresh();
+
+		internal void Refresh()
+		{
+			var layout = GetComponent<VerticalLayoutGroup>();
+			if (Target == null || layout == null)
+			{
+				return;
+			}
+
+			float height = Mathf.Min(LayoutUtility.GetPreferredHeight((RectTransform)transform), Most);
+			if (Mathf.Abs(height - _last) < 0.5f)
+			{
+				return;
+			}
+
+			_last = height;
+			Target.preferredHeight = height;
+			Target.minHeight = height;
+			Changed?.Invoke();
 		}
 	}
 }

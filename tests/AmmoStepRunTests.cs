@@ -17,6 +17,9 @@ namespace GetReady.Tests
 		private readonly World _world;
 		private readonly AmmoStep _step = new AmmoStep();
 		private int _loadLimit = int.MaxValue;
+		private int _loadCalls;
+		// What one call adds at most (the game adds only what fits into the last stack of cartridges)
+		private int _perCall = int.MaxValue;
 		private string _loadError;
 
 		public AmmoStepRunTests()
@@ -32,9 +35,15 @@ namespace GetReady.Tests
 					return Task.FromResult<IResult>(new FailedResult(_loadError, 0));
 				}
 
-				int take = System.Math.Min(count, _loadLimit);
-				magazine.Cartridges.Add(NewAmmo(ammo.TemplateId.ToString(), take), false);
-				ammo.StackObjectsCount -= take;
+				// The game's own load moves what the stack has, up to the room in the magazine (it ignores the count)
+				int take = System.Math.Min(System.Math.Min(System.Math.Min(count, _loadLimit), _perCall), magazine.MaxCount - magazine.Count);
+				_loadLimit -= take;
+				_loadCalls++;
+				if (take > 0)
+				{
+					magazine.Cartridges.Add(NewAmmo(ammo.TemplateId.ToString(), take), false);
+					ammo.StackObjectsCount -= take;
+				}
 				return Task.FromResult<IResult>(SuccessfulResult.New);
 			};
 		}
@@ -113,6 +122,50 @@ namespace GetReady.Tests
 
 			error.Should().StartWith("only 0 of 20 ");
 			rifle.GetCurrentMagazine().Count.Should().Be(10);
+		}
+
+		[Fact]
+		public async Task A_fill_that_needs_several_stacks_loads_them_all()
+		{
+			var small = InStash(M855, 18);
+			var big = InStash(M855, 100);
+			var spare = NewMagazine().Loaded(M855, 10).In(_world.Backpack);
+
+			var error = await Plan().Single(candidate => candidate.Fill).Run();
+
+			error.Should().BeNull();
+			spare.Count.Should().Be(30);
+			small.StackObjectsCount.Should().Be(0);
+			big.StackObjectsCount.Should().Be(98);
+		}
+
+		[Fact]
+		public async Task A_call_that_adds_only_part_of_a_stack_is_repeated_until_the_share_is_in()
+		{
+			var stack = InStash(M855, 100);
+			var spare = NewMagazine().Loaded(M855, 10).In(_world.Backpack);
+			_perCall = 8;
+
+			var error = await Plan().Single(candidate => candidate.Fill).Run();
+
+			error.Should().BeNull();
+			spare.Count.Should().Be(30);
+			stack.StackObjectsCount.Should().Be(80);
+			_loadCalls.Should().Be(3, "8 + 8 + 4");
+		}
+
+		[Fact]
+		public async Task Calls_stop_when_one_adds_nothing()
+		{
+			InStash(M855, 100);
+			var spare = NewMagazine().Loaded(M855, 10).In(_world.Backpack);
+			_loadLimit = 5;
+
+			var error = await Plan().Single(candidate => candidate.Fill).Run();
+
+			error.Should().StartWith("only 5 of 20 ");
+			spare.Count.Should().Be(15);
+			_loadCalls.Should().Be(2, "5, then 0");
 		}
 
 		// ---- a spare magazine on you
