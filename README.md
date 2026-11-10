@@ -56,8 +56,13 @@ Hotkeys on a hovered item (F12 > GetReady > 2. Quick actions); their hints show 
 ## Notes
 
 - Moves are placed by looking for a free spot in the container's grids when the game's quick placement fails, and each move is checked to have left the stash.
-- Needs the SPT 4.1.x client (Assembly-CSharp, BepInEx 5). MIT license.
-
+- Needs the SPT 4.1.x client (Assembly-CSharp, BepInEx 5).
 ## Not built yet
 
 - Emptying loot into the stash, MergeConsumables support (combine stacks instead of swapping), buying what is missing from the flea market.
+
+## License and support
+
+GPL-3.0-or-later, see `LICENSE`. Anyone who distributes this mod or a modified version, free or paid, must release the full source under the same license and keep the copyright notice. The name "GetReady" and the author's name are not licensed: rename your fork.
+
+Made for my own use and shared as is. No support, no feature requests. Use it as it is or modify it. Written with AI assistance (Claude). Tested on SPT 4.1.6 only.
