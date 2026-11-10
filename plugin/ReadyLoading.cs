@@ -12,8 +12,8 @@ namespace GetReady
 		internal const float Hold = 0.15f;
 		internal const float FadeIn = 0.25f;
 		internal const float FadeOut = 0.4f;
-		// The bar fills this fast at most (fractions per second), so a jump in the plan is a quick slide, not a cut
-		internal const float Speed = 1.5f;
+		// The bar fills this fast at most (fractions per second): quick enough to follow the real work, slow enough that a jump is a slide, not a cut
+		internal const float Speed = 5f;
 		// While the run is going the bar never reaches the end: only the end of the run fills it
 		internal const float RunningCap = 0.97f;
 		// With the steps shown one after the other: each name stays this long, and the whole row of them is over this long after the bar appears
@@ -26,6 +26,8 @@ namespace GetReady
 		private int _total;
 		private int _done;
 		private bool _sequence;
+		// When the bar got full after the run ended (-1: not yet). Done and the fade-out wait for it.
+		private float _fullAt = -1f;
 		// When each step name is due on screen (see Step)
 		private readonly System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, string>> _slots =
 			new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<float, string>>();
@@ -33,6 +35,8 @@ namespace GetReady
 		// The step the run is at now (the last one named)
 		internal string Label = "";
 		internal float Displayed;
+
+		internal float FullAt => _fullAt;
 
 		internal bool Active => _start >= 0f;
 
@@ -45,6 +49,7 @@ namespace GetReady
 			_slots.Clear();
 			_start = now;
 			_end = -1f;
+			_fullAt = -1f;
 			_last = now;
 			_total = total;
 			_done = 0;
@@ -75,8 +80,8 @@ namespace GetReady
 		// The name to show at this moment
 		internal string LabelAt(float now)
 		{
-			// Once the run is over (and the last name has had its time) it says so, so the last step does not look like it took until the bar went
-			if (Finished && now >= Mathf.Max(_end, QueueEnd))
+			// Done only when the run is over, the bar is full and the last name has had its time
+			if (_fullAt >= 0f && now >= _fullAt && now >= QueueEnd)
 			{
 				return "Done";
 			}
@@ -109,7 +114,8 @@ namespace GetReady
 
 		private float ShownAt => _start + ShowAfter;
 
-		private float FadeStart => Mathf.Max(Mathf.Max(_end, ShownAt + MinShown), QueueEnd) + Hold;
+		// The fade-out starts after the bar is full (never before: it stays as it is until then)
+		private float FadeStart => _fullAt < 0f ? float.MaxValue : Mathf.Max(Mathf.Max(_fullAt, ShownAt + MinShown), QueueEnd) + Hold;
 
 		// Move the bar towards where it should be, and say how visible the whole thing is (0 to 1)
 		internal float Tick(float now)
@@ -117,6 +123,11 @@ namespace GetReady
 			float dt = Mathf.Max(0f, now - _last);
 			_last = now;
 			Displayed = Mathf.MoveTowards(Displayed, Target, Speed * dt);
+			if (Finished && _fullAt < 0f && Displayed >= 1f)
+			{
+				_fullAt = now;
+			}
+
 			return Alpha(now);
 		}
 
@@ -137,9 +148,13 @@ namespace GetReady
 		}
 
 		// Nothing more to draw: the run ended and the fade is done
-		internal bool IsOver(float now) => Active && Finished && now >= FadeStart + FadeOut;
+		internal bool IsOver(float now) => Active && Finished && _fullAt >= 0f && now >= FadeStart + FadeOut;
 
-		internal void Reset() => _start = -1f;
+		internal void Reset()
+		{
+			_start = -1f;
+			_fullAt = -1f;
+		}
 	}
 
 	// The loading bar while Get ready works: the screen goes a little darker and a thin bar slides across the middle, like the loading line of
