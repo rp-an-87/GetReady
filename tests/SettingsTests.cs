@@ -40,7 +40,7 @@ namespace GetReady.Tests
 			settings.HealMe.Enabled = true;
 			settings.Ammo.Pointers = new List<string> { "weapon", "loose" };
 			settings.Ammo.SparePick = "random";
-			settings.Ammo.SpareIgnored.Add(new ItemRef { Template = "t1", Name = "Glock" });
+			settings.Ammo.SpareStacks.Add(new ModelStacks { Template = "t1", Name = "Glock", Stacks = 0 });
 			settings.Repair.TraderOrder = new List<string> { "b", "a" };
 			settings.Repair.KeepDamaged.Add(new KeptItem { Id = "x", Name = "Armor" });
 			settings.FullAuto.Slots = new List<string> { "Holster" };
@@ -54,7 +54,7 @@ namespace GetReady.Tests
 			read.HealMe.Enabled.Should().BeTrue();
 			read.Ammo.Pointers.Should().Equal("weapon", "loose");
 			read.Ammo.SparePick.Should().Be("random");
-			read.Ammo.SpareIgnored.Should().ContainSingle().Which.Name.Should().Be("Glock");
+			read.Ammo.SpareStacks.Should().ContainSingle().Which.Name.Should().Be("Glock");
 			read.Repair.TraderOrder.Should().Equal("b", "a");
 			read.Repair.KeepDamaged.Should().ContainSingle().Which.Id.Should().Be("x");
 			read.FullAuto.Slots.Should().Equal("Holster");
@@ -172,7 +172,7 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void Setting_a_model_back_to_the_generic_number_takes_it_off_the_list()
+		public void A_number_set_by_hand_that_equals_the_generic_one_stays_the_models_own_and_does_not_follow_it()
 		{
 			SettingsStore.UseForTests(new Settings());
 			var generic = AmmoStep.Spare.Setting.Target;
@@ -180,8 +180,22 @@ namespace GetReady.Tests
 
 			AmmoStep.SetStacks("abc", "M4A1", generic);
 
-			SettingsStore.Current.Ammo.SpareStacks.Should().BeEmpty();
+			SettingsStore.Current.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(generic);
+			AmmoStep.HasOwnStacks("abc").Should().BeTrue();
 			AmmoStep.StacksOf("abc").Should().Be(generic);
+		}
+
+		[Fact]
+		public void Removing_a_model_takes_it_off_the_list_and_back_to_the_generic_number()
+		{
+			SettingsStore.UseForTests(new Settings());
+			AmmoStep.SetStacks("abc", "M4A1", AmmoStep.Spare.Setting.Target);
+
+			AmmoStep.RemoveModel("abc");
+
+			SettingsStore.Current.Ammo.SpareStacks.Should().BeEmpty();
+			AmmoStep.HasOwnStacks("abc").Should().BeFalse();
+			AmmoStep.StacksOf("abc").Should().Be(AmmoStep.Spare.Setting.Target);
 		}
 
 		[Fact]
@@ -193,19 +207,6 @@ namespace GetReady.Tests
 
 			AmmoStep.StacksOf("abc").Should().Be(0);
 			SettingsStore.Current.Ammo.SpareStacks.Should().ContainSingle().Which.Stacks.Should().Be(0);
-		}
-
-		[Fact]
-		public void A_model_skipped_the_older_way_is_none_and_the_stepper_takes_it_over()
-		{
-			SettingsStore.UseForTests(new Settings());
-			SettingsStore.Current.Ammo.SpareIgnored.Add(new ItemRef { Template = "abc", Name = "Glock" });
-			AmmoStep.StacksOf("abc").Should().Be(0);
-
-			AmmoStep.SetStacks("abc", "Glock", 1);
-
-			SettingsStore.Current.Ammo.SpareIgnored.Should().BeEmpty();
-			AmmoStep.StacksOf("abc").Should().Be(1);
 		}
 	}
 }

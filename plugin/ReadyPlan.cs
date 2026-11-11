@@ -352,6 +352,25 @@ namespace GetReady
 				}
 			}
 
+			// What Get ready will do, a few lines like the problems (the heading counts lines, the first line of this tooltip counts cards)
+			var todo = Plan.SelectMany(entry => entry.Value.Where(line => line.Run != null && !line.Problem).Select(line => new KeyValuePair<string, PlanLine>(entry.Key.Name, line))).ToList();
+			if (todo.Count > 0)
+			{
+				text.Append("\n" + Separator + $"\n<color={Amber}><b>{(todo.Count == 1 ? "1 to do" : $"{todo.Count} to do")}</b></color>");
+				foreach (var item in todo.Take(5))
+				{
+					var line = item.Value;
+					var subject = Short(line.Subject ?? line.Text, 34);
+					var detail = line.Detail != null && line.Subject != null ? Short(line.Detail, 46) : null;
+					text.Append($"\n<color={Amber}>• {subject}</color>" + (detail != null ? $"\n<size=11><color={Grey}>    {detail}</color></size>" : ""));
+				}
+
+				if (todo.Count > 5)
+				{
+					text.Append($"\n<color={Grey}>… and {todo.Count - 5} more</color>");
+				}
+			}
+
 			text.Append("\n" + Separator + $"\n<size=11><color={Key}>[Left click]</color> <color={Grey}>get ready</color>   <color={Key}>[Right click]</color> <color={Grey}>configure</color></size>");
 			return text.ToString();
 		}

@@ -60,7 +60,7 @@ namespace GetReady
 			}
 
 			// The weapons you carry now first, then the models set aside before (by model, not by the very weapon)
-			HelpTitle(card, "Stacks of spare ammo per weapon (by model)", "Each model asks for the generic number above unless you change it here; 0 means no spare ammo for it. Weapons of one caliber share the request: the biggest number counts, and two of the same model count once. A model set back to the generic number leaves the list.");
+			HelpTitle(card, "Stacks of spare ammo per weapon (by model)", "Each model asks for the generic number above unless you change it here; 0 means no spare ammo for it. Weapons of one caliber share the request: the biggest number counts, and two of the same model count once. The x sets a weapon's model back to the generic number (it is there when the model has a number of its own); for a model you do not carry it also takes it off the list. A number set with - and + stays the model's own, even when it equals the generic number (changing the generic number does not move it): only the x gives it back.");
 			var equipped = new List<KeyValuePair<string, KeyValuePair<Item, string>>>();
 			foreach (var weapon in AmmoRules.EquippedWeapons(controller.Inventory).Where(weapon => !string.IsNullOrEmpty(weapon.AmmoCaliber)))
 			{
@@ -71,7 +71,7 @@ namespace GetReady
 				}
 			}
 
-			var remembered = ammo.SpareStacks.Select(entry => new ItemRef { Template = entry.Template, Name = entry.Name }).Concat(ammo.SpareIgnored);
+			var remembered = ammo.SpareStacks.Select(entry => new ItemRef { Template = entry.Template, Name = entry.Name });
 			var away = remembered.Where(entry => !equipped.Any(known => known.Key == entry.Template)).GroupBy(entry => entry.Template).Select(group => group.First()).ToList();
 			TwoSections(card, "EQUIPPED", "No weapon equipped.", equipped.Count > 0, box =>
 			{
@@ -92,7 +92,8 @@ namespace GetReady
 		private static void StackRow(Transform parent, string template, string name, Item item)
 		{
 			var row = UiKit.HBox(parent, 8f);
-			if (item != null)
+			bool carried = item != null;
+			if (carried)
 			{
 				ItemIcon(row, item, UiKit.Unit * 2.2f, name);
 			}
@@ -105,6 +106,8 @@ namespace GetReady
 			int generic = AmmoStep.Spare.Setting.Target;
 			int now = AmmoStep.StacksOf(template);
 			string amount = now == 0 ? "none" : $"{now} stack{(now == 1 ? "" : "s")}";
+			bool own = AmmoStep.HasOwnStacks(template);
+			// The label only says the number matches the generic one; whether the model follows it is a matter of its own number (the x)
 			string text = now == generic ? $"default ({(now == 0 ? "none" : now.ToString())})" : amount;
 			Stepper(row, text, now == generic ? UiColors.Dim : UiColors.Heading, 7.5f,
 				() =>
@@ -123,6 +126,20 @@ namespace GetReady
 						Changed();
 					}
 				}, "One stack fewer for this model (0: no spare ammo)", "One stack more for this model");
+			// The red cross: the only way back to the generic number (only when this model has a number of its own); for a model not carried it also leaves the list
+			var cross = UiKit.HBox(row, 0f);
+			CrossButton(cross, () =>
+			{
+				AmmoStep.RemoveModel(template);
+				Changed();
+			}, carried ? "Back to the generic number for this model" : "Take this model off the list (back to the generic number)");
+			if (!own)
+			{
+				var off = cross.gameObject.AddComponent<CanvasGroup>();
+				off.alpha = 0.25f;
+				off.interactable = false;
+				off.blocksRaycasts = false;
+			}
 		}
 	}
 }

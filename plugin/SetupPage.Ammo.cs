@@ -27,18 +27,28 @@ namespace GetReady
 			var inner = UiKit.VBox(sub, 0f);
 			UiKit.Size(inner, flexWidth: 1f);
 			OptionRow(inner, ammo.LooseShortIsProblem, "A loose stack that can't be filled is a problem", "A loose stack of ammo you carry that is short, when the stash has no more of it to fill it up.\n<b>On:</b> it is reported in red and counted in the box at the top.\n<b>Off:</b> it is just left as it is.", value => ammo.LooseShortIsProblem = value);
-			// The kinds of ammo left out of the filling, like the repair exclusions: what you carry loose, and what is excluded but not on you
-			if (controller == null)
+			if (!ammo.TopUpLoose)
 			{
-				UiKit.Label(inner, "Open this with the stash to pick the ammo to leave out.", 0.85f, UiColors.Dim);
+				var dim = sub.gameObject.AddComponent<CanvasGroup>();
+				dim.alpha = 0.4f;
+				dim.interactable = false;
 			}
-			else
+
+			// The kinds of ammo left out of the filling, like the repair exclusions: what you carry loose, and what is excluded but not on you.
+			// Only while the stacks are kept full, and not indented.
+			if (ammo.TopUpLoose && controller == null)
 			{
-				UiKit.Label(inner, "Leave these kinds of ammo out of the filling. They still count as spare ammo.", 0.8f, UiColors.Dim);
+				UiKit.Gap(rules, 0f, UiKit.Unit * 0.6f);
+				UiKit.Label(rules, "Open this with the stash to pick the ammo to leave out.", 0.85f, UiColors.Dim);
+			}
+			else if (ammo.TopUpLoose)
+			{
+				UiKit.Gap(rules, 0f, UiKit.Unit * 0.6f);
+				UiKit.Label(rules, "Leave these kinds of ammo out of the filling. They still count as spare ammo.", 0.8f, UiColors.Dim);
 				var carried = AmmoStep.LooseKinds(controller);
 				var excluded = ammo.TopUpExcluded;
 				var aside = excluded.Where(entry => !carried.Any(stack => stack.TemplateId.ToString() == entry.Template)).ToList();
-				TwoSections(inner, "LOOSE ON YOU", "No loose ammo on you.", carried.Count > 0, box =>
+				TwoSections(rules, "LOOSE ON YOU", "No loose ammo on you.", carried.Count > 0, box =>
 				{
 					foreach (var stack in carried)
 					{
@@ -70,13 +80,6 @@ namespace GetReady
 						}, "Fills the stacks of this ammo up again when you carry it. It is not on you, so it also leaves this list (only excluded ammo is kept here)", UiKit.Unit * 8f);
 					}
 				});
-			}
-
-			if (!ammo.TopUpLoose)
-			{
-				var dim = sub.gameObject.AddComponent<CanvasGroup>();
-				dim.alpha = 0.4f;
-				dim.interactable = false;
 			}
 
 			UiKit.Line(rules);

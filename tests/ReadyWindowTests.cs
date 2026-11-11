@@ -205,6 +205,34 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void The_things_to_do_are_listed_like_the_problems()
+		{
+			Add("Supplies", Group(), Todo("Bring 3 grenades"));
+
+			ReadyPlan.Summary().Should().Contain("1 to do").And.Contain("Bring 3 grenades");
+		}
+
+		[Fact]
+		public void Only_the_first_five_things_to_do_are_listed_and_the_rest_counted()
+		{
+			Add("Supplies", Group(), Todo("t1"), Todo("t2"), Todo("t3"), Todo("t4"), Todo("t5"), Todo("t6"), Todo("t7"));
+
+			var text = ReadyPlan.Summary();
+
+			text.Should().Contain("7 to do").And.Contain("t5").And.NotContain("t6").And.Contain("and 2 more");
+		}
+
+		[Fact]
+		public void The_list_of_things_to_do_comes_after_the_problems()
+		{
+			Add("Supplies", Group(), Todo("fetch it"), Wrong("broken", "bad"));
+
+			var text = ReadyPlan.Summary();
+
+			text.IndexOf("1 problem").Should().BeLessThan(text.IndexOf("1 to do"));
+		}
+
+		[Fact]
 		public void A_long_problem_is_cut_short()
 		{
 			Add("Supplies", Wrong(new string('x', 80), new string('y', 80)));

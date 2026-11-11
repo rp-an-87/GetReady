@@ -202,31 +202,36 @@ namespace GetReady
 			return lines;
 		}
 
-		// A model asks for this many stacks: the generic number takes it off the list, any other number puts it on (or changes it)
+		// A model asks for this many stacks, whatever the number: set by hand it is its own number, even when it equals the generic one
+		// (a later change of the generic number does not move it). Only RemoveModel gives it back to the generic number.
 		internal static void SetStacks(string template, string name, int stacks)
 		{
 			var ammo = SettingsStore.Current.Ammo;
-			ammo.SpareIgnored.RemoveAll(entry => entry.Template == template);
 			ammo.SpareStacks.RemoveAll(entry => entry.Template == template);
-			if (stacks != Spare.Setting.Target)
-			{
-				ammo.SpareStacks.Add(new ModelStacks { Template = template, Name = name, Stacks = stacks });
-			}
+			ammo.SpareStacks.Add(new ModelStacks { Template = template, Name = name, Stacks = stacks });
+		}
+
+		// The model has a number of its own (set by hand)
+		internal static bool HasOwnStacks(string template)
+		{
+			var ammo = SettingsStore.Current.Ammo;
+			return ammo.SpareStacks.Any(entry => entry.Template == template);
+		}
+
+		// A model off the list, back to the generic number
+		internal static void RemoveModel(string template)
+		{
+			var ammo = SettingsStore.Current.Ammo;
+			ammo.SpareStacks.RemoveAll(entry => entry.Template == template);
 		}
 
 		// How many stacks of spare ammo a weapon model asks for: its own number, else the generic one
 		internal static int StacksOf(Weapon weapon) => StacksOf(weapon.TemplateId.ToString());
 
-		// By model: 0 for a model set aside before ("skipped": the older way of saying none), else its own number, else the generic one
+		// By model: its own number, else the generic one
 		internal static int StacksOf(string template)
 		{
-			var ammo = SettingsStore.Current.Ammo;
-			if (ammo.SpareIgnored.Any(entry => entry.Template == template))
-			{
-				return 0;
-			}
-
-			var own = ammo.SpareStacks.FirstOrDefault(entry => entry.Template == template);
+			var own = SettingsStore.Current.Ammo.SpareStacks.FirstOrDefault(entry => entry.Template == template);
 			return own != null ? own.Stacks : Spare.Setting.Target;
 		}
 

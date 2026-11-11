@@ -12,8 +12,10 @@ namespace GetReady
 		internal const float Hold = 0.15f;
 		internal const float FadeIn = 0.25f;
 		internal const float FadeOut = 0.4f;
-		// The bar fills this fast at most (fractions per second): quick enough to follow the real work, slow enough that a jump is a slide, not a cut
-		internal const float Speed = 5f;
+		// The bar eases towards the real progress: each second it covers this share (as a rate) of the gap still left, so a jump slides in and slows
+		// as it lands, and it never runs ahead of the work. MinSpeed (fractions per second) makes sure the last bit arrives.
+		internal const float EaseRate = 8f;
+		internal const float MinSpeed = 0.6f;
 		// While the run is going the bar never reaches the end: only the end of the run fills it
 		internal const float RunningCap = 0.97f;
 		// With the steps shown one after the other: each name stays this long, and the whole row of them is over this long after the bar appears
@@ -122,7 +124,9 @@ namespace GetReady
 		{
 			float dt = Mathf.Max(0f, now - _last);
 			_last = now;
-			Displayed = Mathf.MoveTowards(Displayed, Target, Speed * dt);
+			float gap = Target - Displayed;
+			float step = Mathf.Max(gap * (1f - Mathf.Exp(-EaseRate * dt)), MinSpeed * dt);
+			Displayed = Mathf.MoveTowards(Displayed, Target, step);
 			if (Finished && _fullAt < 0f && Displayed >= 1f)
 			{
 				_fullAt = now;

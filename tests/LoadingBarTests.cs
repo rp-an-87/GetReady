@@ -95,17 +95,45 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void The_bar_slides_towards_the_target_at_a_limited_speed()
+		public void The_bar_eases_towards_the_target_without_jumping_and_never_passes_it()
 		{
 			var model = Started(2);
 			model.LineDone();
 
-			model.Tick(10.05f);
-			model.Displayed.Should().BeApproximately(LoadingModel.Speed * 0.05f, 0.001f);
+			// A frame after the step: it has started to move but is nowhere near there (no cut)
+			model.Tick(10.016f);
+			model.Displayed.Should().BeGreaterThan(0f).And.BeLessThan(0.15f);
+
+			// It slows as it lands: the first tenth of a second covers more than the next
+			float early = model.Displayed;
+			model.Tick(10.116f);
+			float first = model.Displayed - early;
+			model.Tick(10.216f);
+			float second = model.Displayed - early - first;
+			first.Should().BeGreaterThan(second);
+			model.Displayed.Should().BeLessThan(0.5f);
 
 			// Long after, it has arrived at the target and no further
 			model.Tick(20f);
 			model.Displayed.Should().BeApproximately(0.5f, 0.001f);
+		}
+
+		[Fact]
+		public void The_end_of_the_run_always_fills_the_bar_even_with_the_ease_slowing_down()
+		{
+			var model = Started(2);
+			model.Finish(10.01f);
+
+			float t = 10.01f;
+			for (int i = 0; i < 200 && model.FullAt < 0f; i++)
+			{
+				t += 0.016f;
+				model.Tick(t);
+			}
+
+			model.FullAt.Should().BeGreaterThan(0f);
+			model.Displayed.Should().Be(1f);
+			(model.FullAt - 10.01f).Should().BeLessThan(2.5f);
 		}
 
 		[Fact]

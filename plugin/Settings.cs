@@ -93,8 +93,6 @@ namespace GetReady
 		// Spare ammo (how many stacks and where to is the supplies group "spareammo"): when several kinds of ammo are in use for a
 		// caliber, the one brought is the worst, the best (penetration, then damage) or a random one of them
 		public string SparePick = "best";
-		// Weapon models that need no spare ammo (a sidearm that is never reloaded)
-		public List<ItemRef> SpareIgnored = new List<ItemRef>();
 		// Weapon models that ask for another number of stacks than the generic one (by model: two of the same ask once)
 		public List<ModelStacks> SpareStacks = new List<ModelStacks>();
 	}

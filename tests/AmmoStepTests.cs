@@ -440,7 +440,7 @@ namespace GetReady.Tests
 			InStash(M855, 200);
 			var rifle = Rifle(30, chambered: true);
 			AmmoStep.Spare.Setting.Target = 1;
-			SettingsStore.Current.Ammo.SpareIgnored.Add(new ItemRef { Template = rifle.TemplateId.ToString(), Name = "M4A1" });
+			AmmoStep.SetStacks(rifle.TemplateId.ToString(), "M4A1", 0);
 
 			Plan().Select(line => line.Text).Should().NotContain(text => text.StartsWith("Spare ammo"));
 		}
@@ -569,7 +569,7 @@ namespace GetReady.Tests
 			var rifle = Loaded(M4A1);
 			Loaded(Hk416);
 			AmmoStep.Spare.Setting.Target = 1;
-			SettingsStore.Current.Ammo.SpareIgnored.Add(new ItemRef { Template = rifle.TemplateId.ToString(), Name = "M4A1" });
+			AmmoStep.SetStacks(rifle.TemplateId.ToString(), "M4A1", 0);
 
 			Plan().Where(line => line.IsProgress && line.Subject.StartsWith("Spare ammo")).Select(line => line.Subject).Should().Equal("Spare ammo for HK416");
 		}
@@ -946,7 +946,7 @@ namespace GetReady.Tests
 			InStash(M855, 1000);
 			var rifle = Rifle(30, chambered: true);
 			AmmoStep.Spare.Setting.Target = 1;
-			SettingsStore.Current.Ammo.SpareIgnored.Add(new ItemRef { Template = rifle.TemplateId.ToString(), Name = "M4A1" });
+			AmmoStep.SetStacks(rifle.TemplateId.ToString(), "M4A1", 0);
 
 			Plan().Should().NotContain(line => line.Part == "spare");
 		}
