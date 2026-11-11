@@ -61,6 +61,9 @@ namespace GetReady
 		// Non-FiR copies of an item go before FiR ones, even when the non-FiR one is in a container and the FiR one lies loose. Between
 		// equals the loose one always goes first. Off: loose before in a container, whatever FiR is.
 		public bool NonFiRBeforeLoose = true;
+		// A carried FiR item is swapped for a non-FiR copy of the same kind when the stash one is at least as full (grenades, cartridges,
+		// kits at a tie). Off: FiR is ignored in swaps, a swap needs strictly more resource or a higher-ranked item.
+		public bool SwapFiRForNonFiR = true;
 		public Dictionary<string, GroupSetting> Groups = new Dictionary<string, GroupSetting>();
 	}
 

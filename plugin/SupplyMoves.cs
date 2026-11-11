@@ -138,7 +138,7 @@ namespace GetReady
 				return belowTarget && candidatePriority < currentPriority;
 			}
 
-			if (candidate.MarkedAsSpawnedInSession == current.MarkedAsSpawnedInSession)
+			if (!SettingsStore.Current.Supplies.SwapFiRForNonFiR || candidate.MarkedAsSpawnedInSession == current.MarkedAsSpawnedInSession)
 			{
 				return Game.ResourceOf(candidate) > Game.ResourceOf(current);
 			}

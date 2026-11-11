@@ -338,6 +338,39 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void A_carried_FiR_kit_is_swapped_for_an_equally_full_non_FiR_one()
+		{
+			Only(_step, "health", 400);
+			var carried = Any(Salewa);
+			carried.SpawnedInSession = true;
+
+			Plan(_step, new[] { carried }, new[] { Any(Salewa) }).Should().Contain(line => line.Text.StartsWith("Replace"));
+		}
+
+		[Fact]
+		public void With_the_swap_option_off_a_carried_FiR_kit_stays_on_a_tie()
+		{
+			Only(_step, "health", 400);
+			SettingsStore.Current.Supplies.SwapFiRForNonFiR = false;
+			var carried = Any(Salewa);
+			carried.SpawnedInSession = true;
+
+			Plan(_step, new[] { carried }, new[] { Any(Salewa) }).Should().NotContain(line => line.Text.StartsWith("Replace"));
+		}
+
+		[Fact]
+		public void With_the_swap_option_off_a_fuller_kit_still_replaces_a_FiR_one()
+		{
+			Only(_step, "health", 400);
+			SettingsStore.Current.Supplies.SwapFiRForNonFiR = false;
+			var carried = Any(Salewa);
+			carried.SpawnedInSession = true;
+			carried.GetItemComponent<MedKitComponent>().HpResource = 100;
+
+			Plan(_step, new[] { carried }, new[] { Any(Salewa) }).Should().Contain(line => line.Text.StartsWith("Replace"));
+		}
+
+		[Fact]
 		public void A_kit_that_already_meets_the_target_is_not_replaced()
 		{
 			Only(_step, "health", 300);

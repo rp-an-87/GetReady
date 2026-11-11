@@ -126,6 +126,7 @@ namespace GetReady.Tests
 			read.Ammo.TopUpLoose.Should().BeTrue();
 			read.Ammo.LooseShortIsProblem.Should().BeFalse();
 			read.Supplies.NonFiRBeforeLoose.Should().BeTrue();
+			read.Supplies.SwapFiRForNonFiR.Should().BeTrue();
 		}
 
 		[Fact]

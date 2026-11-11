@@ -389,7 +389,8 @@ namespace GetReady
 			UiKit.Size(percent, UiKit.Unit * 3.5f);
 			UiKit.PushButton(size, "+", () => Resize(0.1f), new Color(0.2f, 0.21f, 0.21f), new Color(0.27f, 0.28f, 0.27f), UiColors.Text, width: UiKit.Unit * 2f, height: UiKit.Unit * 1.7f, edge: ButtonEdge);
 
-			OptionRow(section, supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "Which copy of an item is taken from the stash when you have several.\n<b>On:</b> non-FiR first (it keeps your found-in-raid ones back), even when that one is inside a case or bag. Between equals, the one lying loose goes first.\n<b>Off:</b> the one lying loose goes first, whatever its FiR status.", value => supplies.NonFiRBeforeLoose = value);
+			OptionRow(section, supplies.NonFiRBeforeLoose, "Keep FiR items back, even if that means taking from a container", "Which stash copy is picked when you have several (it doesn't touch what you already carry, see the swap option below).\n<b>On:</b> non-FiR first (it keeps your found-in-raid ones back), even when that one is inside a case or bag. Between equals, the one lying loose goes first.\n<b>Off:</b> the one lying loose goes first, whatever its FiR status.", value => supplies.NonFiRBeforeLoose = value);
+			OptionRow(section, supplies.SwapFiRForNonFiR, "Swap carried FiR items for non-FiR ones", "Whether something you already carry is replaced by a copy from the stash when the only difference is FiR.\n<b>On:</b> a carried FiR item (grenade, kit, cartridge) is swapped for a non-FiR copy that is at least as full.\n<b>Off:</b> FiR is ignored here. A carried item is only swapped for a fuller one, or one you rank higher in Items. The \"Keep FiR items back\" option above only decides which stash copy gets picked.", value => supplies.SwapFiRForNonFiR = value);
 		}
 
 		private static void Resize(float step)
