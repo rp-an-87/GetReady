@@ -205,17 +205,35 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void The_things_to_do_are_listed_like_the_problems()
+		public void A_line_on_its_own_is_listed_as_a_thing_to_do()
 		{
-			Add("Supplies", Group(), Todo("Bring 3 grenades"));
+			Add("Ammo", Todo("Chamber FMJ in SPEAR"));
 
-			ReadyPlan.Summary().Should().Contain("1 to do").And.Contain("Bring 3 grenades");
+			ReadyPlan.Summary().Should().Contain("1 to do").And.Contain("Chamber FMJ in SPEAR");
+		}
+
+		[Fact]
+		public void A_card_with_many_moves_is_one_entry_that_counts_them()
+		{
+			Add("Ammo", Group("L7AWM in Ten-Speed: 0/25"), Todo("a"), Todo("b"), Todo("c"), Todo("d"));
+
+			var text = ReadyPlan.Summary();
+
+			text.Should().Contain("1 to do").And.Contain("L7AWM in Ten-Speed: 0/25").And.Contain("4 steps").And.NotContain("• a");
+		}
+
+		[Fact]
+		public void The_list_matches_the_count_on_the_top_line()
+		{
+			Add("Ammo", Todo("chamber"), Group("G1"), Todo(), Todo(), Group("G2"), Todo());
+
+			ReadyPlan.TodoCards().Count.Should().Be(Tally().toBring);
 		}
 
 		[Fact]
 		public void Only_the_first_five_things_to_do_are_listed_and_the_rest_counted()
 		{
-			Add("Supplies", Group(), Todo("t1"), Todo("t2"), Todo("t3"), Todo("t4"), Todo("t5"), Todo("t6"), Todo("t7"));
+			Add("Supplies", Todo("t1"), Todo("t2"), Todo("t3"), Todo("t4"), Todo("t5"), Todo("t6"), Todo("t7"));
 
 			var text = ReadyPlan.Summary();
 

@@ -230,6 +230,61 @@ namespace GetReady
 			}
 		}
 
+		// What there is to do, one entry per card (mirrors TallyLines): a card with several moves is one entry that says how many, a line on its own is its own
+		internal static List<KeyValuePair<string, PlanLine>> TodoCards()
+		{
+			var cards = new List<KeyValuePair<string, PlanLine>>();
+			foreach (var entry in Plan)
+			{
+				var step = entry.Key.Name;
+				PlanLine head = null;
+				var runs = new List<PlanLine>();
+				Action flush = () =>
+				{
+					if (head != null && runs.Count > 0)
+					{
+						cards.Add(new KeyValuePair<string, PlanLine>(step, new PlanLine { Subject = head.Text, Detail = runs.Count == 1 ? runs[0].Text : $"{runs.Count} steps" }));
+					}
+
+					head = null;
+					runs.Clear();
+				};
+				foreach (var line in entry.Value)
+				{
+					if (line.IsProgress)
+					{
+						flush();
+						head = line;
+						continue;
+					}
+
+					if (line.Standalone)
+					{
+						flush();
+					}
+
+					if (head == null)
+					{
+						if (line.Run != null)
+						{
+							cards.Add(new KeyValuePair<string, PlanLine>(step, new PlanLine { Subject = line.Subject ?? line.Text, Detail = line.Subject != null ? line.Detail : null }));
+						}
+
+						continue;
+					}
+
+					if (line.Run != null)
+					{
+						runs.Add(line);
+					}
+				}
+
+				flush();
+			}
+
+			return cards;
+		}
+
 		// The colours of the tooltip: the window's own (green when fine, amber when there is something to do, red for a problem)
 		private const string Green = "#73C77F";
 		private const string Amber = "#FFA347";
@@ -352,17 +407,15 @@ namespace GetReady
 				}
 			}
 
-			// What Get ready will do, a few lines like the problems (the heading counts lines, the first line of this tooltip counts cards)
-			var todo = Plan.SelectMany(entry => entry.Value.Where(line => line.Run != null && !line.Problem).Select(line => new KeyValuePair<string, PlanLine>(entry.Key.Name, line))).ToList();
+			// What Get ready will do, one entry per card (the same count as the top line), a few of them like the problems
+			var todo = TodoCards();
 			if (todo.Count > 0)
 			{
 				text.Append("\n" + Separator + $"\n<color={Amber}><b>{(todo.Count == 1 ? "1 to do" : $"{todo.Count} to do")}</b></color>");
 				foreach (var item in todo.Take(5))
 				{
 					var line = item.Value;
-					var subject = Short(line.Subject ?? line.Text, 34);
-					var detail = line.Detail != null && line.Subject != null ? Short(line.Detail, 46) : null;
-					text.Append($"\n<color={Amber}>• {subject}</color>" + (detail != null ? $"\n<size=11><color={Grey}>    {detail}</color></size>" : ""));
+					text.Append($"\n<color={Amber}>• {Short(line.Subject, 44)}</color>" + (line.Detail != null ? $"\n<size=11><color={Grey}>    {Short(line.Detail, 52)}</color></size>" : ""));
 				}
 
 				if (todo.Count > 5)
