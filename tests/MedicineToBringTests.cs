@@ -246,6 +246,25 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void A_fuller_copy_in_a_container_is_brought_instead_of_a_loose_partly_used_one()
+		{
+			var def = Only(_step, "heavybleed", 2);
+			def.Setting.ReplaceWorse = true;
+			def.Setting.AllowOvershoot = true;
+			var loose = Any(CalokB);
+			loose.GetItemComponent<MedKitComponent>().HpResource = 2;
+			var inCase = Any(CalokB);
+			inCase.GetItemComponent<MedKitComponent>().HpResource = 3;
+			Game.IsInsideContainer = item => item == inCase;
+
+			var lines = Plan(_step, new Item[0], new[] { loose, inCase });
+
+			Texts(lines).Should().Contain("Bring 1x CALOK-B");
+			lines.Should().ContainSingle(line => line.Text.StartsWith("Bring"));
+			Plan(_step, new[] { inCase }, new[] { loose }).Should().NotContain(line => line.Text.StartsWith("Replace"));
+		}
+
+		[Fact]
 		public void Non_FiR_comes_before_FiR_and_then_loose_before_container()
 		{
 			var def = Bandages(2);

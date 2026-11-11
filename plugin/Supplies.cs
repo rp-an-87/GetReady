@@ -229,6 +229,22 @@ namespace GetReady
 						item = usable.FirstOrDefault(candidate => candidate.TemplateId == item.TemplateId && def.WeightOf(candidate) >= need) ?? item;
 					}
 
+					// With "replace worse" on, a fuller copy of the same item would replace this one on the next click anyway, so bring it now
+					// (first in the ranking wins a tie)
+					if (!def.Stack && def.Setting.ReplaceWorse)
+					{
+						var fullest = item;
+						foreach (var candidate in usable.Where(candidate => candidate.TemplateId == item.TemplateId))
+						{
+							if (def.WeightOf(candidate) > def.WeightOf(fullest))
+							{
+								fullest = candidate;
+							}
+						}
+
+						item = fullest;
+					}
+
 					float weight = def.WeightOf(item);
 					var template = item.TemplateId.ToString();
 					int have;
