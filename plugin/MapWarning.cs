@@ -197,6 +197,7 @@ namespace GetReady
 			GUI.color = new Color(0.105f, 0.11f, 0.11f);
 			GUI.DrawTexture(rect, Texture2D.whiteTexture);
 			GUI.color = previous;
+			ReminderBars.Edge(rect);
 			var sprite = GetReady.Icons.Of(template);
 			if (sprite == null || sprite.texture == null)
 			{

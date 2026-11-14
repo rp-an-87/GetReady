@@ -158,11 +158,25 @@ namespace GetReady
 			return _warning;
 		}
 
+		// The thin light edge of an item's square (the same on the map screen's other warnings)
+		internal static void Edge(Rect rect)
+		{
+			var previous = GUI.color;
+			GUI.color = new Color(0.42f, 0.43f, 0.42f);
+			const float line = 1.5f;
+			GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, line), Texture2D.whiteTexture);
+			GUI.DrawTexture(new Rect(rect.x, rect.yMax - line, rect.width, line), Texture2D.whiteTexture);
+			GUI.DrawTexture(new Rect(rect.x, rect.y, line, rect.height), Texture2D.whiteTexture);
+			GUI.DrawTexture(new Rect(rect.xMax - line, rect.y, line, rect.height), Texture2D.whiteTexture);
+			GUI.color = previous;
+		}
+
 		// An item's picture in a small dark frame
 		private static void Picture(Rect rect, string template)
 		{
 			GUI.color = new Color(0.105f, 0.11f, 0.11f);
 			GUI.DrawTexture(rect, Texture2D.whiteTexture);
+			Edge(rect);
 			GUI.color = Color.white;
 			var sprite = Icons.Of(template);
 			if (sprite == null || sprite.texture == null)
