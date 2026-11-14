@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using EFT.InventoryLogic;
 using FluentAssertions;
 using Xunit;
 using static GetReady.Reminders;
@@ -204,6 +205,21 @@ namespace GetReady.Tests
 			facts.HydrationPercent = 1f;
 			facts.Armors.Add(new WornArmor { Name = "Slick", MissingPlate = true });
 			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.GreenFlare, Kind.Paracord, Kind.Needs, Kind.Plates);
+		}
+
+		[Fact]
+		public void A_weapon_in_the_scabbard_counts_as_on_you()
+		{
+			var body = new Body();
+			body.Wear(EquipmentSlot.Scabbard, RealItems.Any(RedRebel));
+			OnYou(body.Inventory).Select(item => item.TemplateId.ToString()).Should().Contain(RedRebel);
+		}
+
+		[Fact]
+		public void The_equipment_itself_is_not_an_item_on_you()
+		{
+			var body = new Body();
+			OnYou(body.Inventory).Should().NotContain(body.Equipment);
 		}
 
 		[Fact]

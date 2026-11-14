@@ -153,6 +153,10 @@ namespace GetReady
 			return list;
 		}
 
+		// Everything on you: what you wear and hold in every equipment slot (weapons, the scabbard's melee weapon, pockets, the secured
+		// container) with what is inside it. The Red Rebel is a weapon in the scabbard, so the carried containers alone are not enough.
+		internal static IEnumerable<Item> OnYou(Inventory inventory) => inventory.Equipment.GetAllItems().Where(item => item != inventory.Equipment);
+
 		// The facts of the profile about to raid (the one of the map screen)
 		internal static Facts FactsOf(Profile profile, string map)
 		{
@@ -163,7 +167,7 @@ namespace GetReady
 				return facts;
 			}
 
-			foreach (var item in Game.CarriedAndSecured(inventory))
+			foreach (var item in OnYou(inventory))
 			{
 				facts.Carried.Add(item.TemplateId.ToString());
 				if (item.GetItemComponent<FoodDrinkComponent>() != null)
