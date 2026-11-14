@@ -349,7 +349,7 @@ namespace GetReady
 			// The maps it is for: none picked is any map
 			var mapsPanel = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
 			UiKit.Label(mapsPanel, entry != null && entry.Maps.Count > 0 ? "For these maps only:" : "For any map (pick the maps it is for):", 0.8f, UiColors.Dim);
-			MapButtons(mapsPanel, mapName => entry != null && entry.Maps.Contains(mapName), mapName =>
+			MapButtons(mapsPanel, MapTags.Maps, mapName => entry != null && entry.Maps.Contains(mapName), mapName =>
 			{
 				var target = entry ?? CasesStep.Touch(item);
 				if (!target.Maps.Remove(mapName))

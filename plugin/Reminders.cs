@@ -65,15 +65,17 @@ namespace GetReady
 				return found;
 			}
 
-			bool Here(MapItemReminder panel) => panel.Enabled && facts.Map != null && panel.Maps.Contains(facts.Map, StringComparer.OrdinalIgnoreCase);
+			// Only on a map that has such an extract, whatever the list holds
+			bool Here(MapItemReminder panel, string[] extractMaps) => panel.Enabled && facts.Map != null && extractMaps.Contains(facts.Map, StringComparer.OrdinalIgnoreCase)
+				&& panel.Maps.Contains(facts.Map, StringComparer.OrdinalIgnoreCase);
 
-			if (Here(settings.GreenFlare) && !facts.Carried.Contains(GreenFlare))
+			if (Here(settings.GreenFlare, MapTags.FlareMaps) && !facts.Carried.Contains(GreenFlare))
 			{
 				found.Add(new Reminder { Kind = Kind.GreenFlare, Text = "MISSING FOR THIS MAP!", Icons = { GreenFlare } });
 			}
 
 			var paracord = settings.Paracord;
-			if (Here(paracord))
+			if (Here(paracord, MapTags.AlpinistMaps))
 			{
 				bool hasCord = facts.Carried.Contains(Paracord), hasRebel = facts.Carried.Contains(RedRebel);
 				var missing = new List<string>();

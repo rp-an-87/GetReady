@@ -29,6 +29,14 @@ namespace GetReady
 			new MapDef { Name = "Labs", Ids = new[] { "laboratory" } }
 		};
 
+		// The maps with a green flare extract (Customs: Railroad Passage, Woods: Power Line Passage, Streets: Klimov Street, Ground Zero: Mira
+		// Ave) and with an extract that asks for the Red Rebel and paracord (Alpinist: Shoreline, Reserve, Lighthouse), from the server's
+		// location data (PassageRequirement and the "(Flare)" exits)
+		internal static readonly string[] FlareMaps = { "Customs", "Woods", "Streets", "Ground Zero" };
+		internal static readonly string[] AlpinistMaps = { "Shoreline", "Reserve", "Lighthouse" };
+
+		internal static IEnumerable<MapDef> Only(IEnumerable<string> names) => Maps.Where(map => names.Contains(map.Name));
+
 		// The rule's name of the map with this location id, or null for one that has none (a map the rules do not know)
 		internal static string MapOf(string locationId) =>
 			string.IsNullOrEmpty(locationId) ? null : Maps.FirstOrDefault(map => map.Ids.Contains(locationId, StringComparer.OrdinalIgnoreCase))?.Name;

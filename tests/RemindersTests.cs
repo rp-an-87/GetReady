@@ -37,6 +37,25 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void A_map_without_such_an_extract_is_never_asked_even_if_listed()
+		{
+			var settings = Cord(false);
+			settings.Paracord.Maps.Add("Customs");
+			Check(settings, On("Customs")).Should().BeEmpty();
+			settings = Settings();
+			settings.GreenFlare.Enabled = true;
+			settings.GreenFlare.Maps.Add("Lighthouse");
+			Check(settings, On("Lighthouse")).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void The_extract_maps_are_all_real_maps()
+		{
+			MapTags.Only(MapTags.FlareMaps).Select(map => map.Name).Should().BeEquivalentTo(MapTags.FlareMaps);
+			MapTags.Only(MapTags.AlpinistMaps).Select(map => map.Name).Should().BeEquivalentTo(MapTags.AlpinistMaps);
+		}
+
+		[Fact]
 		public void Green_flare_with_no_map_picked_says_nothing()
 		{
 			var settings = Settings();
@@ -197,14 +216,12 @@ namespace GetReady.Tests
 		public void The_bars_come_in_a_fixed_order_one_per_kind()
 		{
 			var settings = Cord(false, true);
-			settings.GreenFlare.Enabled = true;
-			settings.GreenFlare.Maps.Add("Lighthouse");
 			settings.Needs.Enabled = true;
 			settings.Equipment.Enabled = true;
 			var facts = On("Lighthouse", Paracord);
 			facts.HydrationPercent = 1f;
 			facts.Armors.Add(new WornArmor { Name = "Slick", MissingPlate = true });
-			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.GreenFlare, Kind.Paracord, Kind.Needs, Kind.Plates);
+			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.Paracord, Kind.Needs, Kind.Plates);
 		}
 
 		[Fact]

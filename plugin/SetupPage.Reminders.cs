@@ -10,13 +10,13 @@ namespace GetReady
 		private const int MapsPerRow = 4;
 
 		// The map buttons, four to a row, equal width: lit when isOn says so, toggle gets the map's name
-		private static void MapButtons(Transform parent, Func<string, bool> isOn, Action<string> toggle)
+		private static void MapButtons(Transform parent, System.Collections.Generic.IList<MapTags.MapDef> choices, Func<string, bool> isOn, Action<string> toggle)
 		{
-			for (int first = 0; first < MapTags.Maps.Length; first += MapsPerRow)
+			for (int first = 0; first < choices.Count; first += MapsPerRow)
 			{
 				var row = UiKit.HBox(parent, 6f);
 				row.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandWidth = true;
-				var maps = MapTags.Maps.Skip(first).Take(MapsPerRow).ToList();
+				var maps = choices.Skip(first).Take(MapsPerRow).ToList();
 				foreach (var map in maps)
 				{
 					string mapName = map.Name;
@@ -52,11 +52,11 @@ namespace GetReady
 			return card;
 		}
 
-		private static void MapPanel(Transform card, MapItemReminder reminder)
+		private static void MapPanel(Transform card, MapItemReminder reminder, string[] extractMaps, string what)
 		{
 			var maps = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
-			UiKit.Label(maps, reminder.Maps.Count > 0 ? "Remind me on these maps:" : "Pick the maps to be reminded on:", 0.8f, UiColors.Dim);
-			MapButtons(maps, name => reminder.Maps.Contains(name), name =>
+			UiKit.Label(maps, reminder.Maps.Any(extractMaps.Contains) ? "Remind me on these maps:" : $"Maps with {what} (pick the ones to be reminded on):", 0.8f, UiColors.Dim);
+			MapButtons(maps, MapTags.Only(extractMaps).ToList(), name => reminder.Maps.Contains(name), name =>
 			{
 				if (!reminder.Maps.Remove(name))
 				{
@@ -93,7 +93,7 @@ namespace GetReady
 			var flare = ReminderCard(section, "Green flare", Reminders.GreenFlare, settings.GreenFlare.Enabled, value => settings.GreenFlare.Enabled = value);
 			if (settings.GreenFlare.Enabled)
 			{
-				MapPanel(flare, settings.GreenFlare);
+				MapPanel(flare, settings.GreenFlare, MapTags.FlareMaps, "a green flare extract");
 			}
 
 			var paracord = settings.Paracord;
@@ -102,7 +102,7 @@ namespace GetReady
 			{
 				OptionRow(cord, paracord.PairOnly, "Only when I have one of the two and not the other", "<b>On:</b> warns when you carry the paracord and not the Red Rebel, or the other way round. Carrying neither is left alone.\n<b>Off:</b> warns for whichever of the two is missing.", value => paracord.PairOnly = value);
 				OptionRow(cord, paracord.WarnArmor, "Warn if I wear armor with both", "With the paracord and the Red Rebel on you, warns when you wear armor or an armored vest: the Red Rebel extract does not allow it.", value => paracord.WarnArmor = value);
-				MapPanel(cord, paracord);
+				MapPanel(cord, paracord, MapTags.AlpinistMaps, "a Red Rebel extract");
 			}
 
 			var needs = settings.Needs;
