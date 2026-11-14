@@ -70,27 +70,18 @@ namespace GetReady
 			return new HashSet<string>(Game.CarriedAndSecured(profile.Inventory).Select(item => item.Id.ToString()));
 		}
 
-		// Like the GET READY bar of the deploy screen: a bright red bar with dark red letters
-		private static readonly Color Red = new Color(0.85f, 0.09f, 0.07f);
-		private static readonly Color Glow = new Color(0.8f, 0.17f, 0.14f);
-		private static readonly Color Ink = new Color(0.3f, 0.02f, 0.02f);
-		private static GUIStyle _text;
 		private static MapTags.Report _report = new MapTags.Report();
 
-		private const string WrongText = "WRONG CONTAINERS FOR THIS MAP!";
-
-		// "MISSING CONTAINERS FOR THIS MAP:" when that is all there is, "MISSING:" after the wrong ones
-		private static string MissingText(bool alone) => alone ? "MISSING CONTAINERS FOR THIS MAP:" : "MISSING:";
-
-		internal static void Draw()
+		// The wrong and missing containers for the map picked (shown as reminders, see ReminderBars). Looked at twice a second, in the layout
+		// pass only, so the two passes of a frame see the same thing.
+		internal static MapTags.Report Current()
 		{
 			var settings = SettingsStore.Current.Cases;
 			if (_screen == null || !_screen.isActiveAndEnabled || !settings.MapWarnings || settings.Cases.Count == 0)
 			{
-				return;
+				return new MapTags.Report();
 			}
 
-			// Looked at twice a second, in the layout pass only, so the two passes of a frame draw the same thing
 			if (Event.current.type == EventType.Layout && Time.unscaledTime - _checkedAt > 0.5f)
 			{
 				_checkedAt = Time.unscaledTime;
@@ -98,138 +89,7 @@ namespace GetReady
 				_report = ids == null ? new MapTags.Report() : MapTags.Check(settings.Cases, ids, _map, true);
 			}
 
-			if (!_report.Any || (Event.current.type != EventType.Layout && Event.current.type != EventType.Repaint))
-			{
-				return;
-			}
-
-			OverlayFont.Init();
-			float row = Screen.height * 0.045f;
-			if (_text == null)
-			{
-				_text = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal, alignment = TextAnchor.MiddleLeft, richText = false, wordWrap = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0) };
-				_text.normal.textColor = Ink;
-			}
-
-			// The font can turn up after the style is made
-			if (OverlayFont.Font != null && _text.font != OverlayFont.Font)
-			{
-				_text.font = OverlayFont.Font;
-			}
-
-			_text.fontSize = Mathf.RoundToInt(row * 0.4f);
-			float icon = row - 6f;
-			float gap = row * 0.22f;
-			bool both = _report.Wrong.Count > 0 && _report.Missing.Count > 0;
-			string missingText = MissingText(!both);
-			Func<string, float> widthOf = text => _text.CalcSize(new GUIContent(text)).x;
-			float content = 0f;
-			if (_report.Wrong.Count > 0)
-			{
-				content += _report.Wrong.Count * (icon + gap) + widthOf(WrongText);
-			}
-
-			if (both)
-			{
-				content += row;
-			}
-
-			if (_report.Missing.Count > 0)
-			{
-				content += widthOf(missingText) + gap + _report.Missing.Count * (icon + gap);
-			}
-
-			float width = content + row * 1.6f;
-			float height = row + row * 0.3f;
-			// Just above the time selection of the screen, in the middle; above the NOT READY bar when that is up
-			float lift = NotReadyWarning.Visible ? NotReadyWarning.StackHeight : 0f;
-			var bar = new Rect((Screen.width - width) / 2f, Screen.height * 0.745f - height - lift, width, height);
-
-			if (Event.current.type == EventType.Repaint)
-			{
-				var halo = new Rect(bar.x - bar.width * 0.3f, bar.y - bar.height * 1.1f, bar.width * 1.6f, bar.height * 3.2f);
-				float pulse = 0.85f + 0.15f * Mathf.Sin(Time.unscaledTime * 2.5f);
-				var previous = GUI.color;
-				GUI.color = new Color(Glow.r, Glow.g, Glow.b, pulse);
-				GUI.DrawTexture(halo, ReadyFlash.GlowTexture(), ScaleMode.StretchToFill, true);
-				GUI.color = Red;
-				GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, true);
-				GUI.color = previous;
-			}
-
-			// One line: the icons of the wrong containers and what is wrong, then the missing ones
-			GUILayout.BeginArea(bar);
-			GUILayout.BeginHorizontal(GUILayout.Height(height));
-			GUILayout.FlexibleSpace();
-			if (_report.Wrong.Count > 0)
-			{
-				Icons(_report.Wrong, icon, gap);
-				GUILayout.Label(WrongText, _text, GUILayout.Height(height));
-			}
-
-			if (both)
-			{
-				GUILayout.Space(row);
-			}
-
-			if (_report.Missing.Count > 0)
-			{
-				GUILayout.Label(missingText, _text, GUILayout.Height(height));
-				GUILayout.Space(gap);
-				Icons(_report.Missing, icon, gap);
-			}
-
-			GUILayout.FlexibleSpace();
-			GUILayout.EndHorizontal();
-			GUILayout.EndArea();
-		}
-
-		// A case's picture in a small dark frame
-		private static void Slot(string template, float size)
-		{
-			var rect = GUILayoutUtility.GetRect(size, size, GUILayout.Width(size), GUILayout.Height(size));
-			if (Event.current.type != EventType.Repaint)
-			{
-				return;
-			}
-
-			var previous = GUI.color;
-			GUI.color = new Color(0.105f, 0.11f, 0.11f);
-			GUI.DrawTexture(rect, Texture2D.whiteTexture);
-			GUI.color = previous;
-			ReminderBars.Edge(rect);
-			var sprite = GetReady.Icons.Of(template);
-			if (sprite == null || sprite.texture == null)
-			{
-				return;
-			}
-
-			var source = sprite.textureRect;
-			float scale = Mathf.Min((rect.width - 4f) / source.width, (rect.height - 4f) / source.height);
-			var shown = new Vector2(source.width * scale, source.height * scale);
-			var target = new Rect(rect.x + (rect.width - shown.x) / 2f, rect.y + (rect.height - shown.y) / 2f, shown.x, shown.y);
-			var texture = sprite.texture;
-			GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
-		}
-
-		// The case icons, each with its tag across the bottom of it, centred on the line
-		private static void Icons(List<CaseEntry> entries, float size, float gap)
-		{
-			foreach (var entry in entries)
-			{
-				GUILayout.BeginVertical(GUILayout.Width(size));
-				GUILayout.FlexibleSpace();
-				Slot(entry.CaseTemplate, size);
-				var rect = GUILayoutUtility.GetLastRect();
-				GUILayout.FlexibleSpace();
-				GUILayout.EndVertical();
-				if (Event.current.type == EventType.Repaint)
-				{
-					TagChip.DrawOn(rect, entry.Tag, entry.TagColor);
-				}
-
-				GUILayout.Space(gap);
-			}
+			return _report;
 		}
 	}
 }
