@@ -101,7 +101,7 @@ namespace GetReady
 			// The reminders have the mark of the warning bars
 			if (step == "Reminders")
 			{
-				return WarningBar.WarningIcon();
+				return GameWidgets.Padded(WarningBar.WarningIcon(), 1.6f);
 			}
 
 			if (step == "Cash")
