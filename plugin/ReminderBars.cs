@@ -98,7 +98,11 @@ namespace GetReady
 					GUI.color = Ink;
 					var source = warning.textureRect;
 					var texture = warning.texture;
-					GUI.DrawTextureWithTexCoords(mark, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
+					// Kept in proportion, centred in the square
+					float fit = Mathf.Min(mark.width / source.width, mark.height / source.height);
+					var shown = new Vector2(source.width * fit, source.height * fit);
+					var target = new Rect(mark.x + (mark.width - shown.x) / 2f, mark.y + (mark.height - shown.y) / 2f, shown.x, shown.y);
+					GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
 				}
 				else
 				{
