@@ -355,6 +355,54 @@ namespace GetReady
 			return copy;
 		}
 
+		private static readonly System.Collections.Generic.Dictionary<Sprite, Sprite> Padded_ = new System.Collections.Generic.Dictionary<Sprite, Sprite>();
+
+		// A copy of a readable sprite (one made by White) on a bigger transparent canvas, so the glyph shows smaller in the same slot: for an icon
+		// that fills its picture where the others leave some room around the glyph
+		internal static Sprite Padded(Sprite source, float factor)
+		{
+			if (source == null || source.texture == null)
+			{
+				return source;
+			}
+
+			Sprite copy;
+			if (Padded_.TryGetValue(source, out copy))
+			{
+				return copy;
+			}
+
+			try
+			{
+				var rect = source.textureRect;
+				int width = Mathf.RoundToInt(rect.width), height = Mathf.RoundToInt(rect.height);
+				int size = Mathf.CeilToInt(Mathf.Max(width, height) * factor);
+				var pixels = source.texture.GetPixels32();
+				var canvas = new Color32[size * size];
+				int left = (size - width) / 2, bottom = (size - height) / 2;
+				for (int y = 0; y < height; y++)
+				{
+					for (int x = 0; x < width; x++)
+					{
+						canvas[(bottom + y) * size + left + x] = pixels[(Mathf.RoundToInt(rect.y) + y) * source.texture.width + Mathf.RoundToInt(rect.x) + x];
+					}
+				}
+
+				var made = new Texture2D(size, size, TextureFormat.RGBA32, false);
+				made.SetPixels32(canvas);
+				made.Apply();
+				copy = Sprite.Create(made, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), source.pixelsPerUnit);
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Could not pad {source.name}: {e.Message}");
+				copy = source;
+			}
+
+			Padded_[source] = copy;
+			return copy;
+		}
+
 		private static readonly System.Collections.Generic.Dictionary<Sprite, Sprite> Resized_ = new System.Collections.Generic.Dictionary<Sprite, Sprite>();
 
 		// A copy of a sprite scaled to the pixel size of another (the layout sizes an icon by its pixels): for an icon that comes much bigger
