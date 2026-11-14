@@ -248,6 +248,64 @@ namespace GetReady.Tests
 			OnYou(body.Inventory).Should().NotContain(body.Equipment);
 		}
 
+		private static CaseEntry Case(string id, params string[] maps) => new CaseEntry { CaseId = id, CaseTemplate = "t" + id, Tag = id, Maps = maps.ToList() };
+
+		private static Facts WithCases(string map, string[] carriedIds, params CaseEntry[] cases)
+		{
+			var facts = On(map);
+			facts.Cases = cases.ToList();
+			facts.CarriedIds = new HashSet<string>(carriedIds);
+			return facts;
+		}
+
+		[Fact]
+		public void A_case_for_another_map_is_a_wrong_container()
+		{
+			var found = Check(Settings(), WithCases("Customs", new[] { "a" }, Case("a", "Woods"))).Single();
+			found.Kind.Should().Be(Kind.WrongContainers);
+			found.Cases.Select(entry => entry.CaseId).Should().Equal("a");
+			found.TextFirst.Should().BeFalse();
+		}
+
+		[Fact]
+		public void A_case_for_this_map_that_is_not_on_you_is_a_missing_container()
+		{
+			var found = Check(Settings(), WithCases("Customs", new string[0], Case("a", "Customs"))).Single();
+			found.Kind.Should().Be(Kind.MissingContainers);
+			found.Cases.Select(entry => entry.CaseId).Should().Equal("a");
+			found.TextFirst.Should().BeTrue();
+		}
+
+		[Fact]
+		public void The_container_kinds_each_have_their_switch()
+		{
+			var facts = WithCases("Customs", new[] { "a" }, Case("a", "Woods"), Case("b", "Customs"));
+			Check(Settings(), facts).Select(r => r.Kind).Should().Equal(Kind.WrongContainers, Kind.MissingContainers);
+			var settings = Settings();
+			settings.WrongContainers = false;
+			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.MissingContainers);
+			settings.WrongContainers = true;
+			settings.MissingContainers = false;
+			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.WrongContainers);
+			settings.WrongContainers = false;
+			Check(settings, facts).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void Containers_come_before_the_other_reminders()
+		{
+			var settings = Needs();
+			var facts = WithCases("Customs", new string[0], Case("b", "Customs"));
+			facts.HydrationPercent = 1f;
+			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.MissingContainers, Kind.Needs);
+		}
+
+		[Fact]
+		public void A_case_with_no_map_set_is_never_mentioned()
+		{
+			Check(Settings(), WithCases("Customs", new[] { "a" }, Case("a"))).Should().BeEmpty();
+		}
+
 		[Fact]
 		public void The_container_kinds_can_be_asked_for_apart()
 		{

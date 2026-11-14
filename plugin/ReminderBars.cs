@@ -6,9 +6,8 @@ using UnityEngine;
 
 namespace GetReady
 {
-	// Every warning of the map screen but NOT READY, as orange bars (see WarningBar) stacked under the title (PVE ZONE), one per kind: the
-	// containers that are wrong for the map, the ones that are missing, and the soft reminders (see Reminders). They only inform: nothing is
-	// clickable. The reminders are looked at twice a second, in the layout pass only, so the two passes of a frame draw the same thing.
+	// Every warning of the map screen but NOT READY, as orange bars (see WarningBar) stacked under the title (PVE ZONE), one per kind. What is
+	// said is decided by Reminders (containers wrong or missing for the map included); this only draws it. Nothing is clickable. They are looked at twice a second, in the layout pass only, so the two passes of a frame draw the same thing.
 	internal static class ReminderBars
 	{
 		private static MatchMakerSelectionLocationScreen _screen;
@@ -39,7 +38,7 @@ namespace GetReady
 				try
 				{
 					// A scav raid takes the scav's own kit: nothing from your stash and no reminders
-					_found = MapWarning.IsScav(_screen) ? new List<Reminders.Reminder>() : Reminders.Check(SettingsStore.Current.Reminders, Reminders.FactsOf(MapWarning.ProfileOf(_screen), _map));
+					_found = MapScreen.IsScav(_screen) ? new List<Reminders.Reminder>() : Reminders.Check(SettingsStore.Current.Reminders, Reminders.FactsOf(MapScreen.ProfileOf(_screen), _map, SettingsStore.Current.Cases.Cases));
 				}
 				catch (Exception e)
 				{
@@ -48,31 +47,18 @@ namespace GetReady
 				}
 			}
 
-			var cases = MapWarning.Current();
-			if (type != EventType.Repaint || (_found.Count == 0 && !cases.Any))
+			if (type != EventType.Repaint || _found.Count == 0)
 			{
 				return;
 			}
 
 			float top = Screen.height * 0.085f;
-			if (cases.Wrong.Count > 0)
-			{
-				var parts = cases.Wrong.Select(entry => WarningBar.Part.Of(PieceOf(entry))).ToList();
-				parts.Add(WarningBar.Part.Of("WRONG CONTAINERS FOR THIS MAP!"));
-				top = WarningBar.Draw(top, parts);
-			}
-
-			if (cases.Missing.Count > 0)
-			{
-				var parts = new List<WarningBar.Part> { WarningBar.Part.Of("MISSING CONTAINERS FOR THIS MAP:") };
-				parts.AddRange(cases.Missing.Select(entry => WarningBar.Part.Of(PieceOf(entry))));
-				top = WarningBar.Draw(top, parts);
-			}
-
 			foreach (var reminder in _found)
 			{
-				var parts = reminder.Icons.Select(template => WarningBar.Part.Of(new WarningBar.Piece { Template = template })).ToList();
-				parts.Add(WarningBar.Part.Of(reminder.Text));
+				var pieces = reminder.Icons.Select(template => WarningBar.Part.Of(new WarningBar.Piece { Template = template }))
+					.Concat(reminder.Cases.Select(entry => WarningBar.Part.Of(PieceOf(entry)))).ToList();
+				var text = WarningBar.Part.Of(reminder.Text);
+				var parts = reminder.TextFirst ? new[] { text }.Concat(pieces).ToList() : pieces.Concat(new[] { text }).ToList();
 				top = WarningBar.Draw(top, parts);
 			}
 		}

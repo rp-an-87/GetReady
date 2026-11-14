@@ -61,7 +61,7 @@ namespace GetReady
 				_wasActive = active;
 			}
 
-			if (!active || !_notReady || MapWarning.IsScav(_screen))
+			if (!active || !_notReady || MapScreen.IsScav(_screen))
 			{
 				return;
 			}

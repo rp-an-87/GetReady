@@ -42,10 +42,15 @@ namespace GetReady
 			public bool HasFood;
 			public bool HasDrink;
 			public List<WornArmor> Armors = new List<WornArmor>();
+			// The cases set up in Cases and the ids of what you carry, for the containers that are wrong or missing for the map
+			public List<CaseEntry> Cases = new List<CaseEntry>();
+			public HashSet<string> CarriedIds = new HashSet<string>();
 		}
 
 		internal enum Kind
 		{
+			WrongContainers,
+			MissingContainers,
 			GreenFlare,
 			Paracord,
 			Armor,
@@ -59,6 +64,9 @@ namespace GetReady
 			public string Text;
 			// Item templates shown as pictures before the text (what is missing)
 			public List<string> Icons = new List<string>();
+			// The containers it is about (shown with their tags), and whether the text comes before them
+			public List<CaseEntry> Cases = new List<CaseEntry>();
+			public bool TextFirst;
 		}
 
 		internal static List<Reminder> Check(RemindersSettings settings, Facts facts)
@@ -72,6 +80,21 @@ namespace GetReady
 			// Only on a map that has such an extract, whatever the list holds
 			bool Here(MapItemReminder panel, string[] extractMaps) => panel.Enabled && facts.Map != null && extractMaps.Contains(facts.Map, StringComparer.OrdinalIgnoreCase)
 				&& panel.Maps.Contains(facts.Map, StringComparer.OrdinalIgnoreCase);
+
+			// The containers: the cases you carry that are for other maps, and the ones for this map that are not on you
+			if (settings.WrongContainers || settings.MissingContainers)
+			{
+				var report = MapTags.Check(facts.Cases, facts.CarriedIds, facts.Map, true).Only(settings.WrongContainers, settings.MissingContainers);
+				if (report.Wrong.Count > 0)
+				{
+					found.Add(new Reminder { Kind = Kind.WrongContainers, Text = "WRONG CONTAINERS FOR THIS MAP!", Cases = report.Wrong });
+				}
+
+				if (report.Missing.Count > 0)
+				{
+					found.Add(new Reminder { Kind = Kind.MissingContainers, Text = "MISSING CONTAINERS FOR THIS MAP:", Cases = report.Missing, TextFirst = true });
+				}
+			}
 
 			if (Here(settings.GreenFlare, MapTags.FlareMaps) && !facts.Carried.Contains(GreenFlare))
 			{
@@ -176,9 +199,9 @@ namespace GetReady
 		internal static IEnumerable<Item> OnYou(Inventory inventory) => inventory.Equipment.GetAllItems().Where(item => item != inventory.Equipment);
 
 		// The facts of the profile about to raid (the one of the map screen)
-		internal static Facts FactsOf(Profile profile, string map)
+		internal static Facts FactsOf(Profile profile, string map, IEnumerable<CaseEntry> cases)
 		{
-			var facts = new Facts { Map = map };
+			var facts = new Facts { Map = map, Cases = cases?.ToList() ?? new List<CaseEntry>() };
 			var inventory = profile?.Inventory;
 			if (inventory == null)
 			{
@@ -188,6 +211,7 @@ namespace GetReady
 			foreach (var item in OnYou(inventory))
 			{
 				facts.Carried.Add(item.TemplateId.ToString());
+				facts.CarriedIds.Add(item.Id.ToString());
 				if (item.GetItemComponent<FoodDrinkComponent>() != null)
 				{
 					string group = item.Template.ParentId?.ToString();
