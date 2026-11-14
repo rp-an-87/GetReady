@@ -81,7 +81,8 @@ namespace GetReady
 			var previous = GUI.color;
 			foreach (var reminder in _found)
 			{
-				float width = pad + icon + gap + reminder.Icons.Count * (icon + gap) + _text.CalcSize(new GUIContent(reminder.Text)).x + row * 0.9f;
+				float markWidth = WarningWidth(icon);
+				float width = pad + markWidth + gap + reminder.Icons.Count * (icon + gap) + _text.CalcSize(new GUIContent(reminder.Text)).x + row * 0.9f;
 				var bar = new Rect((Screen.width - width) / 2f, top, width, height);
 				// The glow of the NOT READY bar, in orange
 				var halo = new Rect(bar.x - bar.width * 0.3f, bar.y - bar.height * 1.1f, bar.width * 1.6f, bar.height * 3.2f);
@@ -91,18 +92,14 @@ namespace GetReady
 				GUI.color = Orange;
 				GUI.DrawTexture(bar, Texture2D.whiteTexture);
 				// The warning mark: the game's own icon in black on the bar (an orange "!" on black when the game has none)
-				var mark = new Rect(bar.x + pad, bar.y + pad, icon, icon);
+				var mark = new Rect(bar.x + pad, bar.y + pad, markWidth, icon);
 				var warning = WarningIcon();
 				if (warning != null && warning.texture != null)
 				{
 					GUI.color = Ink;
 					var source = warning.textureRect;
 					var texture = warning.texture;
-					// Kept in proportion, centred in the square
-					float fit = Mathf.Min(mark.width / source.width, mark.height / source.height);
-					var shown = new Vector2(source.width * fit, source.height * fit);
-					var target = new Rect(mark.x + (mark.width - shown.x) / 2f, mark.y + (mark.height - shown.y) / 2f, shown.x, shown.y);
-					GUI.DrawTextureWithTexCoords(target, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
+					GUI.DrawTextureWithTexCoords(mark, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
 				}
 				else
 				{
@@ -124,6 +121,13 @@ namespace GetReady
 			}
 
 			GUI.color = previous;
+		}
+
+		// The width of the warning mark at this height: its own proportions (a square for the drawn "!")
+		private static float WarningWidth(float height)
+		{
+			var warning = WarningIcon();
+			return warning != null && warning.texture != null && warning.textureRect.height > 0f ? height * warning.textureRect.width / warning.textureRect.height : height;
 		}
 
 		private static bool _warningLooked;
