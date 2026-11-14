@@ -120,6 +120,8 @@ namespace GetReady
 			}
 
 			ReminderCard(section, "Equipment: armor with an empty plate slot", null, settings.Equipment.Enabled, value => settings.Equipment.Enabled = value);
+			var noArmor = ReminderCard(section, "Equipment: no armor at all", null, settings.Equipment.NoArmor, value => settings.Equipment.NoArmor = value);
+			UiKit.Label(noArmor, "Warns when nothing is in the Body Armor slot and the Tactical Rig slot holds no armored rig (a plate carrier, or a rig with armor built in). Every map.", 0.8f, UiColors.Dim, wrap: true);
 		}
 	}
 }

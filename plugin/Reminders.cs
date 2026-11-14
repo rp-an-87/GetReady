@@ -42,6 +42,8 @@ namespace GetReady
 			public bool HasFood;
 			public bool HasDrink;
 			public List<WornArmor> Armors = new List<WornArmor>();
+			// The inventory was read (an unknown inventory says nothing about armor)
+			public bool ArmorKnown;
 			// The cases set up in Cases and the ids of what you carry, for the containers that are wrong or missing for the map
 			public List<CaseEntry> Cases = new List<CaseEntry>();
 			public HashSet<string> CarriedIds = new HashSet<string>();
@@ -55,7 +57,8 @@ namespace GetReady
 			Paracord,
 			Armor,
 			Needs,
-			Plates
+			Plates,
+			NoArmor
 		}
 
 		internal class Reminder
@@ -150,6 +153,11 @@ namespace GetReady
 				}
 			}
 
+			if (settings.Equipment.NoArmor && facts.ArmorKnown && facts.Armors.Count == 0)
+			{
+				found.Add(new Reminder { Kind = Kind.NoArmor, Text = "NO ARMOR EQUIPPED!" });
+			}
+
 			if (settings.Equipment.Enabled)
 			{
 				var bare = facts.Armors.Where(armor => armor.MissingPlate).ToList();
@@ -173,14 +181,14 @@ namespace GetReady
 		internal static bool IsFrontOrBackPlate(string slotId) =>
 			string.Equals(slotId, "Front_plate", StringComparison.OrdinalIgnoreCase) || string.Equals(slotId, "Back_plate", StringComparison.OrdinalIgnoreCase);
 
-		// The armor you wear: whatever is in the armored vest slot, and a vest that has armor in it (a plate carrier). Helmets are not looked at.
+		// The armor you wear: whatever is in the armored vest slot, and a vest that has armor in it (a plate carrier, or a rig with armor built in). Helmets are not looked at.
 		internal static List<WornArmor> WornArmors(Inventory inventory)
 		{
 			var list = new List<WornArmor>();
 			foreach (var slot in new[] { EquipmentSlot.ArmorVest, EquipmentSlot.TacticalVest })
 			{
 				var item = inventory.Equipment.GetSlot(slot).ContainedItem as CompoundItem;
-				if (item == null || (slot == EquipmentSlot.TacticalVest && item.GetItemComponent<ArmorHolderComponent>() == null))
+				if (item == null || (slot == EquipmentSlot.TacticalVest && item.GetItemComponent<ArmorHolderComponent>() == null && item.GetItemComponent<ArmorComponent>() == null))
 				{
 					continue;
 				}
@@ -228,6 +236,7 @@ namespace GetReady
 			}
 
 			facts.Armors = WornArmors(inventory);
+			facts.ArmorKnown = true;
 			return facts;
 		}
 

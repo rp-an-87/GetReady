@@ -218,6 +218,8 @@ namespace GetReady
 	{
 		// An armor or armored vest you wear with an empty front or back plate slot
 		public bool Enabled;
+		// No armor worn at all: nothing in the Body Armor slot and no armored rig in the Tactical Rig slot
+		public bool NoArmor;
 	}
 
 	internal class RemindersSettings

@@ -212,6 +212,33 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void No_armor_worn_warns_only_when_the_switch_is_on_and_the_inventory_is_known()
+		{
+			var settings = Settings();
+			var facts = On("Customs");
+			facts.ArmorKnown = true;
+			Check(settings, facts).Should().BeEmpty();
+			settings.Equipment.NoArmor = true;
+			Check(settings, facts).Single().Kind.Should().Be(Kind.NoArmor);
+			facts.ArmorKnown = false;
+			Check(settings, facts).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void Any_worn_armor_body_or_rig_is_armor()
+		{
+			var settings = Settings();
+			settings.Equipment.NoArmor = true;
+			var facts = On("Customs");
+			facts.ArmorKnown = true;
+			facts.Armors.Add(new WornArmor { Name = "Rig" });
+			Check(settings, facts).Should().BeEmpty();
+			facts.Armors.Clear();
+			facts.Armors.Add(new WornArmor { Name = "Slick", BodyArmor = true });
+			Check(settings, facts).Should().BeEmpty();
+		}
+
+		[Fact]
 		public void Only_front_and_back_plates_count_whatever_the_case_of_the_id()
 		{
 			IsFrontOrBackPlate("Front_plate").Should().BeTrue();
