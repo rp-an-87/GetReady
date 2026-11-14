@@ -15,6 +15,7 @@ namespace GetReady
 		private static List<Reminders.Reminder> _found = new List<Reminders.Reminder>();
 
 		private static readonly Color Orange = new Color(1f, 0.6f, 0.08f);
+		private static readonly Color Glow = new Color(1f, 0.5f, 0.05f);
 		private static readonly Color Ink = new Color(0.07f, 0.05f, 0.02f);
 		private static GUIStyle _text, _mark;
 
@@ -54,7 +55,8 @@ namespace GetReady
 			}
 
 			OverlayFont.Init();
-			float row = Screen.height * 0.034f;
+			float row = Screen.height * 0.045f;
+			float height = row * 1.2f;
 			if (_text == null)
 			{
 				_text = new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Normal, alignment = TextAnchor.MiddleLeft, richText = false, wordWrap = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0) };
@@ -69,20 +71,26 @@ namespace GetReady
 				_mark.font = OverlayFont.Font;
 			}
 
-			_text.fontSize = Mathf.RoundToInt(row * 0.5f);
-			_mark.fontSize = Mathf.RoundToInt(row * 0.62f);
-			float icon = row - 6f;
-			float gap = row * 0.25f;
+			_text.fontSize = Mathf.RoundToInt(row * 0.4f);
+			_mark.fontSize = Mathf.RoundToInt(row * 0.55f);
+			float pad = height * 0.16f;
+			float icon = height - pad * 2f;
+			float gap = row * 0.3f;
 			float top = Screen.height * 0.085f;
 			var previous = GUI.color;
 			foreach (var reminder in _found)
 			{
-				float width = row + gap + reminder.Icons.Count * (icon + gap) + _text.CalcSize(new GUIContent(reminder.Text)).x + row * 0.8f;
-				var bar = new Rect((Screen.width - width) / 2f, top, width, row);
+				float width = pad + icon + gap + reminder.Icons.Count * (icon + gap) + _text.CalcSize(new GUIContent(reminder.Text)).x + row * 0.9f;
+				var bar = new Rect((Screen.width - width) / 2f, top, width, height);
+				// The glow of the NOT READY bar, in orange
+				var halo = new Rect(bar.x - bar.width * 0.3f, bar.y - bar.height * 1.1f, bar.width * 1.6f, bar.height * 3.2f);
+				float pulse = 0.85f + 0.15f * Mathf.Sin(Time.unscaledTime * 2.5f);
+				GUI.color = new Color(Glow.r, Glow.g, Glow.b, pulse * 0.8f);
+				GUI.DrawTexture(halo, ReadyFlash.GlowTexture(), ScaleMode.StretchToFill, true);
 				GUI.color = Orange;
 				GUI.DrawTexture(bar, Texture2D.whiteTexture);
 				// The warning mark: an orange "!" on black
-				var mark = new Rect(bar.x + 3f, bar.y + 3f, icon, icon);
+				var mark = new Rect(bar.x + pad, bar.y + pad, icon, icon);
 				GUI.color = Ink;
 				GUI.DrawTexture(mark, Texture2D.whiteTexture);
 				GUI.color = Color.white;
@@ -90,12 +98,12 @@ namespace GetReady
 				float x = mark.xMax + gap;
 				foreach (var template in reminder.Icons)
 				{
-					Picture(new Rect(x, bar.y + 3f, icon, icon), template);
+					Picture(new Rect(x, bar.y + pad, icon, icon), template);
 					x += icon + gap;
 				}
 
-				GUI.Label(new Rect(x, bar.y, bar.xMax - x, row), reminder.Text, _text);
-				top += row + row * 0.15f;
+				GUI.Label(new Rect(x, bar.y, bar.xMax - x, height), reminder.Text, _text);
+				top += height + row * 0.45f;
 			}
 
 			GUI.color = previous;
