@@ -12,7 +12,6 @@ namespace GetReady
 	// for. A case with nothing set is not kept.
 	internal static partial class SetupPage
 	{
-		private const int MapsPerRow = 4;
 
 		private static void CasesSetup(Transform section, InventoryController controller)
 		{
@@ -350,40 +349,17 @@ namespace GetReady
 			// The maps it is for: none picked is any map
 			var mapsPanel = UiKit.VBox(card, 6f, new RectOffset(8, 8, 6, 8), InnerPanel, UiKit.InnerEdge);
 			UiKit.Label(mapsPanel, entry != null && entry.Maps.Count > 0 ? "For these maps only:" : "For any map (pick the maps it is for):", 0.8f, UiColors.Dim);
-			for (int first = 0; first < MapTags.Maps.Length; first += MapsPerRow)
+			MapButtons(mapsPanel, mapName => entry != null && entry.Maps.Contains(mapName), mapName =>
 			{
-				var row = UiKit.HBox(mapsPanel, 6f);
-				row.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>().childForceExpandWidth = true;
-				var maps = MapTags.Maps.Skip(first).Take(MapsPerRow).ToList();
-				foreach (var map in maps)
+				var target = entry ?? CasesStep.Touch(item);
+				if (!target.Maps.Remove(mapName))
 				{
-					string mapName = map.Name;
-					bool on = entry != null && entry.Maps.Contains(mapName);
-					Pick(row, mapName, on, () =>
-					{
-						var target = entry ?? CasesStep.Touch(item);
-						if (on)
-						{
-							target.Maps.Remove(mapName);
-						}
-						else
-						{
-							target.Maps.Add(mapName);
-						}
-
-						CasesStep.Prune(target);
-						Changed();
-					}, null);
-					// The same width asked for and the room shared out equally, so the buttons are the same width
-					UiKit.Size(row.GetChild(row.childCount - 1), width: 1f, flexWidth: 1f).minWidth = 0f;
+					target.Maps.Add(mapName);
 				}
 
-				// A short last row keeps the width of the buttons above it
-				for (int fill = maps.Count; fill < MapsPerRow; fill++)
-				{
-					UiKit.Size(UiKit.Node("Empty", row), flexWidth: 1f).minWidth = 0f;
-				}
-			}
+				CasesStep.Prune(target);
+				Changed();
+			});
 		}
 	}
 }

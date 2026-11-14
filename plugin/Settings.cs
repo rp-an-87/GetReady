@@ -188,6 +188,48 @@ namespace GetReady
 		public List<string> Collapsed = new List<string>();
 	}
 
+	// Soft reminders on the map screen (orange, never "not ready"): what you want on you per map, the paracord and Red Rebel pair, your needs
+	// and your armor's plates. Each kind has its own panel in Setup and its own bar on the screen.
+	internal class MapItemReminder
+	{
+		public bool Enabled;
+		// The maps it is for (names of MapTags.Maps)
+		public List<string> Maps = new List<string>();
+	}
+
+	internal class ParacordReminder : MapItemReminder
+	{
+		// Only when you carry one of the pair (paracord, Red Rebel) and not the other; off: warns for whichever of the two is missing
+		public bool PairOnly = true;
+		// With both on you, warns when you wear armor (the Red Rebel extract does not allow it)
+		public bool WarnArmor;
+	}
+
+	internal class NeedsReminder
+	{
+		public bool Enabled;
+		public bool WarnHydration = true;
+		public int HydrationBelow = 30;
+		public bool WarnEnergy = true;
+		public int EnergyBelow = 30;
+		// No warning for a need you can meet with food or a drink you carry
+		public bool OnlyIfNoSupplies = true;
+	}
+
+	internal class EquipmentReminder
+	{
+		// An armor or armored vest you wear with an empty front or back plate slot
+		public bool Enabled;
+	}
+
+	internal class RemindersSettings
+	{
+		public MapItemReminder GreenFlare = new MapItemReminder();
+		public ParacordReminder Paracord = new ParacordReminder();
+		public NeedsReminder Needs = new NeedsReminder();
+		public EquipmentReminder Equipment = new EquipmentReminder();
+	}
+
 	internal class Settings
 	{
 		// The size of the window and the check box, 1 = as designed (Setup > Options)
@@ -200,6 +242,7 @@ namespace GetReady
 		public SuppliesSettings Supplies = new SuppliesSettings();
 		public SpecialSlotsTemplate SpecialSlots = new SpecialSlotsTemplate();
 		public CasesSettings Cases = new CasesSettings();
+		public RemindersSettings Reminders = new RemindersSettings();
 	}
 
 	// One settings file per profile: BepInEx\config\GetReady\profiles\<profile id>.json. The profile is known once the game is logged in

@@ -14,7 +14,7 @@ namespace GetReady
 		// Where each section is on the page (in the order of the jump strip), so a click on the strip can scroll to it
 		internal static readonly List<RectTransform> Sections = new List<RectTransform>();
 
-		internal static List<string> Names() => Steps.Tabs.Select(tab => tab.Name).Concat(new[] { "Options" }).ToList();
+		internal static List<string> Names() => Steps.Tabs.Select(tab => tab.Name).Concat(new[] { "Reminders", "Options" }).ToList();
 
 		// What fills each section, so one section can be made again without the rest of the page
 		private static readonly List<Action> Fillers = new List<Action>();
@@ -121,6 +121,10 @@ namespace GetReady
 				Sections.Add(section);
 				Fillers.Add(fill);
 			}
+
+			var reminders = UiKit.VBox(content, 8f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
+			Sections.Add(reminders);
+			Fillers.Add(() => RemindersSetup(reminders));
 
 			var options = UiKit.VBox(content, 8f, new RectOffset(12, 12, 10, 10), UiKit.PanelColor, UiKit.SectionEdge);
 			Action fillOptions = () => FillOptions(options);

@@ -107,6 +107,7 @@ namespace GetReady
 			ReadyFlash.Draw();
 			MapWarning.Draw();
 			NotReadyWarning.Draw();
+			ReminderBars.Draw();
 		}
 	}
 }
