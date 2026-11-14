@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using EFT.UI.Matchmaker;
 using UnityEngine;
 
@@ -93,8 +94,20 @@ namespace GetReady
 				var mark = new Rect(bar.x + pad, bar.y + pad, icon, icon);
 				GUI.color = Ink;
 				GUI.DrawTexture(mark, Texture2D.whiteTexture);
-				GUI.color = Color.white;
-				GUI.Label(mark, "!", _mark);
+				var warning = WarningIcon();
+				if (warning != null && warning.texture != null)
+				{
+					GUI.color = Orange;
+					var source = warning.textureRect;
+					var texture = warning.texture;
+					GUI.DrawTextureWithTexCoords(new Rect(mark.x + 3f, mark.y + 3f, mark.width - 6f, mark.height - 6f), texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
+				}
+				else
+				{
+					GUI.color = Color.white;
+					GUI.Label(mark, "!", _mark);
+				}
+
 				float x = mark.xMax + gap;
 				foreach (var template in reminder.Icons)
 				{
@@ -107,6 +120,34 @@ namespace GetReady
 			}
 
 			GUI.color = previous;
+		}
+
+		private static bool _warningLooked;
+		private static Sprite _warning;
+
+		// The game's own warning icon, in white to be tinted; null when none of the guessed names exists (the "!" is drawn instead). The sprites
+		// with a likely word in their name are written to the log once, to find the right name.
+		private static Sprite WarningIcon()
+		{
+			if (_warningLooked)
+			{
+				return _warning;
+			}
+
+			_warningLooked = true;
+			try
+			{
+				var names = GameWidgets.NamesLike("warn", "attention", "alert", "exclam");
+				Plugin.Log.LogInfo($"Reminders: sprites that may be a warning icon: {string.Join(", ", names)}");
+				var name = new[] { "icon_warning", "icon_attention", "icon_alert", "icon_exclamation", "warning", "attention" }.FirstOrDefault(names.Contains);
+				_warning = name == null ? null : GameWidgets.White(GameWidgets.ByName(name));
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogWarning($"Reminders: no warning icon: {e.Message}");
+			}
+
+			return _warning;
 		}
 
 		// An item's picture in a small dark frame

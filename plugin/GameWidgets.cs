@@ -295,6 +295,17 @@ namespace GetReady
 			return sprite;
 		}
 
+		// The names of the game's sprites that contain one of the words (for the log, to find the exact name of an icon)
+		internal static System.Collections.Generic.List<string> NamesLike(params string[] words)
+		{
+			if (_allSprites == null)
+			{
+				_allSprites = Resources.FindObjectsOfTypeAll<UnityEngine.Sprite>();
+			}
+
+			return _allSprites.Where(candidate => candidate != null && words.Any(word => candidate.name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)).Select(candidate => candidate.name).Distinct().OrderBy(name => name).ToList();
+		}
+
 		private static readonly System.Collections.Generic.Dictionary<Sprite, Sprite> Whitened = new System.Collections.Generic.Dictionary<Sprite, Sprite>();
 
 		// A copy of a sprite in white with the same shape (its alpha kept), made in memory: for a game icon that is coloured where the others are white
