@@ -90,20 +90,20 @@ namespace GetReady
 				GUI.DrawTexture(halo, ReadyFlash.GlowTexture(), ScaleMode.StretchToFill, true);
 				GUI.color = Orange;
 				GUI.DrawTexture(bar, Texture2D.whiteTexture);
-				// The warning mark: an orange "!" on black
+				// The warning mark: the game's own icon in black on the bar (an orange "!" on black when the game has none)
 				var mark = new Rect(bar.x + pad, bar.y + pad, icon, icon);
-				GUI.color = Ink;
-				GUI.DrawTexture(mark, Texture2D.whiteTexture);
 				var warning = WarningIcon();
 				if (warning != null && warning.texture != null)
 				{
-					GUI.color = Orange;
+					GUI.color = Ink;
 					var source = warning.textureRect;
 					var texture = warning.texture;
-					GUI.DrawTextureWithTexCoords(new Rect(mark.x + 3f, mark.y + 3f, mark.width - 6f, mark.height - 6f), texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
+					GUI.DrawTextureWithTexCoords(mark, texture, new Rect(source.x / texture.width, source.y / texture.height, source.width / texture.width, source.height / texture.height));
 				}
 				else
 				{
+					GUI.color = Ink;
+					GUI.DrawTexture(mark, Texture2D.whiteTexture);
 					GUI.color = Color.white;
 					GUI.Label(mark, "!", _mark);
 				}
@@ -139,7 +139,7 @@ namespace GetReady
 			{
 				var names = GameWidgets.NamesLike("warn", "attention", "alert", "exclam");
 				Plugin.Log.LogInfo($"Reminders: sprites that may be a warning icon: {string.Join(", ", names)}");
-				var name = new[] { "icon_warning", "icon_attention", "icon_alert", "icon_exclamation", "warning", "attention" }.FirstOrDefault(names.Contains);
+				var name = new[] { "Warning_Icon", "Attention_icon", "icon_attention" }.FirstOrDefault(names.Contains);
 				_warning = name == null ? null : GameWidgets.White(GameWidgets.ByName(name));
 			}
 			catch (Exception e)
