@@ -20,7 +20,7 @@ namespace GetReady.Tests
 			var facts = On("Customs");
 			facts.HydrationPercent = 1f;
 			facts.EnergyPercent = 1f;
-			facts.Armors.Add(new WornArmor { Name = "Vest", MissingPlate = true });
+			facts.Armors.Add(new WornArmor { Name = "Vest", MissingPlates = { "FRONT" } });
 			Check(Settings(), facts).Should().BeEmpty();
 		}
 
@@ -195,11 +195,12 @@ namespace GetReady.Tests
 			var settings = Settings();
 			settings.Equipment.Enabled = true;
 			var facts = On("Customs");
-			facts.Armors.Add(new WornArmor { Name = "Slick", MissingPlate = true });
-			facts.Armors.Add(new WornArmor { Name = "Fort", MissingPlate = false });
+			facts.Armors.Add(new WornArmor { Name = "Slick", Template = "t1", MissingPlates = { "FRONT", "BACK" } });
+			facts.Armors.Add(new WornArmor { Name = "Fort" });
 			var found = Check(settings, facts).Single();
 			found.Kind.Should().Be(Kind.Plates);
-			found.Text.Should().Contain("Slick").And.NotContain("Fort");
+			found.Text.Should().Be("Slick IS MISSING THE FRONT AND BACK PLATE!");
+			found.Icons.Should().Equal("t1");
 		}
 
 		[Fact]
@@ -220,7 +221,7 @@ namespace GetReady.Tests
 			settings.Equipment.Enabled = true;
 			var facts = On("Lighthouse", Paracord);
 			facts.HydrationPercent = 1f;
-			facts.Armors.Add(new WornArmor { Name = "Slick", MissingPlate = true });
+			facts.Armors.Add(new WornArmor { Name = "Slick", MissingPlates = { "BACK" } });
 			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.Paracord, Kind.Needs, Kind.Plates);
 		}
 

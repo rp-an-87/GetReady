@@ -23,8 +23,10 @@ namespace GetReady
 		internal class WornArmor
 		{
 			public string Name;
-			// It has a front or back plate slot, and one of them is empty
-			public bool MissingPlate;
+			public string Template;
+			// The front or back plate slots that are empty ("FRONT", "BACK")
+			public List<string> MissingPlates = new List<string>();
+			public bool MissingPlate => MissingPlates.Count > 0;
 		}
 
 		// What the check needs to know about the raid you are about to start
@@ -125,7 +127,14 @@ namespace GetReady
 				var bare = facts.Armors.Where(armor => armor.MissingPlate).ToList();
 				if (bare.Count > 0)
 				{
-					found.Add(new Reminder { Kind = Kind.Plates, Text = $"{string.Join(" AND ", bare.Select(armor => armor.Name))} {(bare.Count > 1 ? "HAVE" : "HAS")} MISSING PIECES!" });
+					// The armor's picture, and what is missing from which: "AVS IS MISSING THE FRONT AND BACK PLATE!"
+					var reminder = new Reminder
+					{
+						Kind = Kind.Plates,
+						Text = string.Join("; ", bare.Select(armor => $"{armor.Name} IS MISSING THE {string.Join(" AND ", armor.MissingPlates)} PLATE")) + "!"
+					};
+					reminder.Icons.AddRange(bare.Where(armor => armor.Template != null).Select(armor => armor.Template));
+					found.Add(reminder);
 				}
 			}
 
@@ -149,7 +158,9 @@ namespace GetReady
 				}
 
 				var plates = item.Slots.Where(place => IsFrontOrBackPlate(place.ID)).ToList();
-				list.Add(new WornArmor { Name = Game.NameOf(item), MissingPlate = plates.Any(place => place.ContainedItem == null) });
+				var armor = new WornArmor { Name = Game.NameOf(item), Template = item.TemplateId.ToString() };
+				armor.MissingPlates.AddRange(plates.Where(place => place.ContainedItem == null).Select(place => place.ID.StartsWith("front", StringComparison.OrdinalIgnoreCase) ? "FRONT" : "BACK"));
+				list.Add(armor);
 			}
 
 			return list;
