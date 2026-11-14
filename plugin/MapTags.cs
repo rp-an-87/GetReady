@@ -47,6 +47,9 @@ namespace GetReady
 			public List<CaseEntry> Wrong = new List<CaseEntry>();
 			public List<CaseEntry> Missing = new List<CaseEntry>();
 			public bool Any => Wrong.Count > 0 || Missing.Count > 0;
+
+			// Only the kinds that are asked for
+			public Report Only(bool wrong, bool missing) => new Report { Wrong = wrong ? Wrong : new List<CaseEntry>(), Missing = missing ? Missing : new List<CaseEntry>() };
 		}
 
 		// A case with no map set is for any map and is never mentioned. A case set for this map that is not on you is missing, unless you carry

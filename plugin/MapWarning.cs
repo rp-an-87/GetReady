@@ -77,7 +77,8 @@ namespace GetReady
 		internal static MapTags.Report Current()
 		{
 			var settings = SettingsStore.Current.Cases;
-			if (_screen == null || !_screen.isActiveAndEnabled || !settings.MapWarnings || settings.Cases.Count == 0)
+			var reminders = SettingsStore.Current.Reminders;
+			if (_screen == null || !_screen.isActiveAndEnabled || !(reminders.WrongContainers || reminders.MissingContainers) || settings.Cases.Count == 0)
 			{
 				return new MapTags.Report();
 			}
@@ -89,7 +90,7 @@ namespace GetReady
 				_report = ids == null ? new MapTags.Report() : MapTags.Check(settings.Cases, ids, _map, true);
 			}
 
-			return _report;
+			return _report.Only(reminders.WrongContainers, reminders.MissingContainers);
 		}
 	}
 }

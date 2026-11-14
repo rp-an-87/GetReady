@@ -181,8 +181,6 @@ namespace GetReady
 		public bool Enabled = true;
 		// A change you make by hand in the stash updates the recorded contents of a case that was recorded
 		public bool AutoUpdate = true;
-		// The map screen warns about a case you carry that is for other maps
-		public bool MapWarnings = true;
 		public List<CaseEntry> Cases = new List<CaseEntry>();
 		// The cases whose card is collapsed in Setup (by item id): it stays as you left it, also when the case is taken off and put on again
 		public List<string> Collapsed = new List<string>();
@@ -224,6 +222,10 @@ namespace GetReady
 
 	internal class RemindersSettings
 	{
+		// The cases you carry that are set to other maps, and the ones set for this map that are not on you (the maps are set on the case,
+		// in Setup > Cases)
+		public bool WrongContainers = true;
+		public bool MissingContainers = true;
 		public MapItemReminder GreenFlare = new MapItemReminder();
 		public ParacordReminder Paracord = new ParacordReminder();
 		public NeedsReminder Needs = new NeedsReminder();

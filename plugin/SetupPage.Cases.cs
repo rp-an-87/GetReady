@@ -17,7 +17,6 @@ namespace GetReady
 		{
 			var settings = SettingsStore.Current.Cases;
 			OptionRow(section, settings.AutoUpdate, "Keep tracked items up to date when I move things", "What you put in or take out of a case you track, by hand in the stash.\n<b>On:</b> it is added to or removed from what the case tracks.\n<b>Off:</b> what is tracked stays as you set it.\n\nWhat Get ready itself moves is never tracked, and neither are the cases you never tracked.", value => settings.AutoUpdate = value);
-			OptionRow(section, settings.MapWarnings, "Warn on the map screen about cases for another map", "The map screen, when you pick a map.\n<b>On:</b> a red bar shows the cases you carry that are set to other maps, and the cases set for this map that are not on you.\n<b>Off:</b> no bar.", value => settings.MapWarnings = value);
 			if (controller == null)
 			{
 				UiKit.Label(section, "Open this in the stash to set up the cases you carry.", 0.85f, UiColors.Dim);

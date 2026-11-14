@@ -98,6 +98,12 @@ namespace GetReady
 				return GameWidgets.SettingsGear();
 			}
 
+			// The reminders have the mark of the warning bars
+			if (step == "Reminders")
+			{
+				return WarningBar.WarningIcon();
+			}
+
 			if (step == "Cash")
 			{
 				try

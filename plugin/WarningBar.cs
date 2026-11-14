@@ -135,7 +135,7 @@ namespace GetReady
 		private static Sprite _warning;
 
 		// The game's own warning icon, in white to be tinted; null when it has none by these names (the "!" is drawn instead)
-		private static Sprite WarningIcon()
+		internal static Sprite WarningIcon()
 		{
 			if (_warningLooked)
 			{

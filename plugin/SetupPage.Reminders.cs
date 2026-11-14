@@ -90,6 +90,11 @@ namespace GetReady
 			UiKit.Label(section, "Orange notes on the map screen for things the plan cannot decide for you. They never make you \"not ready\" and nothing is moved.", 0.8f, UiColors.Dim, wrap: true);
 			UiKit.Line(section);
 
+			var wrong = ReminderCard(section, "Containers for another map", null, settings.WrongContainers, value => settings.WrongContainers = value);
+			UiKit.Label(wrong, "Warns about a case you carry that is set to other maps only. The maps are set on the case, in Cases.", 0.8f, UiColors.Dim, wrap: true);
+			var missing = ReminderCard(section, "Missing containers", null, settings.MissingContainers, value => settings.MissingContainers = value);
+			UiKit.Label(missing, "Warns about a case set for this map that is not on you. The maps are set on the case, in Cases.", 0.8f, UiColors.Dim, wrap: true);
+
 			var flare = ReminderCard(section, "Green flare", Reminders.GreenFlare, settings.GreenFlare.Enabled, value => settings.GreenFlare.Enabled = value);
 			if (settings.GreenFlare.Enabled)
 			{

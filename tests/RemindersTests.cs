@@ -249,6 +249,21 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void The_container_kinds_can_be_asked_for_apart()
+		{
+			var report = new MapTags.Report();
+			report.Wrong.Add(new CaseEntry { CaseId = "w" });
+			report.Missing.Add(new CaseEntry { CaseId = "m" });
+			report.Only(true, true).Any.Should().BeTrue();
+			report.Only(true, false).Missing.Should().BeEmpty();
+			report.Only(true, false).Wrong.Should().HaveCount(1);
+			report.Only(false, true).Wrong.Should().BeEmpty();
+			report.Only(false, true).Missing.Should().HaveCount(1);
+			report.Only(false, false).Any.Should().BeFalse();
+			report.Wrong.Should().HaveCount(1, "the report itself is left as it was");
+		}
+
+		[Fact]
 		public void The_settings_survive_the_file()
 		{
 			var settings = new Settings();
@@ -261,6 +276,8 @@ namespace GetReady.Tests
 			back.Reminders.Paracord.PairOnly.Should().BeTrue();
 			back.Reminders.Needs.HydrationBelow.Should().Be(45);
 			new Settings().Reminders.Needs.OnlyIfNoSupplies.Should().BeTrue();
+			new Settings().Reminders.WrongContainers.Should().BeTrue();
+			new Settings().Reminders.MissingContainers.Should().BeTrue();
 		}
 	}
 }
