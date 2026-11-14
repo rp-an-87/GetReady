@@ -181,19 +181,25 @@ namespace GetReady
 		internal static bool IsFrontOrBackPlate(string slotId) =>
 			string.Equals(slotId, "Front_plate", StringComparison.OrdinalIgnoreCase) || string.Equals(slotId, "Back_plate", StringComparison.OrdinalIgnoreCase);
 
-		// The armor you wear: whatever is in the armored vest slot, and a vest that has armor in it (a plate carrier, or a rig with armor built in). Helmets are not looked at.
+		// The armor you wear: whatever is in the armored vest slot, and a rig with front or back plate slots (a plate carrier). Helmets are not looked at.
 		internal static List<WornArmor> WornArmors(Inventory inventory)
 		{
 			var list = new List<WornArmor>();
 			foreach (var slot in new[] { EquipmentSlot.ArmorVest, EquipmentSlot.TacticalVest })
 			{
 				var item = inventory.Equipment.GetSlot(slot).ContainedItem as CompoundItem;
-				if (item == null || (slot == EquipmentSlot.TacticalVest && item.GetItemComponent<ArmorHolderComponent>() == null && item.GetItemComponent<ArmorComponent>() == null))
+			if (item == null)
 				{
 					continue;
 				}
 
+				// A rig is armor only when it takes front and back plates; a rig without plate slots (armor built in or not) is just a rig
 				var plates = item.Slots.Where(place => IsFrontOrBackPlate(place.ID)).ToList();
+				if (slot == EquipmentSlot.TacticalVest && plates.Count == 0)
+				{
+					continue;
+				}
+
 				var armor = new WornArmor { Name = Game.NameOf(item), Template = item.TemplateId.ToString(), BodyArmor = slot == EquipmentSlot.ArmorVest };
 				armor.MissingPlates.AddRange(plates.Where(place => place.ContainedItem == null).Select(place => place.ID.StartsWith("front", StringComparison.OrdinalIgnoreCase) ? "FRONT" : "BACK"));
 				list.Add(armor);

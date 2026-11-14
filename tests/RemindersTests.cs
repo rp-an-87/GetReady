@@ -239,6 +239,23 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void A_rig_is_armor_only_when_it_takes_plates()
+		{
+			var body = new Body();
+			WornArmors(body.Inventory).Should().BeEmpty();
+			body.Wear(EquipmentSlot.TacticalVest, RealItems.Any("5648a69d4bdc2ded0b8b457b")); // a plain rig
+			WornArmors(body.Inventory).Should().BeEmpty();
+			var carrier = new Body();
+			carrier.Wear(EquipmentSlot.TacticalVest, RealItems.Any("5ab8dced86f774646209ec87")); // a plate carrier, empty
+			var worn = WornArmors(carrier.Inventory).Single();
+			worn.BodyArmor.Should().BeFalse();
+			worn.MissingPlates.Should().Contain("FRONT").And.Contain("BACK");
+			var built = new Body();
+			built.Wear(EquipmentSlot.TacticalVest, RealItems.Any("5c0e3eb886f7742015526062")); // armor built in, no plate slots
+			WornArmors(built.Inventory).Should().BeEmpty();
+		}
+
+		[Fact]
 		public void Only_front_and_back_plates_count_whatever_the_case_of_the_id()
 		{
 			IsFrontOrBackPlate("Front_plate").Should().BeTrue();
