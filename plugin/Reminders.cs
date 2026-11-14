@@ -24,6 +24,8 @@ namespace GetReady
 		{
 			public string Name;
 			public string Template;
+			// Worn in the Body Armor slot (the Red Rebel extract does not allow it); what is in the Tactical Rig slot is allowed
+			public bool BodyArmor;
 			// The front or back plate slots that are empty ("FRONT", "BACK")
 			public List<string> MissingPlates = new List<string>();
 			public bool MissingPlate => MissingPlates.Count > 0;
@@ -96,9 +98,12 @@ namespace GetReady
 					found.Add(new Reminder { Kind = Kind.Paracord, Text = "MISSING FOR THIS MAP!", Icons = missing });
 				}
 
-				if (paracord.WarnArmor && hasCord && hasRebel && facts.Armors.Count > 0)
+				var body = facts.Armors.Where(armor => armor.BodyArmor).ToList();
+				if (paracord.WarnArmor && hasCord && hasRebel && body.Count > 0)
 				{
-					found.Add(new Reminder { Kind = Kind.Armor, Text = $"{string.Join(" AND ", facts.Armors.Select(armor => armor.Name))} {(facts.Armors.Count > 1 ? "ARE" : "IS")} INCOMPATIBLE WITH THE RED REBEL EXTRACT!" });
+					var reminder = new Reminder { Kind = Kind.Armor, Text = $"{string.Join(" AND ", body.Select(armor => armor.Name))} {(body.Count > 1 ? "ARE" : "IS")} INCOMPATIBLE WITH THE RED REBEL EXTRACT!" };
+					reminder.Icons.AddRange(body.Where(armor => armor.Template != null).Select(armor => armor.Template));
+					found.Add(reminder);
 				}
 			}
 
@@ -158,7 +163,7 @@ namespace GetReady
 				}
 
 				var plates = item.Slots.Where(place => IsFrontOrBackPlate(place.ID)).ToList();
-				var armor = new WornArmor { Name = Game.NameOf(item), Template = item.TemplateId.ToString() };
+				var armor = new WornArmor { Name = Game.NameOf(item), Template = item.TemplateId.ToString(), BodyArmor = slot == EquipmentSlot.ArmorVest };
 				armor.MissingPlates.AddRange(plates.Where(place => place.ContainedItem == null).Select(place => place.ID.StartsWith("front", StringComparison.OrdinalIgnoreCase) ? "FRONT" : "BACK"));
 				list.Add(armor);
 			}

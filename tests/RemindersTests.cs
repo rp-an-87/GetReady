@@ -114,17 +114,25 @@ namespace GetReady.Tests
 		public void Armor_with_the_pair_is_named_as_incompatible()
 		{
 			var facts = On("Lighthouse", Paracord, RedRebel);
-			facts.Armors.Add(new WornArmor { Name = "Slick" });
+			facts.Armors.Add(new WornArmor { Name = "Slick", BodyArmor = true });
 			var found = Check(Cord(armor: true), facts);
 			found.Should().ContainSingle(r => r.Kind == Kind.Armor && r.Text.Contains("Slick") && r.Text.Contains("INCOMPATIBLE"));
 			Check(Cord(armor: false), facts).Should().BeEmpty();
 		}
 
 		[Fact]
+		public void An_armored_rig_does_not_block_the_extract()
+		{
+			var facts = On("Lighthouse", Paracord, RedRebel);
+			facts.Armors.Add(new WornArmor { Name = "AVS" });
+			Check(Cord(armor: true), facts).Should().BeEmpty();
+		}
+
+		[Fact]
 		public void Armor_needs_both_of_the_pair_and_some_armor_worn()
 		{
 			var facts = On("Lighthouse", Paracord);
-			facts.Armors.Add(new WornArmor { Name = "Slick" });
+			facts.Armors.Add(new WornArmor { Name = "Slick", BodyArmor = true });
 			Check(Cord(armor: true), facts).Should().NotContain(r => r.Kind == Kind.Armor);
 			Check(Cord(armor: true), On("Lighthouse", Paracord, RedRebel)).Should().BeEmpty();
 		}

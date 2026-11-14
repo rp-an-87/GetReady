@@ -101,7 +101,7 @@ namespace GetReady
 			if (paracord.Enabled)
 			{
 				OptionRow(cord, paracord.PairOnly, "Only when I have one of the two and not the other", "<b>On:</b> warns when you carry the paracord and not the Red Rebel, or the other way round. Carrying neither is left alone.\n<b>Off:</b> warns for whichever of the two is missing.", value => paracord.PairOnly = value);
-				OptionRow(cord, paracord.WarnArmor, "Warn if I wear armor with both", "With the paracord and the Red Rebel on you, warns when you wear armor or an armored vest: the Red Rebel extract does not allow it.", value => paracord.WarnArmor = value);
+				OptionRow(cord, paracord.WarnArmor, "Warn if I wear body armor with both", "With the paracord and the Red Rebel on you, warns when something is in the Body Armor slot: the Red Rebel extract does not allow it. Anything in the Tactical Rig slot (armored rigs too) is fine.", value => paracord.WarnArmor = value);
 				MapPanel(cord, paracord, MapTags.AlpinistMaps, "a Red Rebel extract");
 			}
 
