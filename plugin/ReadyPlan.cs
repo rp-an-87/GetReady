@@ -174,12 +174,17 @@ namespace GetReady
 
 		// How many groups (a supply, a template: a card of the Ready page) have something to bring, and how many have a problem.
 		// It counts groups, not items: "bring 3 grenades" is one thing to get ready, not one per grenade type.
-		internal static void Tally(out int toBring, out int withProblems)
+		internal static void Tally(out int toBring, out int withProblems, bool withoutInsurance = false)
 		{
 			toBring = 0;
 			withProblems = 0;
 			foreach (var entry in Plan)
 			{
+				if (withoutInsurance && entry.Key is InsuranceStep)
+				{
+					continue;
+				}
+
 				TallyLines(entry.Value, ref toBring, ref withProblems);
 			}
 		}

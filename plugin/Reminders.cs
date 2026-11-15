@@ -44,6 +44,8 @@ namespace GetReady
 			public List<WornArmor> Armors = new List<WornArmor>();
 			// The inventory was read (an unknown inventory says nothing about armor)
 			public bool ArmorKnown;
+			// What is left of the insurance (see InsuranceText), when it is a reminder; null: nothing to say
+			public string InsuranceText;
 			// The cases set up in Cases and the ids of what you carry, for the containers that are wrong or missing for the map
 			public List<CaseEntry> Cases = new List<CaseEntry>();
 			public HashSet<string> CarriedIds = new HashSet<string>();
@@ -58,7 +60,8 @@ namespace GetReady
 			Armor,
 			Needs,
 			Plates,
-			NoArmor
+			NoArmor,
+			Insurance
 		}
 
 		internal class Reminder
@@ -153,6 +156,11 @@ namespace GetReady
 				}
 			}
 
+			if (facts.InsuranceText != null)
+			{
+				found.Add(new Reminder { Kind = Kind.Insurance, Text = facts.InsuranceText });
+			}
+
 			if (settings.Equipment.NoArmor && facts.ArmorKnown && facts.Armors.Count == 0)
 			{
 				found.Add(new Reminder { Kind = Kind.NoArmor, Text = "NO ARMOR EQUIPPED!" });
@@ -175,6 +183,21 @@ namespace GetReady
 			}
 
 			return found;
+		}
+
+		// What the insurance step has left, in words for a reminder: items still to insure (insure them on the next screen), or why it cannot
+		// be done; null when there is nothing to say (all insured, or nothing to insure)
+		internal static string InsuranceText(IEnumerable<PlanLine> lines)
+		{
+			var list = lines?.ToList() ?? new List<PlanLine>();
+			var problem = list.FirstOrDefault(line => line.Problem);
+			if (problem != null)
+			{
+				return "INSURANCE: " + (problem.Detail ?? problem.Text ?? "").TrimEnd('.').ToUpperInvariant() + "!";
+			}
+
+			int open = list.Where(line => line.Run != null).Sum(line => line.Insured);
+			return open > 0 ? $"{open} {(open == 1 ? "ITEM" : "ITEMS")} NOT INSURED! DO IT ON THE NEXT SCREEN." : null;
 		}
 
 		// The plate slots that count: front and back (side plates and soft armor are left out). The ids differ in case between items.

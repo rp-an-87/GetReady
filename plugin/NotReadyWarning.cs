@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using EFT.UI;
 using EFT.UI.Matchmaker;
 using UnityEngine;
@@ -13,6 +14,9 @@ namespace GetReady
 		private static MatchMakerSelectionLocationScreen _screen;
 		private static bool _wasActive;
 		private static bool _notReady;
+
+		// What is left of the insurance, when it is a reminder and not part of NOT READY (see Reminders.InsuranceText)
+		internal static string InsuranceNote;
 
 		private static readonly Color Red = new Color(0.85f, 0.09f, 0.07f);
 		private static readonly Color Glow = new Color(0.8f, 0.17f, 0.14f);
@@ -29,15 +33,24 @@ namespace GetReady
 		private static void Check()
 		{
 			_notReady = false;
-			if (Plugin.ShowNotReady == null || !Plugin.ShowNotReady.Value || ReadyRun._running || Game.Controller() == null)
+			InsuranceNote = null;
+			bool asReminder = SettingsStore.Current.Insurance.AsReminder;
+			bool bar = Plugin.ShowNotReady != null && Plugin.ShowNotReady.Value;
+			if ((!bar && !asReminder) || ReadyRun._running || Game.Controller() == null)
 			{
 				return;
 			}
 
 			ReadyPlan.Refresh();
+			if (asReminder)
+			{
+				var insurance = ReadyPlan.Plan.FirstOrDefault(entry => entry.Key is InsuranceStep);
+				InsuranceNote = insurance.Key == null ? null : Reminders.InsuranceText(insurance.Value);
+			}
+
 			int toBring, withProblems;
-			ReadyPlan.Tally(out toBring, out withProblems);
-			_notReady = toBring > 0 || withProblems > 0;
+			ReadyPlan.Tally(out toBring, out withProblems, asReminder);
+			_notReady = bar && (toBring > 0 || withProblems > 0);
 		}
 
 		internal static void Draw()

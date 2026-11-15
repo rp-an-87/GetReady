@@ -10,6 +10,7 @@ namespace GetReady
 			var insurance = SettingsStore.Current.Insurance;
 			var card = SmallCard(section, "Insure at");
 			UiKit.Label(card, "Everything you wear that the game lets you insure (armor, helmets, weapons, plates and mods) is insured when you press Get ready. If the roubles do not cover all of it, nothing is insured and the plan fails.", 0.8f, UiColors.Dim, wrap: true);
+			OptionRow(card, insurance.AsReminder, "Only remind me on the map screen", "<b>On:</b> insurance still to do is an orange reminder on the map screen and does not make it NOT READY, since it can be done on the insurance screen after you pick the map.\n<b>Off:</b> insurance still to do makes the map screen say NOT READY.", value => insurance.AsReminder = value);
 			var traders = InsuranceStep.Insurers();
 			if (traders.Count == 0)
 			{

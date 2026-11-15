@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using EFT.InventoryLogic;
 using FluentAssertions;
 using Xunit;
@@ -253,6 +254,26 @@ namespace GetReady.Tests
 			var built = new Body();
 			built.Wear(EquipmentSlot.TacticalVest, RealItems.Any("5c0e3eb886f7742015526062")); // armor built in, no plate slots
 			WornArmors(built.Inventory).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void Insurance_to_do_is_a_reminder_that_counts_the_items()
+		{
+			var lines = new[] { new PlanLine { Text = "Equipped gear" }, new PlanLine { Text = "Insure 3 items", Insured = 3, Run = () => Task.FromResult<string>(null) } };
+			InsuranceText(lines).Should().Be("3 ITEMS NOT INSURED! DO IT ON THE NEXT SCREEN.");
+			InsuranceText(new[] { new PlanLine { Insured = 1, Run = () => Task.FromResult<string>(null) } }).Should().StartWith("1 ITEM NOT");
+			InsuranceText(new[] { new PlanLine { Text = "Equipped gear" } }).Should().BeNull();
+			InsuranceText(null).Should().BeNull();
+			var facts = On("Customs");
+			facts.InsuranceText = InsuranceText(lines);
+			Check(Settings(), facts).Single().Kind.Should().Be(Kind.Insurance);
+		}
+
+		[Fact]
+		public void Insurance_that_cannot_be_done_says_why()
+		{
+			var line = Steps.Problem("Insure 3 items at Prapor", "needs 12,000 roubles, you have 500");
+			InsuranceText(new[] { line }).Should().Be("INSURANCE: NEEDS 12,000 ROUBLES, YOU HAVE 500!");
 		}
 
 		[Fact]

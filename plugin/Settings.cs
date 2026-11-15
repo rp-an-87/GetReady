@@ -127,6 +127,9 @@ namespace GetReady
 	{
 		public bool Enabled;
 		public string TraderId = "";
+		// Insurance still to do (or that cannot be done) is an orange reminder on the map screen instead of making it NOT READY: it can be
+		// done on the insurance screen that follows the map
+		public bool AsReminder;
 	}
 
 	// The Heal me step: the medicine allowed and its order are kept with the supplies' groups (group "healme")

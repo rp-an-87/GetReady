@@ -38,7 +38,16 @@ namespace GetReady
 				try
 				{
 					// A scav raid takes the scav's own kit: nothing from your stash and no reminders
-					_found = MapScreen.IsScav(_screen) ? new List<Reminders.Reminder>() : Reminders.Check(SettingsStore.Current.Reminders, Reminders.FactsOf(MapScreen.ProfileOf(_screen), _map, SettingsStore.Current.Cases.Cases));
+					if (MapScreen.IsScav(_screen))
+					{
+						_found = new List<Reminders.Reminder>();
+					}
+					else
+					{
+						var facts = Reminders.FactsOf(MapScreen.ProfileOf(_screen), _map, SettingsStore.Current.Cases.Cases);
+						facts.InsuranceText = NotReadyWarning.InsuranceNote;
+						_found = Reminders.Check(SettingsStore.Current.Reminders, facts);
+					}
 				}
 				catch (Exception e)
 				{
