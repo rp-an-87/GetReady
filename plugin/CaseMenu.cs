@@ -91,12 +91,36 @@ namespace GetReady
 			button = container.CreateContextButton(interaction.Key, interaction.Key, container._buttonTemplate, container._buttonsContainer, interaction.Icon, open, open, true, false);
 			button.SetButtonInteraction(SuccessfulResult.New);
 			container.BindButton(button);
-			// Above the last button (Discard, when it is there), not under it
+			// Above the last button (Discard, when it is there), not under it, and above the pin and lock row that sits over it
 			var rect = button.Transform;
 			if (rect.parent != null && rect.parent.childCount >= 2)
 			{
-				rect.SetSiblingIndex(rect.parent.childCount - 2);
+				rect.SetSiblingIndex(PlaceAbove(rect));
 			}
+		}
+
+		// The index for our button: just above the last one, moved up over the pin and lock row (the buttons that are not full width, or
+		// are not menu buttons at all) when it sits right above that
+		private static int PlaceAbove(Transform ours)
+		{
+			var parent = ours.parent;
+			int target = parent.childCount - 2;
+			float full = (parent as RectTransform)?.rect.width ?? 0f;
+			while (target > 0)
+			{
+				var before = parent.GetChild(target - 1);
+				var asButton = before.GetComponent<SimpleContextMenuButton>();
+				float width = (before as RectTransform)?.rect.width ?? 0f;
+				bool row = asButton == null || (full > 0f && width > 0f && width < full * 0.9f);
+				if (!row || !before.gameObject.activeSelf)
+				{
+					break;
+				}
+
+				target--;
+			}
+
+			return target;
 		}
 
 		private static void Open(InteractionButtonsContainer container, SimpleContextMenuButton button, Item item, bool isCase)
