@@ -40,14 +40,30 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
-		public void A_tracked_case_offers_update_and_stop_but_not_track()
+		public void A_tracked_case_offers_a_tracking_submenu_with_update_and_stop_but_not_track()
 		{
 			CasesStep.Record(_case);
 			var actions = Actions();
 
 			actions.IsActive(ECaseAction.Track).Should().BeFalse();
-			actions.IsActive(ECaseAction.Update).Should().BeTrue();
-			actions.IsActive(ECaseAction.StopTracking).Should().BeTrue();
+			actions.IsActive(ECaseAction.Tracking).Should().BeTrue();
+			actions.IsActive(ECaseAction.Update).Should().BeFalse();
+			actions.IsActive(ECaseAction.StopTracking).Should().BeFalse();
+			var inside = new CaseActions(null, _case, true, true);
+			inside.IsActive(ECaseAction.Update).Should().BeTrue();
+			inside.IsActive(ECaseAction.StopTracking).Should().BeTrue();
+			inside.IsActive(ECaseAction.Maps).Should().BeFalse();
+			inside.IsActive(ECaseAction.Track).Should().BeFalse();
+			inside.SubInteractions.Should().BeEmpty();
+		}
+
+		[Fact]
+		public void An_untracked_case_offers_track_directly_and_no_tracking_submenu()
+		{
+			var actions = Actions();
+
+			actions.IsActive(ECaseAction.Tracking).Should().BeFalse();
+			new CaseActions(null, _case, true, true).IsActive(ECaseAction.Update).Should().BeFalse();
 		}
 
 		[Fact]

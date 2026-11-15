@@ -14,7 +14,7 @@ namespace GetReady
 	// A "Get ready" entry in the right-click menu of a case you carry (stash, hideout, main menu): it opens a submenu with what Setup > Cases
 	// does for that case, and a second one for the maps. The game's menu is built from an enum of buttons; our entries are a button added as a
 	// dynamic interaction (so the game lists it) whose hover opens a menu of our own, built the way the game builds its own submenus.
-	internal enum ECaseAction { Maps, Track, Update, StopTracking, Settings, Repair, TopUp }
+	internal enum ECaseAction { Maps, Tracking, Track, Update, StopTracking, Settings, Repair, TopUp }
 
 	// The switches of a case in the submenu "Case settings"
 	internal enum ECaseSetting { SkipCash, TakeOutRest, Exact }
@@ -241,9 +241,12 @@ namespace GetReady
 		private readonly Item _item;
 		private readonly CompoundItem _case;
 		private readonly string _id;
+		// The "Tracking" submenu: the same actions, showing only the ones of a case that is tracked (update, stop)
+		private readonly bool _inTracking;
 
-		internal CaseActions(ItemUiContext uiContext, Item item, bool isCase = true) : base(uiContext)
+		internal CaseActions(ItemUiContext uiContext, Item item, bool isCase = true, bool inTracking = false) : base(uiContext)
 		{
+			_inTracking = inTracking;
 			_item = item;
 			_case = isCase ? item as CompoundItem : null;
 			_id = item.Id.ToString();
@@ -255,11 +258,12 @@ namespace GetReady
 
 		private bool Tracked => Entry != null && Entry.Recorded;
 
-		public override IEnumerable<ECaseAction> SubInteractions => new[] { ECaseAction.Maps, ECaseAction.Settings };
+		public override IEnumerable<ECaseAction> SubInteractions => _inTracking ? new ECaseAction[0] : new[] { ECaseAction.Maps, ECaseAction.Tracking, ECaseAction.Settings };
 
 		public override Dictionary<ECaseAction, string> CustomNames => new Dictionary<ECaseAction, string>
 		{
 			{ ECaseAction.Track, "Track items inside" },
+			{ ECaseAction.Tracking, "Tracking" },
 			{ ECaseAction.Update, "Update template" },
 			{ ECaseAction.StopTracking, "Stop tracking items" },
 			{ ECaseAction.Maps, "Maps" },
@@ -274,6 +278,7 @@ namespace GetReady
 			switch (key)
 			{
 				case ECaseAction.Track: name = "Tag"; break;
+				case ECaseAction.Tracking: name = "Tag"; break;
 				case ECaseAction.Update: name = "TopUp"; break;
 				case ECaseAction.StopTracking: name = "Discard"; break;
 				case ECaseAction.Settings: name = "Modding"; break;
@@ -289,12 +294,19 @@ namespace GetReady
 
 		public override bool IsActive(ECaseAction button)
 		{
+			if (_inTracking)
+			{
+				return CasesOn && Tracked && (button == ECaseAction.Update || button == ECaseAction.StopTracking);
+			}
+
 			switch (button)
 			{
 				case ECaseAction.Track:
 					return CasesOn && !Tracked;
 				case ECaseAction.Update:
 				case ECaseAction.StopTracking:
+					return false;
+				case ECaseAction.Tracking:
 					return CasesOn && Tracked;
 				case ECaseAction.Repair:
 					return RepairStep.OffersExclusion(_item);
@@ -330,6 +342,10 @@ namespace GetReady
 			if (parentInteraction == ECaseAction.Settings)
 			{
 				wrapper.SetSubInteractions(new SettingActions(UIContext, _case));
+			}
+			else if (parentInteraction == ECaseAction.Tracking)
+			{
+				wrapper.SetSubInteractions(new CaseActions(UIContext, _item, true, true));
 			}
 			else
 			{
