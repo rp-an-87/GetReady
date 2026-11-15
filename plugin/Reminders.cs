@@ -49,6 +49,8 @@ namespace GetReady
 			// The cases set up in Cases and the ids of what you carry, for the containers that are wrong or missing for the map
 			public List<CaseEntry> Cases = new List<CaseEntry>();
 			public HashSet<string> CarriedIds = new HashSet<string>();
+			// The templates of the magazines on you that no weapon on you takes, one entry per magazine
+			public List<string> WrongMagazines = new List<string>();
 		}
 
 		internal enum Kind
@@ -61,7 +63,8 @@ namespace GetReady
 			Needs,
 			Plates,
 			NoArmor,
-			Insurance
+			Insurance,
+			Magazines
 		}
 
 		internal class Reminder
@@ -182,7 +185,32 @@ namespace GetReady
 				}
 			}
 
+			if (settings.WrongMagazines && facts.WrongMagazines.Count > 0)
+			{
+				int count = facts.WrongMagazines.Count;
+				var reminder = new Reminder { Kind = Kind.Magazines, Text = $"{(count == 1 ? "A MAGAZINE FITS" : count + " MAGAZINES FIT")} NONE OF YOUR WEAPONS!" };
+				reminder.Icons.AddRange(facts.WrongMagazines.Distinct());
+				found.Add(reminder);
+			}
+
 			return found;
+		}
+
+		// The magazines on you (in a grid, not in a weapon) that no weapon on you takes: a spare for a gun you left at home. Weapons anywhere on you
+		// count (a spare in a case too), and a weapon with no magazine slot (a tube-fed shotgun) takes none. With no weapon that takes magazines
+		// there is nothing to compare with, so nothing is said.
+		internal static List<string> WrongMagazines(IEnumerable<Item> onYou)
+		{
+			var items = onYou.ToList();
+			var slots = items.OfType<Weapon>().Select(weapon => weapon.GetMagazineSlot()).Where(slot => slot != null).ToList();
+			if (slots.Count == 0)
+			{
+				return new List<string>();
+			}
+
+			return items.OfType<Magazine>()
+				.Where(magazine => magazine.Parent?.Container is Grid && !slots.Any(slot => slot.CheckCompatibility(magazine)))
+				.Select(magazine => magazine.TemplateId.ToString()).ToList();
 		}
 
 		// What the insurance step has left, in words for a reminder: items still to insure (insure them on the next screen), or why it cannot
@@ -245,7 +273,9 @@ namespace GetReady
 				return facts;
 			}
 
-			foreach (var item in OnYou(inventory))
+			var onYou = OnYou(inventory).ToList();
+			facts.WrongMagazines = WrongMagazines(onYou);
+			foreach (var item in onYou)
 			{
 				facts.Carried.Add(item.TemplateId.ToString());
 				facts.CarriedIds.Add(item.Id.ToString());

@@ -298,6 +298,62 @@ namespace GetReady.Tests
 			Check(settings, facts).Select(r => r.Kind).Should().Equal(Kind.Paracord, Kind.Needs, Kind.Plates);
 		}
 
+		private static List<string> WrongIn(CompoundItem bag) => WrongMagazines(bag.GetAllItems().Where(item => item != bag));
+
+		[Fact]
+		public void A_magazine_no_weapon_takes_is_wrong()
+		{
+			var bag = Gear.NewContainer(Gear.ScavBackpack);
+			Gear.NewWeapon().In(bag);
+			Gear.NewMagazine().In(bag);
+			WrongIn(bag).Should().BeEmpty();
+			Gear.NewMagazine(Gear.GlockMag).In(bag);
+			WrongIn(bag).Should().Equal(Gear.GlockMag);
+		}
+
+		[Fact]
+		public void A_weapon_in_a_case_counts_for_its_magazines()
+		{
+			var bag = Gear.NewContainer(Gear.ScavBackpack);
+			Gear.NewWeapon().In(bag);
+			Gear.NewWeapon(Gear.Glock18).In(bag);
+			Gear.NewMagazine(Gear.GlockMag).In(bag);
+			WrongIn(bag).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void A_magazine_in_a_weapon_is_left_alone()
+		{
+			var bag = Gear.NewContainer(Gear.ScavBackpack);
+			Gear.NewWeapon(Gear.Glock18).With(Gear.NewMagazine(Gear.GlockMag)).In(bag);
+			Gear.NewWeapon().With(Gear.NewMagazine()).In(bag);
+			WrongIn(bag).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void With_no_weapon_there_is_nothing_to_compare_with()
+		{
+			var bag = Gear.NewContainer(Gear.ScavBackpack);
+			Gear.NewMagazine().In(bag);
+			WrongIn(bag).Should().BeEmpty();
+		}
+
+		[Fact]
+		public void The_wrong_magazines_reminder_counts_them_and_is_off_by_default()
+		{
+			var facts = On("Customs");
+			facts.WrongMagazines.AddRange(new[] { "g", "g", "h" });
+			Check(Settings(), facts).Should().BeEmpty();
+			var settings = Settings();
+			settings.WrongMagazines = true;
+			var found = Check(settings, facts).Single();
+			found.Kind.Should().Be(Kind.Magazines);
+			found.Text.Should().Be("3 MAGAZINES FIT NONE OF YOUR WEAPONS!");
+			found.Icons.Should().Equal("g", "h");
+			facts.WrongMagazines.RemoveRange(1, 2);
+			Check(settings, facts).Single().Text.Should().Be("A MAGAZINE FITS NONE OF YOUR WEAPONS!");
+		}
+
 		[Fact]
 		public void A_weapon_in_the_scabbard_counts_as_on_you()
 		{

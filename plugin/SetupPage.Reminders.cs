@@ -120,6 +120,8 @@ namespace GetReady
 			}
 
 			ReminderCard(section, "Equipment: armor with an empty plate slot", null, settings.Equipment.Enabled, value => settings.Equipment.Enabled = value);
+			var mags = ReminderCard(section, "Magazines that fit none of my weapons", null, settings.WrongMagazines, value => settings.WrongMagazines = value);
+			UiKit.Label(mags, "Warns about a magazine on you that none of the weapons on you takes (a spare for a gun you left at home). A weapon in a case counts too.", 0.8f, UiColors.Dim, wrap: true);
 			var noArmor = ReminderCard(section, "Equipment: no armor at all", null, settings.Equipment.NoArmor, value => settings.Equipment.NoArmor = value);
 			UiKit.Label(noArmor, "Warns when nothing is in the Body Armor slot and the Tactical Rig slot holds no rig that takes plates (a rig without plate slots counts as no armor). Every map.", 0.8f, UiColors.Dim, wrap: true);
 		}

@@ -235,6 +235,8 @@ namespace GetReady
 		public ParacordReminder Paracord = new ParacordReminder();
 		public NeedsReminder Needs = new NeedsReminder();
 		public EquipmentReminder Equipment = new EquipmentReminder();
+		// A magazine on you that none of your weapons takes (off by default)
+		public bool WrongMagazines;
 	}
 
 	internal class Settings
