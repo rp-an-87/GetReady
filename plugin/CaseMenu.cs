@@ -282,7 +282,8 @@ namespace GetReady
 				default: name = "ViewMap"; break;
 			}
 
-			icon = CaseMenu.IconOf(name);
+			// The settings gear of Setup's Options for the case settings (the game's own icon of its Settings tab)
+			icon = key == ECaseAction.Settings ? GameWidgets.SettingsGear() ?? CaseMenu.IconOf(name) : CaseMenu.IconOf(name);
 			return icon != null;
 		}
 
