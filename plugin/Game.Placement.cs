@@ -85,6 +85,16 @@ namespace GetReady
 			return operation.Failed ? operation.Error.ToString() : await Run(controller, operation);
 		}
 
+		// The grids of a container in the order to try them: for a 1x1 item the single-cell grids (a rig's small pockets) come first, when
+		// that option is on; the order is otherwise the container's own
+		internal static IEnumerable<Grid> GridsFor(Item item, CompoundItem container)
+		{
+			var size = item.CalculateCellSize();
+			return SettingsStore.Current.SingleSlotsFirst && size.X == 1 && size.Y == 1
+				? container.Grids.OrderBy(grid => grid.GridWidth == 1 && grid.GridHeight == 1 ? 0 : 1)
+				: container.Grids;
+		}
+
 		// Into the first of the containers that has a spot: added to a stack of the same item when there is room for all of it
 		// (and it is the same kind: adding new money to a found-in-raid stack would make the whole stack lose its FiR status),
 		// else a free spot of a grid, else a free slot. The game's own "quick move" is not used: it falls back to the stash (a
@@ -112,7 +122,7 @@ namespace GetReady
 
 				if ((!planned || operation.Failed) && target.Grids)
 				{
-					foreach (var grid in container.Grids)
+					foreach (var grid in GridsFor(item, container))
 					{
 						var address = grid.FindLocationForItem(item);
 						if (address == null)

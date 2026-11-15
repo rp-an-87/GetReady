@@ -36,6 +36,56 @@ namespace GetReady.Tests
 			Place(_body.Moves.Single()).Should().Be("SpecialSlot1");
 		}
 
+		private static bool Single(Body.Move move) => move.To.Container is Grid grid && grid.GridWidth == 1 && grid.GridHeight == 1;
+
+		[Fact]
+		public async Task A_1x1_item_goes_to_a_single_slot_of_the_vest_first()
+		{
+			_body.Wear(EquipmentSlot.TacticalVest, NewContainer(Body.Vest));
+			var bandage = _body.InStash(RealItems.Any(RealItems.ArmyBandage));
+
+			(await MoveTo(bandage, "Vest")).Should().BeNull();
+
+			Single(_body.Moves.Single()).Should().BeTrue();
+		}
+
+		[Fact]
+		public async Task A_1x1_item_takes_the_first_spot_when_the_option_is_off()
+		{
+			SettingsStore.Current.SingleSlotsFirst = false;
+			_body.Wear(EquipmentSlot.TacticalVest, NewContainer(Body.Vest));
+			var bandage = _body.InStash(RealItems.Any(RealItems.ArmyBandage));
+
+			(await MoveTo(bandage, "Vest")).Should().BeNull();
+
+			Single(_body.Moves.Single()).Should().BeFalse();
+		}
+
+		[Fact]
+		public async Task A_1x1_item_goes_to_a_bigger_grid_when_the_single_slots_are_full()
+		{
+			var vest = _body.Wear(EquipmentSlot.TacticalVest, NewContainer(Body.Vest));
+			foreach (var grid in vest.Grids.Where(grid => grid.GridWidth == 1 && grid.GridHeight == 1))
+			{
+				grid.Add(RealItems.Any(RealItems.ArmyBandage), new LocationInGrid(0, 0, ItemRotation.Horizontal), false).Succeeded.Should().BeTrue();
+			}
+
+			(await MoveTo(_body.InStash(RealItems.Any(RealItems.ArmyBandage)), "Vest")).Should().BeNull();
+
+			Single(_body.Moves.Single()).Should().BeFalse();
+		}
+
+		[Fact]
+		public async Task A_bigger_item_ignores_the_single_slots_rule()
+		{
+			_body.Wear(EquipmentSlot.TacticalVest, NewContainer(Body.Vest));
+			var salewa = _body.InStash(RealItems.Any(RealItems.Salewa));
+
+			(await MoveTo(salewa, "Vest")).Should().BeNull();
+
+			Single(_body.Moves.Single()).Should().BeFalse();
+		}
+
 		[Fact]
 		public async Task The_next_place_is_tried_when_the_first_has_no_room()
 		{

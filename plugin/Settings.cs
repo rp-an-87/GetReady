@@ -238,6 +238,8 @@ namespace GetReady
 	{
 		// The size of the window and the check box, 1 = as designed (Setup > Options)
 		public float UiScale = 1f;
+		// A 1x1 item goes to a container's single-cell grids before its bigger ones (Setup > Options)
+		public bool SingleSlotsFirst = true;
 		public HealMeSettings HealMe = new HealMeSettings();
 		public FullAutoSettings FullAuto = new FullAutoSettings();
 		public RepairSettings Repair = new RepairSettings();
