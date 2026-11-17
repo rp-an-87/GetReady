@@ -65,6 +65,7 @@ namespace GetReady
 			if (!ReadyRun._running)
 			{
 				CasesStep.OnItemEvent(args.To);
+				CasesStep.OnPinAdded(args.Item, args.To is GridItemAddress && args.To.IsChildOf(_watched?.Inventory?.Stash));
 			}
 
 			InventoryChanged?.Invoke();
@@ -76,6 +77,7 @@ namespace GetReady
 			if (!ReadyRun._running)
 			{
 				CasesStep.OnItemEvent(args.From);
+				CasesStep.OnPinRemoved(args.Item, args.From != null && args.From.IsChildOf(_watched?.Inventory?.Equipment));
 			}
 
 			InventoryChanged?.Invoke();
@@ -459,9 +461,33 @@ namespace GetReady
 				}
 			}
 
+			if (shown && !ReadyRun._running && CasesStep.PinPending.Count > 0 && Time.unscaledTime - _dirtyAt > 0.3f)
+			{
+				var controller = Game.Controller();
+				if (controller != null)
+				{
+					PinArrivedCases(controller);
+				}
+			}
+
 			if (shown && _dirty && !ReadyRun._running && Time.unscaledTime - _dirtyAt > 0.3f)
 			{
 				Refresh();
+			}
+		}
+
+		private static async void PinArrivedCases(InventoryController controller)
+		{
+			try
+			{
+				if (await CasesStep.PinArrived(controller) > 0)
+				{
+					MarkDirty();
+				}
+			}
+			catch (Exception e)
+			{
+				Plugin.Log.LogError($"Auto pin failed: {e}");
 			}
 		}
 

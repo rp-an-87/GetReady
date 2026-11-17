@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Diz.LanguageExtensions;
 using EFT.InventoryLogic;
 
 namespace GetReady
@@ -237,13 +238,18 @@ namespace GetReady
 				parts.Add("cash step skipped");
 			}
 
+			if (entry.AutoPin)
+			{
+				parts.Add("auto pin on unequip");
+			}
+
 			return parts.Count == 0 ? "nothing saved" : string.Join(" · ", parts);
 		}
 
 		// A case with nothing set for it (no template, no maps, no cash switch) is not kept
 		internal static void Prune(CaseEntry entry)
 		{
-			if (!entry.Recorded && !entry.StopsCash && entry.Maps.Count == 0)
+			if (!entry.Recorded && !entry.StopsCash && !entry.AutoPin && entry.Maps.Count == 0)
 			{
 				Entries.Remove(entry);
 			}
@@ -332,6 +338,76 @@ namespace GetReady
 					Record(container);
 					done++;
 				}
+			}
+
+			return done;
+		}
+
+		// ---- auto pin: a case with the switch on is pinned once it has gone from you into the stash
+
+		// Cases with the switch on that were just taken off you (by item id), waiting to arrive in the stash (a drag is a remove and an add)
+		internal static readonly HashSet<string> LeftYou = new HashSet<string>();
+
+		// Cases that arrived in the stash after leaving you, waiting for the screen to settle
+		internal static readonly List<CompoundItem> PinPending = new List<CompoundItem>();
+
+		// An item was taken out of a container; fromYou: it was on you (not in the stash)
+		internal static void OnPinRemoved(Item item, bool fromYou)
+		{
+			var id = item?.Id.ToString();
+			if (id == null)
+			{
+				return;
+			}
+
+			if (fromYou && item is CompoundItem && EntryOf(id)?.AutoPin == true)
+			{
+				LeftYou.Add(id);
+			}
+			else
+			{
+				LeftYou.Remove(id);
+			}
+		}
+
+		// An item was put into a container; inStash: into a grid of the stash
+		internal static void OnPinAdded(Item item, bool inStash)
+		{
+			var id = item?.Id.ToString();
+			if (id != null && LeftYou.Remove(id) && inStash && item is CompoundItem container && EntryOf(id)?.AutoPin == true && !PinPending.Contains(container))
+			{
+				PinPending.Add(container);
+			}
+		}
+
+		// Pins the cases that arrived in the stash. Returns how many were pinned.
+		internal static async System.Threading.Tasks.Task<int> PinArrived(InventoryController controller)
+		{
+			var items = PinPending.ToList();
+			PinPending.Clear();
+			int done = 0;
+			foreach (var item in items)
+			{
+				if (item.PinLockState != EItemPinLockState.Free)
+				{
+					continue;
+				}
+
+				var operation = ItemManipulator.SetPinLockState(controller, item, EItemPinLockState.Pinned, true);
+				if (operation.Failed)
+				{
+					Plugin.Log.LogWarning($"Could not pin {Game.NameOf(item)}: {operation.Error}");
+					continue;
+				}
+
+				var outcome = await Game.RunOperation(controller, (OperationResult)operation);
+				if (outcome.Failed)
+				{
+					Plugin.Log.LogWarning($"Could not pin {Game.NameOf(item)}: {outcome.Error}");
+					continue;
+				}
+
+				done++;
 			}
 
 			return done;

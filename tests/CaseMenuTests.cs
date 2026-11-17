@@ -375,6 +375,60 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void The_auto_pin_switch_works_on_an_untracked_case_and_the_record_goes_when_it_is_switched_off()
+		{
+			var settings = Settings();
+			settings.IsActive(ECaseSetting.AutoPin).Should().BeTrue();
+
+			settings.ExecuteInteractionInternal(ECaseSetting.AutoPin);
+			CasesStep.EntryOf(Id).AutoPin.Should().BeTrue();
+
+			settings.ExecuteInteractionInternal(ECaseSetting.AutoPin);
+			CasesStep.EntryOf(Id).Should().BeNull("a case with nothing set for it is not kept");
+		}
+
+		[Fact]
+		public void A_case_with_auto_pin_that_leaves_you_for_the_stash_is_queued_to_be_pinned()
+		{
+			Settings().ExecuteInteractionInternal(ECaseSetting.AutoPin);
+			CasesStep.LeftYou.Clear();
+			CasesStep.PinPending.Clear();
+
+			CasesStep.OnPinRemoved(_case, true);
+			CasesStep.OnPinAdded(_case, true);
+
+			CasesStep.PinPending.Should().ContainSingle().Which.Should().BeSameAs(_case);
+		}
+
+		[Fact]
+		public void Auto_pin_does_nothing_when_the_switch_is_off_or_the_case_did_not_leave_you_or_did_not_land_in_the_stash()
+		{
+			CasesStep.LeftYou.Clear();
+			CasesStep.PinPending.Clear();
+
+			// switch off
+			CasesStep.OnPinRemoved(_case, true);
+			CasesStep.OnPinAdded(_case, true);
+			CasesStep.PinPending.Should().BeEmpty();
+
+			Settings().ExecuteInteractionInternal(ECaseSetting.AutoPin);
+
+			// moved inside the stash: it did not leave you
+			CasesStep.OnPinRemoved(_case, false);
+			CasesStep.OnPinAdded(_case, true);
+			CasesStep.PinPending.Should().BeEmpty();
+
+			// left you but did not land in the stash grid
+			CasesStep.OnPinRemoved(_case, true);
+			CasesStep.OnPinAdded(_case, false);
+			CasesStep.PinPending.Should().BeEmpty();
+
+			// the arrival was forgotten with that move: a later stash move is not a new unequip
+			CasesStep.OnPinAdded(_case, true);
+			CasesStep.PinPending.Should().BeEmpty();
+		}
+
+		[Fact]
 		public void The_take_out_and_exact_switches_flip_the_record()
 		{
 			CasesStep.Record(_case);

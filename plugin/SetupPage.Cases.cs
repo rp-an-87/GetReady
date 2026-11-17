@@ -331,6 +331,13 @@ namespace GetReady
 				CasesStep.Prune(target);
 				Changed();
 			}, "For a case that has the cash it needs, or is for something else.\n<b>On:</b> the Cash step is skipped while you carry this case.\n<b>Off:</b> the Cash step works as usual.\n\nA case that tracks money skips the step on its own.");
+			Pick(switches, "Auto pin on unequip", entry != null && entry.AutoPin, () =>
+			{
+				var target = entry ?? CasesStep.Touch(item);
+				target.AutoPin = !target.AutoPin;
+				CasesStep.Prune(target);
+				Changed();
+			}, "For a case you swap often.\n<b>On:</b> when you take this case off you into the stash, it is pinned there, so it stays where you put it.\n<b>Off:</b> nothing is pinned.");
 			if (recorded)
 			{
 				Pick(switches, "Take out the rest", entry.TakeOutRest, () =>

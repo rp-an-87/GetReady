@@ -17,7 +17,7 @@ namespace GetReady
 	internal enum ECaseAction { Maps, Tracking, Track, Update, StopTracking, Settings, Repair, TopUp }
 
 	// The switches of a case in the submenu "Case settings"
-	internal enum ECaseSetting { SkipCash, TakeOutRest, Exact }
+	internal enum ECaseSetting { SkipCash, TakeOutRest, Exact, AutoPin }
 
 	// The ten maps of MapTags.Maps, in that order
 	internal enum EMapAction { Customs, Factory, Woods, Interchange, Shoreline, Reserve, Lighthouse, Streets, GroundZero, Labs }
@@ -411,7 +411,7 @@ namespace GetReady
 
 		private bool Tracked => Entry != null && Entry.Recorded;
 
-		private static string NameOf(ECaseSetting setting) => setting == ECaseSetting.SkipCash ? "Skip cash step" : setting == ECaseSetting.TakeOutRest ? "Take out the rest" : "Exact positions";
+		private static string NameOf(ECaseSetting setting) => setting == ECaseSetting.SkipCash ? "Skip cash step" : setting == ECaseSetting.TakeOutRest ? "Take out the rest" : setting == ECaseSetting.AutoPin ? "Auto pin on unequip" : "Exact positions";
 
 		private bool IsOn(ECaseSetting setting)
 		{
@@ -421,7 +421,7 @@ namespace GetReady
 				return false;
 			}
 
-			return setting == ECaseSetting.SkipCash ? entry.StopsCash : setting == ECaseSetting.TakeOutRest ? entry.TakeOutRest : entry.Exact;
+			return setting == ECaseSetting.SkipCash ? entry.StopsCash : setting == ECaseSetting.AutoPin ? entry.AutoPin : setting == ECaseSetting.TakeOutRest ? entry.TakeOutRest : entry.Exact;
 		}
 
 		public override Dictionary<ECaseSetting, string> CustomNames
@@ -448,7 +448,7 @@ namespace GetReady
 		}
 
 		// Like Setup: the cash switch only while the Cash step is on, the other two only for a case that is tracked
-		public override bool IsActive(ECaseSetting button) => button == ECaseSetting.SkipCash ? SettingsStore.Current.Supplies.CashEnabled : Tracked;
+		public override bool IsActive(ECaseSetting button) => button == ECaseSetting.SkipCash ? SettingsStore.Current.Supplies.CashEnabled : button == ECaseSetting.AutoPin || Tracked;
 
 		public override IResult IsInteractive(ECaseSetting button) => SuccessfulResult.New;
 
@@ -460,6 +460,12 @@ namespace GetReady
 				{
 					var target = Entry ?? CasesStep.Touch(_item);
 					target.StopsCash = !target.StopsCash;
+					CasesStep.Prune(target);
+				}
+				else if (interaction == ECaseSetting.AutoPin)
+				{
+					var target = Entry ?? CasesStep.Touch(_item);
+					target.AutoPin = !target.AutoPin;
 					CasesStep.Prune(target);
 				}
 				else if (Entry != null)

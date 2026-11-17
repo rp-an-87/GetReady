@@ -175,6 +175,8 @@ namespace GetReady
 		public bool TakeOutRest = true;
 		// While you carry this case the Cash step does nothing
 		public bool StopsCash;
+		// When you take this case off you (into the stash) it is pinned there
+		public bool AutoPin;
 		// The maps it is for (names of MapTags.Maps); none: any
 		public List<string> Maps = new List<string>();
 	}
