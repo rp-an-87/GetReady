@@ -34,6 +34,7 @@ namespace GetReady.Tests
 			Game.LongNames.Clear();
 			Game.IsInsideContainer = item => false;
 			Game.IsInsideTemplatedCase = item => false;
+			Game.IsQuestWishlisted = template => false;
 			Game.RandomIndex = count => 0;
 			Game.Localize = key =>
 			{

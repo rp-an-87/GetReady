@@ -122,6 +122,21 @@ namespace GetReady
 
 		internal static string NameOf(Item item) => TemplateName(item.TemplateId.ToString());
 
+		// Whether the template is in the Quests group of the wishlist (the tasks tab): an item carried for a task. Replaceable for the tests.
+		internal static Func<string, bool> IsQuestWishlisted = template =>
+		{
+			try
+			{
+				var wishlist = SPT.Reflection.Utils.ClientAppUtils.GetMainApp()?.GetClientBackEndSession()?.Profile?.WishlistManager;
+				EWishlistGroup group;
+				return wishlist != null && wishlist.UserItems.TryGetValue(new MongoID(template), out group) && group == EWishlistGroup.Quests;
+			}
+			catch
+			{
+				return false;
+			}
+		};
+
 		// Inside a case that has a template (at any depth), which that template looks after: the supplies do not count it
 		internal static bool InsideTemplatedCase(Item item) => IsInsideTemplatedCase(item);
 

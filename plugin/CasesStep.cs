@@ -45,6 +45,13 @@ namespace GetReady
 				return location.x == x && location.y == y;
 			});
 
+		// An item you keep in a case yourself: the case is set to keep quest items, the item is in the Quests group of the wishlist, and it is
+		// not in the template (an item the template wants is looked after like any other)
+		internal static bool Kept(CaseEntry entry, string template) =>
+			entry.KeepQuestItems && !entry.Items.Any(item => item.Template == template) && Game.IsQuestWishlisted(template);
+
+		internal static bool Kept(CaseEntry entry, Item item) => Kept(entry, item.TemplateId.ToString());
+
 		// What a case is called: its tag when it has one, else its name
 		internal static string LabelOf(CaseEntry entry) => !string.IsNullOrEmpty(entry.Tag) ? entry.Tag : string.IsNullOrEmpty(entry.CaseName) ? "Case" : entry.CaseName;
 
@@ -75,12 +82,19 @@ namespace GetReady
 		{
 			var entry = Touch(container);
 			entry.Recorded = true;
+			var before = new HashSet<string>(entry.Items.Select(item => item.Template));
 			entry.Items.Clear();
 			for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
 			{
 				var grid = container.Grids[gridIndex];
 				foreach (var item in grid.Items)
 				{
+					// A quest item you keep there yourself is not tracked (unless it was already)
+					if (entry.KeepQuestItems && !before.Contains(item.TemplateId.ToString()) && Game.IsQuestWishlisted(item.TemplateId.ToString()))
+					{
+						continue;
+					}
+
 					var place = grid.GetItemLocation(item);
 					entry.Items.Add(new CaseItem
 					{
@@ -126,6 +140,11 @@ namespace GetReady
 				foreach (var item in grid.Items)
 				{
 					var template = item.TemplateId.ToString();
+					if (Kept(entry, template))
+					{
+						continue;
+					}
+
 					CaseItem found;
 					if (now.TryGetValue(template, out found))
 					{
@@ -602,7 +621,7 @@ namespace GetReady
 
 			if (entry.TakeOutRest)
 			{
-				foreach (var item in held.Where(item => !wantedByType.Any(wanted => wanted.Template == item.TemplateId.ToString())))
+				foreach (var item in held.Where(item => !wantedByType.Any(wanted => wanted.Template == item.TemplateId.ToString()) && !Kept(entry, item)))
 				{
 					var currency = Game.CurrencyOf(item.TemplateId.ToString());
 					removals.Add(Take(controller, item, item.StackObjectsCount, label, currency ?? Game.NameOf(item), currency != null));
@@ -624,6 +643,13 @@ namespace GetReady
 			var others = new List<PlanLine>();
 			var part = new Part();
 			var cells = entry.Items.Where(cell => cell.Grid >= 0 && cell.Grid < container.Grids.Length).ToList();
+			// The room each template cell takes (its item's size, one cell when no item is known), for keeping quest items out of it
+			var reserved = new List<Rect>();
+			Action<CaseItem, Item> Reserve = (cell, sizing) =>
+			{
+				var size = sizing != null ? sizing.CalculateRotatedSize((ItemRotation)cell.Rotation) : new IntVec2(1, 1);
+				reserved.Add(new Rect { Grid = cell.Grid, X = cell.X, Y = cell.Y, W = size.X, H = size.Y });
+			};
 			part.Total = cells.Count;
 			Func<CaseItem, Item> heldIn = cell => InCell(container.Grids[cell.Grid], cell.X, cell.Y);
 			Func<CaseItem, ItemAddress> addressOf = cell => container.Grids[cell.Grid].CreateItemAddress(new LocationInGrid(cell.X, cell.Y, (ItemRotation)cell.Rotation));
@@ -638,11 +664,11 @@ namespace GetReady
 				strays.AddRange(grid.Items.Where(item =>
 				{
 					var spot = grid.GetItemLocation(item);
-					return !cells.Any(cell => cell.Grid == index && cell.X == spot.x && cell.Y == spot.y);
+					return !Kept(entry, item) && !cells.Any(cell => cell.Grid == index && cell.X == spot.x && cell.Y == spot.y);
 				}));
 			}
 
-			var wrong = cells.Where(cell => heldIn(cell) != null && heldIn(cell).TemplateId.ToString() != cell.Template).Select(cell => heldIn(cell)).ToList();
+			var wrong = cells.Where(cell => heldIn(cell) != null && heldIn(cell).TemplateId.ToString() != cell.Template && !Kept(entry, heldIn(cell))).Select(cell => heldIn(cell)).ToList();
 			var pool = strays.Concat(wrong).ToList();
 			var used = new HashSet<Item>(); // taken from where they are for another cell: their own cell is empty by then
 			int inPlace = 0;
@@ -650,13 +676,15 @@ namespace GetReady
 			foreach (var cell in cells)
 			{
 				var held = heldIn(cell);
-				if (held != null && used.Contains(held))
+				if (held != null && (used.Contains(held) || Kept(entry, held)))
 				{
+					// (a kept quest item on this cell is moved out of the way below, before anything is placed)
 					held = null;
 				}
 
 				if (held != null && held.TemplateId.ToString() == cell.Template)
 				{
+					Reserve(cell, held);
 					int difference = cell.Count - held.StackObjectsCount;
 					if (held.StackMaxSize > 1 && difference > 0)
 					{
@@ -709,6 +737,7 @@ namespace GetReady
 
 				var target = cell;
 				var chosen = source2;
+				Reserve(cell, chosen);
 				if (held == null)
 				{
 					if (chosen == null)
@@ -796,9 +825,98 @@ namespace GetReady
 			}
 
 			part.InPlace = inPlace;
-			// The progress line is made once for the whole case
-			part.Lines = Steps.Summarize(0, 0, "items", needs, others).Skip(1).ToList();
+			// The progress line is made once for the whole case; the quest items that sit on a template cell are moved first
+			part.Lines = KeptOutOfTheWay(controller, entry, container, label, reserved).Concat(Steps.Summarize(0, 0, "items", needs, others).Skip(1)).ToList();
 			return part;
+		}
+
+		private class Rect
+		{
+			public int Grid, X, Y, W, H;
+			public bool Overlaps(Rect other) => Grid == other.Grid && X < other.X + other.W && other.X < X + W && Y < other.Y + other.H && other.Y < Y + H;
+		}
+
+		// The quest items you keep in the case that sit on room a template item needs: each is moved to a free spot of the case that no template
+		// item needs. When there is none, that is a problem.
+		private static List<PlanLine> KeptOutOfTheWay(InventoryController controller, CaseEntry entry, CompoundItem container, string label, List<Rect> reserved)
+		{
+			var lines = new List<PlanLine>();
+			var taken = new List<Rect>(); // the spots the moves above chose
+			for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
+			{
+				var grid = container.Grids[gridIndex];
+				foreach (var item in grid.Items.Where(item => Kept(entry, item)).ToList())
+				{
+					var spot = grid.GetItemLocation(item);
+					var size = item.CalculateRotatedSize(spot.r);
+					var here = new Rect { Grid = gridIndex, X = spot.x, Y = spot.y, W = size.X, H = size.Y };
+					if (!reserved.Any(rect => rect.Overlaps(here)))
+					{
+						continue;
+					}
+
+					var name = Game.NameOf(item);
+					var template = item.TemplateId.ToString();
+					var found = FreeSpot(container, item, reserved, taken);
+					if (found == null)
+					{
+						lines.Add(Steps.Problem(name, $"is a quest item on a cell {label} needs, and there is no free spot in the case to move it to", template));
+						continue;
+					}
+
+					taken.Add(found.Item1);
+					var target = found.Item2;
+					var moved = item;
+					int index = found.Item1.Grid;
+					lines.Add(new PlanLine
+					{
+						Text = $"Move {name} to cell {target.x},{target.y} of {label}, out of the way of the template",
+						Template = template,
+						Items = 1,
+						Run = () => Game.PlaceAt(controller, moved, moved.StackObjectsCount, container.Grids[index].CreateItemAddress(target))
+					}.WithItem(item));
+				}
+			}
+
+			return lines;
+		}
+
+		// A place in the case where the item fits, free of every item there now, of the room the template items need and of the spots chosen
+		// before. The way it sits now first, then turned.
+		private static Tuple<Rect, LocationInGrid> FreeSpot(CompoundItem container, Item item, List<Rect> reserved, List<Rect> taken)
+		{
+			for (int gridIndex = 0; gridIndex < container.Grids.Length; gridIndex++)
+			{
+				var grid = container.Grids[gridIndex];
+				foreach (var rotation in new[] { ItemRotation.Horizontal, ItemRotation.Vertical })
+				{
+					var size = item.CalculateRotatedSize(rotation);
+					for (int y = 0; y + size.Y <= grid.GridHeight; y++)
+					{
+						for (int x = 0; x + size.X <= grid.GridWidth; x++)
+						{
+							var rect = new Rect { Grid = gridIndex, X = x, Y = y, W = size.X, H = size.Y };
+							if (reserved.Any(other => other.Overlaps(rect)) || taken.Any(other => other.Overlaps(rect)))
+							{
+								continue;
+							}
+
+							bool free = grid.Items.All(other =>
+							{
+								var place = grid.GetItemLocation(other);
+								var otherSize = other.CalculateRotatedSize(place.r);
+								return !new Rect { Grid = gridIndex, X = place.x, Y = place.y, W = otherSize.X, H = otherSize.Y }.Overlaps(rect);
+							});
+							if (free)
+							{
+								return Tuple.Create(rect, new LocationInGrid(x, y, rotation));
+							}
+						}
+					}
+				}
+			}
+
+			return null;
 		}
 	}
 }

@@ -345,6 +345,11 @@ namespace GetReady
 					entry.TakeOutRest = !entry.TakeOutRest;
 					Changed();
 				}, "What the case holds that is not tracked.\n<b>On:</b> it is taken out to the stash, money included (a tracked amount keeps that much, the extra goes out).\n<b>Off:</b> it stays where it is; only what is missing is brought.");
+				Pick(switches, "Keep quest items", entry.KeepQuestItems, () =>
+				{
+					entry.KeepQuestItems = !entry.KeepQuestItems;
+					Changed();
+				}, "Items you put in the case yourself that are in the Quests group of your wishlist (the tasks tab) and are not tracked.\n<b>On:</b> they are left alone: not taken out, not tracked, not brought. One that sits on a cell a tracked item needs is moved to a free spot of the case; with no free spot that is a problem.\n<b>Off:</b> they are like any other item that is not tracked.");
 				Pick(switches, "Exact positions", entry.Exact, () =>
 				{
 					entry.Exact = !entry.Exact;

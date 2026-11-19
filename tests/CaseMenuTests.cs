@@ -429,6 +429,19 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void The_keep_quest_items_switch_is_on_by_default_for_a_tracked_case_and_flips_the_record()
+		{
+			CasesStep.Record(_case);
+			var settings = Settings();
+			settings.IsActive(ECaseSetting.KeepQuestItems).Should().BeTrue();
+			CasesStep.EntryOf(Id).KeepQuestItems.Should().BeTrue();
+
+			settings.ExecuteInteractionInternal(ECaseSetting.KeepQuestItems);
+
+			CasesStep.EntryOf(Id).KeepQuestItems.Should().BeFalse();
+		}
+
+		[Fact]
 		public void The_take_out_and_exact_switches_flip_the_record()
 		{
 			CasesStep.Record(_case);

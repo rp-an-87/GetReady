@@ -173,6 +173,9 @@ namespace GetReady
 		public bool Exact;
 		// What is not in the template is taken out to the stash, money too (a recorded amount keeps that much, the extra goes out); off: only what is missing is brought and nothing is taken out
 		public bool TakeOutRest = true;
+		// An item you put in this case yourself that is in the Quests group of the wishlist (and not in the template) is left alone: not taken out,
+		// not tracked, not brought. On a template cell it is moved to a free spot of the case.
+		public bool KeepQuestItems = true;
 		// While you carry this case the Cash step does nothing
 		public bool StopsCash;
 		// When you take this case off you (into the stash) it is pinned there

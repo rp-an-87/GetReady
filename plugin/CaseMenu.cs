@@ -17,7 +17,7 @@ namespace GetReady
 	internal enum ECaseAction { Maps, Tracking, Track, Update, StopTracking, Settings, Repair, TopUp }
 
 	// The switches of a case in the submenu "Case settings"
-	internal enum ECaseSetting { SkipCash, TakeOutRest, Exact, AutoPin }
+	internal enum ECaseSetting { SkipCash, TakeOutRest, Exact, AutoPin, KeepQuestItems }
 
 	// The ten maps of MapTags.Maps, in that order
 	internal enum EMapAction { Customs, Factory, Woods, Interchange, Shoreline, Reserve, Lighthouse, Streets, GroundZero, Labs }
@@ -411,7 +411,7 @@ namespace GetReady
 
 		private bool Tracked => Entry != null && Entry.Recorded;
 
-		private static string NameOf(ECaseSetting setting) => setting == ECaseSetting.SkipCash ? "Skip cash step" : setting == ECaseSetting.TakeOutRest ? "Take out the rest" : setting == ECaseSetting.AutoPin ? "Auto pin on unequip" : "Exact positions";
+		private static string NameOf(ECaseSetting setting) => setting == ECaseSetting.SkipCash ? "Skip cash step" : setting == ECaseSetting.TakeOutRest ? "Take out the rest" : setting == ECaseSetting.AutoPin ? "Auto pin on unequip" : setting == ECaseSetting.KeepQuestItems ? "Keep quest items" : "Exact positions";
 
 		private bool IsOn(ECaseSetting setting)
 		{
@@ -421,7 +421,7 @@ namespace GetReady
 				return false;
 			}
 
-			return setting == ECaseSetting.SkipCash ? entry.StopsCash : setting == ECaseSetting.AutoPin ? entry.AutoPin : setting == ECaseSetting.TakeOutRest ? entry.TakeOutRest : entry.Exact;
+			return setting == ECaseSetting.SkipCash ? entry.StopsCash : setting == ECaseSetting.AutoPin ? entry.AutoPin : setting == ECaseSetting.TakeOutRest ? entry.TakeOutRest : setting == ECaseSetting.KeepQuestItems ? entry.KeepQuestItems : entry.Exact;
 		}
 
 		public override Dictionary<ECaseSetting, string> CustomNames
@@ -473,6 +473,10 @@ namespace GetReady
 					if (interaction == ECaseSetting.TakeOutRest)
 					{
 						Entry.TakeOutRest = !Entry.TakeOutRest;
+					}
+					else if (interaction == ECaseSetting.KeepQuestItems)
+					{
+						Entry.KeepQuestItems = !Entry.KeepQuestItems;
 					}
 					else
 					{

@@ -682,5 +682,118 @@ namespace GetReady.Tests
 
 			Lines(Plan()).First().Should().Be("Injector case: 0/1 in place");
 		}
+
+		// ---- quest items you keep in the case (the Quests group of the wishlist)
+
+		private void Wishlisted(params string[] templates) => Game.IsQuestWishlisted = template => templates.Contains(template);
+
+		[Fact]
+		public void A_quest_item_you_keep_in_the_case_is_not_taken_out()
+		{
+			Wishlisted(Morphine);
+			Inject(Propital, 0, 0);
+			Inject(Morphine, 1, 0);
+			Saved(Cell(0, 0, Propital));
+
+			var lines = Plan();
+
+			Lines(lines).Should().Equal("Injector case: 1/1 in place");
+			_body.Moves.Should().BeEmpty();
+		}
+
+		[Fact]
+		public void With_the_switch_off_the_quest_item_is_taken_out_like_any_other()
+		{
+			Wishlisted(Morphine);
+			Inject(Propital, 0, 0);
+			Inject(Morphine, 1, 0);
+			Saved(Cell(0, 0, Propital)).KeepQuestItems = false;
+
+			Lines(Plan()).Should().Contain("Take Morphine out of Injector case to the stash");
+		}
+
+		[Fact]
+		public void A_wishlisted_item_the_template_wants_is_handled_as_any_template_item()
+		{
+			Wishlisted(Propital);
+			var stray = Inject(Propital, 1, 0);
+			Saved(Cell(0, 0, Propital));
+
+			RunAll(Plan()).Result.Should().BeNull();
+
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(stray);
+		}
+
+		[Fact]
+		public void A_quest_item_on_a_template_cell_is_moved_to_a_free_spot_before_the_item_is_placed()
+		{
+			Wishlisted(Morphine);
+			var quest = Inject(Morphine, 0, 0);
+			var right = _body.InStash(RealItems.Any(Propital));
+			Saved(Cell(0, 0, Propital));
+
+			var lines = Plan();
+
+			Lines(lines).First().Should().Be("Injector case: 0/1 in place");
+			Lines(lines)[1].Should().StartWith("Move Morphine to cell");
+			RunAll(lines).Result.Should().BeNull();
+			CasesStep.InCell(_case.Grids[0], 0, 0).Should().BeSameAs(right);
+			var spot = _case.Grids[0].GetItemLocation(quest);
+			(spot.x == 0 && spot.y == 0).Should().BeFalse();
+			quest.Parent.Container.ParentItem.Should().BeSameAs(_case);
+		}
+
+		[Fact]
+		public void A_quest_item_that_cannot_be_moved_out_of_the_way_is_a_problem()
+		{
+			Wishlisted(Morphine);
+			Inject(Morphine, 0, 0);
+			var grid = _case.Grids[0];
+			var cells = new List<CaseItem>();
+			for (int y = 0; y < grid.GridHeight; y++)
+			{
+				for (int x = 0; x < grid.GridWidth; x++)
+				{
+					cells.Add(Cell(x, y, Propital));
+				}
+			}
+
+			Saved(cells.ToArray());
+
+			Lines(Plan()).Should().Contain(line => line.Contains("quest item") && line.Contains("no free spot"));
+		}
+
+		[Fact]
+		public void Quest_items_are_not_counted_by_Update_and_not_saved_by_it()
+		{
+			Wishlisted(Morphine);
+			Inject(Propital, 0, 0);
+			Inject(Morphine, 1, 0);
+			var entry = Saved(Cell(0, 0, Propital));
+
+			CasesStep.Diff(_case, entry).Any.Should().BeFalse();
+			CasesStep.ItemCount(CasesStep.Record(_case)).Should().Be(1);
+		}
+
+		[Fact]
+		public void A_quest_item_the_template_already_tracks_stays_tracked_when_saving_again()
+		{
+			Wishlisted(Morphine);
+			Inject(Morphine, 0, 0);
+			Saved(Cell(0, 0, Morphine));
+
+			CasesStep.ItemCount(CasesStep.Record(_case)).Should().Be(1);
+		}
+
+		[Fact]
+		public void A_quest_item_is_not_taken_out_of_a_case_that_goes_by_type_either()
+		{
+			Wishlisted(Morphine);
+			Inject(Propital, 0, 0);
+			Inject(Morphine, 1, 0);
+			Saved(Cell(0, 0, Propital)).Exact = false;
+
+			Lines(Plan()).Should().Equal("Injector case: 1/1 in place");
+		}
 	}
 }
