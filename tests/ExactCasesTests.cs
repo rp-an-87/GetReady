@@ -44,7 +44,7 @@ namespace GetReady.Tests
 
 		private static CaseEntry SavedFor(CompoundItem injectorCase, params CaseItem[] cells)
 		{
-			var saved = new CaseEntry { CaseId = injectorCase.Id.ToString(), CaseTemplate = Body.InjectorCase, CaseName = "Injector case", Recorded = true, Exact = true };
+			var saved = new CaseEntry { CaseId = injectorCase.Id.ToString(), CaseTemplate = Body.InjectorCase, CaseName = "Injector case", Recorded = true, Exact = true, KeepQuestItems = true };
 			saved.Items.AddRange(cells);
 			CasesStep.Entries.Add(saved);
 			return saved;
