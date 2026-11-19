@@ -128,14 +128,35 @@ namespace GetReady
 			try
 			{
 				var wishlist = SPT.Reflection.Utils.ClientAppUtils.GetMainApp()?.GetClientBackEndSession()?.Profile?.WishlistManager;
+				if (wishlist == null)
+				{
+					if (!_wishlistWarned)
+					{
+						_wishlistWarned = true;
+						Plugin.Log.LogWarning("Quest wishlist: no wishlist on the session profile, quest items are not recognised");
+					}
+
+					return false;
+				}
+
 				EWishlistGroup group;
-				return wishlist != null && wishlist.UserItems.TryGetValue(new MongoID(template), out group) && group == EWishlistGroup.Quests;
+				bool listed = wishlist.UserItems.TryGetValue(new MongoID(template), out group);
+				Plugin.Trace($"Quest wishlist: {TemplateName(template)} ({template}) {(listed ? "is in the " + group + " group" : "is not wishlisted")}");
+				return listed && group == EWishlistGroup.Quests;
 			}
-			catch
+			catch (Exception e)
 			{
+				if (!_wishlistWarned)
+				{
+					_wishlistWarned = true;
+					Plugin.Log.LogWarning($"Quest wishlist lookup failed, quest items are not recognised: {e}");
+				}
+
 				return false;
 			}
 		};
+
+		private static bool _wishlistWarned;
 
 		// Inside a case that has a template (at any depth), which that template looks after: the supplies do not count it
 		internal static bool InsideTemplatedCase(Item item) => IsInsideTemplatedCase(item);
