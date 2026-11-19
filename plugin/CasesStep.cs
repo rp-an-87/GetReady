@@ -35,6 +35,19 @@ namespace GetReady
 		internal static List<CompoundItem> FindCases(Inventory inventory) =>
 			Game.CarriedAndSecured(inventory).OfType<CompoundItem>().Where(item => IsCase(inventory, item)).ToList();
 
+		// The case with this id that the menu is offered on: one you carry, or a container in the stash that already has something saved
+		// (an entry), so a case you configured once keeps its menu while it lies in the stash. A brand new container in the stash gets none.
+		internal static CompoundItem FindKnownCase(Inventory inventory, string id)
+		{
+			var carried = FindCases(inventory).FirstOrDefault(item => item.Id.ToString() == id);
+			if (carried != null || EntryOf(id) == null)
+			{
+				return carried;
+			}
+
+			return Game.Stash(inventory).OfType<CompoundItem>().FirstOrDefault(item => item.Grids.Length > 0 && item.Id.ToString() == id);
+		}
+
 		// What is directly in the case (a nested container counts as one item; its own contents are its business)
 		internal static List<Item> Contents(CompoundItem container) => container.Grids.SelectMany(grid => grid.Items).ToList();
 

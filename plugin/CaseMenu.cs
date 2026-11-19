@@ -36,7 +36,7 @@ namespace GetReady
 		internal static CompoundItem CaseById(string id)
 		{
 			var controller = Game.Controller();
-			return controller == null ? null : CasesStep.FindCases(controller.Inventory).FirstOrDefault(item => item.Id.ToString() == id);
+			return controller == null ? null : CasesStep.FindKnownCase(controller.Inventory, id);
 		}
 
 		// The items our entry was added to, by id (the game hands the entry's id back when it makes the button), and whether each is a case

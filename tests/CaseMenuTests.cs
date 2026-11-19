@@ -29,6 +29,20 @@ namespace GetReady.Tests
 		private string Id => _case.Id.ToString();
 
 		[Fact]
+		public void A_case_in_the_stash_gets_the_menu_only_once_something_is_saved_for_it()
+		{
+			var inStash = Gear.NewContainer(Gear.AlphaCase).In(_body.StashBox);
+			var id = inStash.Id.ToString();
+
+			CasesStep.FindKnownCase(_body.Inventory, id).Should().BeNull();
+
+			CasesStep.Touch(inStash).Maps.Add("Customs");
+
+			CasesStep.FindKnownCase(_body.Inventory, id).Should().BeSameAs(inStash);
+			CasesStep.FindKnownCase(_body.Inventory, Id).Should().BeSameAs(_case);
+		}
+
+		[Fact]
 		public void An_untracked_case_offers_track_and_nothing_to_update_or_stop()
 		{
 			var actions = Actions();
