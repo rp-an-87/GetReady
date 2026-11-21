@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Comfort.Common;
 using Diz.LanguageExtensions;
 using EFT;
+using EFT.HealthSystem;
 using EFT.InventoryLogic;
 using EFT.Trading;
 using JsonType;
@@ -25,7 +26,7 @@ namespace GetReady
 
 		// The cases in the stash whose template holds money
 		internal static HashSet<string> GuardedCases() =>
-			new HashSet<string>(CasesStep.Entries.Where(entry => entry.Recorded && CasesStep.MoneyOf(entry).Count > 0).Select(entry => entry.CaseId));
+			!SettingsStore.Current.Cases.ProtectMoney ? new HashSet<string>() : new HashSet<string>(CasesStep.Entries.Where(entry => entry.Recorded && CasesStep.MoneyOf(entry).Count > 0).Select(entry => entry.CaseId));
 
 		// Their money stacks (only where the game lets a stack be locked: in the stash)
 		internal static List<Item> Stacks(Inventory inventory)
@@ -86,11 +87,11 @@ namespace GetReady
 			return changed;
 		}
 
-		private static List<KeyValuePair<Item, EItemPinLockState>> Remembered(List<Item> stacks) =>
+		internal static List<KeyValuePair<Item, EItemPinLockState>> Remembered(List<Item> stacks) =>
 			stacks.Select(stack => new KeyValuePair<Item, EItemPinLockState>(stack, stack.PinLockState)).ToList();
 
 		// The wrapped stacks for the call about to go out, or null when there is nothing to guard (then the call goes out as it is)
-		private static bool Needed(out InventoryController controller, out List<Item> stacks)
+		internal static bool Needed(out InventoryController controller, out List<Item> stacks)
 		{
 			controller = null;
 			stacks = null;
@@ -197,6 +198,104 @@ namespace GetReady
 				await SetAll(controller, locked, null);
 			}
 		}
+	}
+
+	// The health treatment at the therapist is sent queued and answered by a callback that does nothing, so there is no answer to wait on in
+	// the call itself: the stacks are locked before the request goes out and let go when the game's own (empty) answer handler runs, or after
+	// half a minute if no answer comes.
+	internal static class HealthGuard
+	{
+		private static InventoryController _controller;
+		private static List<KeyValuePair<Item, EItemPinLockState>> _locked;
+		private static int _open;
+
+		internal static bool Guard(Action send)
+		{
+			if (CashGuard.Passing || !CashGuard.Needed(out var controller, out var stacks))
+			{
+				return true;
+			}
+
+			Run(controller, stacks, send);
+			return false;
+		}
+
+		private static async void Run(InventoryController controller, List<Item> stacks, Action send)
+		{
+			try
+			{
+				_open++;
+				var locked = await CashGuard.SetAll(controller, CashGuard.Remembered(stacks), EItemPinLockState.Locked);
+				_controller = controller;
+				_locked = (_locked ?? new List<KeyValuePair<Item, EItemPinLockState>>()).Concat(locked).ToList();
+				Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the health treatment");
+				CashGuard.Passing = true;
+				try
+				{
+					send();
+				}
+				finally
+				{
+					CashGuard.Passing = false;
+				}
+
+				await Task.Delay(30000);
+				Release(true);
+			}
+			catch (Exception exception)
+			{
+				Plugin.Log.LogWarning($"CashGuard: {exception.Message}");
+				Release(true);
+			}
+		}
+
+		// The game's answer handler ran (one treatment answered), or the wait is over
+		internal static async void Release(bool timeout)
+		{
+			try
+			{
+				if (_open <= 0)
+				{
+					return;
+				}
+
+				_open--;
+				if (_open > 0 && !timeout)
+				{
+					return;
+				}
+
+				_open = 0;
+				var locked = _locked;
+				_locked = null;
+				if (locked != null && _controller != null)
+				{
+					await CashGuard.SetAll(_controller, locked, null);
+				}
+			}
+			catch (Exception exception)
+			{
+				Plugin.Log.LogWarning($"CashGuard: {exception.Message}");
+			}
+		}
+	}
+
+	internal class GuardHealthPatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod() => typeof(EftClientBackendSession).GetMethod(nameof(EftClientBackendSession.RestoreHealth), BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+		[PatchPrefix]
+		private static bool Prefix(EftClientBackendSession __instance, HealthTreatmentData treatmentData, List<ItemToHandover> cost, string traderId) =>
+			HealthGuard.Guard(() => __instance.RestoreHealth(treatmentData, cost, traderId));
+	}
+
+	// The game's answer handler of that request (it does nothing itself)
+	internal class GuardHealthAnswerPatch : ModulePatch
+	{
+		protected override MethodBase GetTargetMethod() => typeof(EftClientBackendSession).GetNestedType("CG_Class1577", BindingFlags.Public | BindingFlags.NonPublic).GetMethod("method_14", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+		[PatchPostfix]
+		private static void Postfix() => HealthGuard.Release(false);
 	}
 
 	// The calls that spend money, each wrapped by CashGuard

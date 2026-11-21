@@ -189,6 +189,8 @@ namespace GetReady
 		public bool Enabled = true;
 		// A change you make by hand in the stash updates the recorded contents of a case that was recorded
 		public bool AutoUpdate = true;
+		// The money of a case with money in its template is kept out of payments (see CashGuard)
+		public bool ProtectMoney = true;
 		public List<CaseEntry> Cases = new List<CaseEntry>();
 		// The cases whose card is collapsed in Setup (by item id): it stays as you left it, also when the case is taken off and put on again
 		public List<string> Collapsed = new List<string>();

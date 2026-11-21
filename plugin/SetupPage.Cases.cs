@@ -17,6 +17,7 @@ namespace GetReady
 		{
 			var settings = SettingsStore.Current.Cases;
 			OptionRow(section, settings.AutoUpdate, "Keep tracked items up to date when I move things", "What you put in or take out of a case you track, by hand in the stash.\n<b>On:</b> it is added to or removed from what the case tracks.\n<b>Off:</b> what is tracked stays as you set it.\n\nWhat Get ready itself moves is never tracked, and neither are the cases you never tracked.", value => settings.AutoUpdate = value);
+			OptionRow(section, settings.ProtectMoney, "Keep the money of tracked cases out of payments", "A case whose template holds money: that money is not used to pay for insurance, repairs, trader and flea purchases, clothes or treatment. Get ready locks it for the moment of the payment and unlocks it again, so the case can still be moved.\n<b>Off:</b> the game pays from any money, in a case or not.\n\nThe top bar and the game's own price checks still count that money. Only works for cases lying in the stash.", value => settings.ProtectMoney = value);
 			if (controller == null)
 			{
 				UiKit.Label(section, "Open this in the stash to set up the cases you carry.", 0.85f, UiColors.Dim);

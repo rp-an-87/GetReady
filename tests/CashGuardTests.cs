@@ -67,6 +67,16 @@ namespace GetReady.Tests
 		}
 
 		[Fact]
+		public void With_the_switch_off_nothing_is_guarded()
+		{
+			CaseInStash(30000, true);
+			SettingsStore.Current.Cases.ProtectMoney = false;
+
+			CashGuard.Stacks(_body.Inventory).Should().BeEmpty();
+			RepairWithKit.Roubles(_body.Controller).Should().Be(30000);
+		}
+
+		[Fact]
 		public void The_steps_count_only_the_roubles_outside_those_cases()
 		{
 			CaseInStash(30000, true);

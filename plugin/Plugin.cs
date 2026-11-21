@@ -87,6 +87,8 @@ namespace GetReady
 			new GuardTraderBuyPatch().Enable();
 			new GuardFleaBuyPatch().Enable();
 			new GuardClothesPatch().Enable();
+			new GuardHealthPatch().Enable();
+			new GuardHealthAnswerPatch().Enable();
 			Trace($"GetReady {PluginVersion} loaded");
 		}
 
