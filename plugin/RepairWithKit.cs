@@ -180,13 +180,13 @@ namespace GetReady
 
 		private static IRepairStrategy NewStrategy(Item item, EFT.Repairing.RepairController repairController) => StrategyOf(item, repairController);
 
-		// The wait for a repair to reach the inventory, the roubles in the stash and a trader's name (replaceable for the tests)
+		// The wait for a repair to reach the inventory, the roubles in the stash that may be spent (not the money of tracked cases, see CashGuard) and a trader's name (replaceable for the tests)
 		internal static Func<Task> Pause = () => Task.Delay(150);
 		internal static Func<InventoryController, int> RoublesIn = controller =>
 		{
 			var sums = InventoryExtension.GetMoneySums(controller.Inventory.Stash.Grid.ContainedItems.Keys);
 			int roubles;
-			return sums.TryGetValue(ECurrencyType.RUB, out roubles) ? roubles : 0;
+			return Math.Max(0, (sums.TryGetValue(ECurrencyType.RUB, out roubles) ? roubles : 0) - CashGuard.Roubles(controller.Inventory));
 		};
 		internal static Func<Trader, string> NameOfTrader = trader => trader.LocalizedName;
 

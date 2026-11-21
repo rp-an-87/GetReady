@@ -82,6 +82,11 @@ namespace GetReady
 			new DragStartPatch().Enable();
 			new DragEndPatch().Enable();
 			new TagChangedPatch().Enable();
+			new GuardInsurancePatch().Enable();
+			new GuardTraderRepairPatch().Enable();
+			new GuardTraderBuyPatch().Enable();
+			new GuardFleaBuyPatch().Enable();
+			new GuardClothesPatch().Enable();
 			Trace($"GetReady {PluginVersion} loaded");
 		}
 
