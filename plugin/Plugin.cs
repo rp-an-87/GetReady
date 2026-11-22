@@ -25,6 +25,13 @@ namespace GetReady
 		internal static ConfigEntry<bool> DebugLogging;
 
 		// A line for the log, only when "Log details" is on (F12): what the window does and how long it takes
+		// Everything that measures or logs timing is behind Log details (F12, 8. Debugging): with it off nothing is timed
+		internal static bool Profiling => DebugLogging != null && DebugLogging.Value;
+
+		internal static System.Diagnostics.Stopwatch StartTimer() => Profiling ? System.Diagnostics.Stopwatch.StartNew() : null;
+
+		internal static long Ms(System.Diagnostics.Stopwatch watch) => watch == null ? 0 : watch.ElapsedMilliseconds;
+
 		internal static void Trace(string text)
 		{
 			if (DebugLogging != null && DebugLogging.Value)

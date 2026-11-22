@@ -108,7 +108,7 @@ namespace GetReady
 
 		internal static void Refresh()
 		{
-			var watch = System.Diagnostics.Stopwatch.StartNew();
+			var watch = Plugin.StartTimer();
 			Game.BeginPass();
 			try
 			{
@@ -119,7 +119,10 @@ namespace GetReady
 				Game.EndPass();
 			}
 
-			Plugin.Trace($"Plan made in {watch.ElapsedMilliseconds} ms");
+			if (Plugin.Profiling)
+			{
+				Plugin.Trace($"Plan made in {Plugin.Ms(watch)} ms");
+			}
 		}
 
 		private static void RefreshPlan()
@@ -175,6 +178,11 @@ namespace GetReady
 			StashBadge.Set(withProblems, toBring);
 
 			// What the badge shows and why (logged when it changes): the lines that can be run and the problems, per step
+			if (!Plugin.Profiling)
+			{
+				return;
+			}
+
 			var why = $"red {withProblems}, gold {toBring}: " + string.Join("; ", Plan.Select(entry => $"{entry.Key.Name} {entry.Value.Count(line => line.Run != null)} to do, {entry.Value.Count(line => line.Problem)} problem(s)").ToArray());
 			if (why != _lastBadge)
 			{

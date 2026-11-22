@@ -87,7 +87,7 @@ namespace GetReady
 					return;
 				}
 
-				var openWatch = System.Diagnostics.Stopwatch.StartNew();
+				var openWatch = Plugin.StartTimer();
 				var window = GameWindow.Open("GetReady Window", "Get ready for raid", () =>
 				{
 					_window = null;
@@ -105,19 +105,19 @@ namespace GetReady
 
 				// The window's own Save button is the game's standard button: it is copied for ours
 				GameWidgets.ButtonTemplate = button;
-				long made = openWatch.ElapsedMilliseconds;
+				long made = Plugin.Ms(openWatch);
 				Build(window);
-				long shell = openWatch.ElapsedMilliseconds;
+				long shell = Plugin.Ms(openWatch);
 				_window = window;
 				ApplyDragFade();
 				_signature = "";
 				_loading = false;
 				_deferred = false;
-				long beforePlan = openWatch.ElapsedMilliseconds;
+				long beforePlan = Plugin.Ms(openWatch);
 				ReadyPlan.Refresh();
-				long planned = openWatch.ElapsedMilliseconds;
+				long planned = Plugin.Ms(openWatch);
 				Rebuild();
-				Plugin.Trace($"Get ready window: opened in {openWatch.ElapsedMilliseconds} ms (copy of the game's window {made}, shell and first page {shell - made}, plan {planned - beforePlan}, page {openWatch.ElapsedMilliseconds - planned})");
+				if (Plugin.Profiling) Plugin.Trace($"Get ready window: opened in {Plugin.Ms(openWatch)} ms (copy of the game's window {made}, shell and first page {shell - made}, plan {planned - beforePlan}, page {Plugin.Ms(openWatch) - planned})");
 			}
 			catch (Exception e)
 			{
@@ -445,17 +445,17 @@ namespace GetReady
 		// A setting was changed on the Setup page: keep it, plan again, and draw the page again
 		internal static void SettingChanged()
 		{
-			var watch = System.Diagnostics.Stopwatch.StartNew();
+			var watch = Plugin.StartTimer();
 			SettingsStore.SaveSoon();
 			ReadyPlan.RefreshSoon();
-			long saved = watch.ElapsedMilliseconds;
+			long saved = Plugin.Ms(watch);
 			if (_tab == 1 && _content != null)
 			{
 				WaitFor.Clear();
 				int section = SetupPage.Refresh(_content);
 				if (section >= 0)
 				{
-					Plugin.Trace($"Setting changed: noting the save {saved} ms, redraw of the {SetupPage.LastRedraw} {watch.ElapsedMilliseconds - saved} ms");
+					if (Plugin.Profiling) Plugin.Trace($"Setting changed: noting the save {saved} ms, redraw of the {SetupPage.LastRedraw} {Plugin.Ms(watch) - saved} ms");
 					// New pictures for that section: it is drawn once more when they are there
 					if (WaitFor.Count > 0 && !AllThere())
 					{
