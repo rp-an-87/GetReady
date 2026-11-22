@@ -141,7 +141,7 @@ namespace GetReady
 			Steps.NewPass();
 			if (!_loggedFirst)
 			{
-				Plugin.Trace("Indexing the inventory");
+				if (Plugin.Profiling) Plugin.Trace("Indexing the inventory");
 			}
 
 			Icons.Index(controller);
@@ -149,7 +149,7 @@ namespace GetReady
 			{
 				if (!_loggedFirst)
 				{
-					Plugin.Trace($"Planning {step.Name}");
+					if (Plugin.Profiling) Plugin.Trace($"Planning {step.Name}");
 				}
 
 				try
@@ -187,7 +187,7 @@ namespace GetReady
 			if (why != _lastBadge)
 			{
 				_lastBadge = why;
-				Plugin.Trace($"Badge {why}");
+				if (Plugin.Profiling) Plugin.Trace($"Badge {why}");
 			}
 		}
 

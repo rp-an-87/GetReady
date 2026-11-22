@@ -343,7 +343,7 @@ namespace GetReady
 			_profileId = id;
 			_current = new Settings();
 			Load();
-			Plugin.Trace($"GetReady settings: profile {id} ({(File.Exists(FilePath) ? "loaded" : "no file yet, defaults")})");
+			if (Plugin.Profiling) Plugin.Trace($"GetReady settings: profile {id} ({(File.Exists(FilePath) ? "loaded" : "no file yet, defaults")})");
 		}
 
 		// The settings of a file's text

@@ -37,10 +37,10 @@ namespace GetReady
 				// prefab asset (no state from a screen that used it), then any.
 				_tabTemplate = found.FirstOrDefault(tab => tab.name.StartsWith("Rag Fair Toggle") || tab.name.StartsWith("Merchants"))
 					?? found.FirstOrDefault(tab => !tab.gameObject.scene.IsValid()) ?? found.FirstOrDefault();
-				Plugin.Trace($"Game tabs: {found.Count} found, using {(_tabTemplate != null ? _tabTemplate.name + " (" + (_tabTemplate.gameObject.scene.IsValid() ? "in a scene" : "prefab") + ")" : "none")}");
+				if (Plugin.Profiling) Plugin.Trace($"Game tabs: {found.Count} found, using {(_tabTemplate != null ? _tabTemplate.name + " (" + (_tabTemplate.gameObject.scene.IsValid() ? "in a scene" : "prefab") + ")" : "none")}");
 				if (found.Count > 0)
 				{
-					Plugin.Trace("Game tabs: " + string.Join(", ", found.Take(25).Select(tab => tab.name + (tab.gameObject.scene.IsValid() ? "" : "*")).ToArray()));
+					if (Plugin.Profiling) Plugin.Trace("Game tabs: " + string.Join(", ", found.Take(25).Select(tab => tab.name + (tab.gameObject.scene.IsValid() ? "" : "*")).ToArray()));
 				}
 			}
 			catch (Exception e)
@@ -69,7 +69,7 @@ namespace GetReady
 				var bar = Resources.FindObjectsOfTypeAll<MenuTaskBar>().FirstOrDefault(found => found.gameObject.scene.IsValid());
 				var toggles = bar != null && bar._toggleButtons != null ? bar._toggleButtons.Values.Where(toggle => toggle != null).ToList() : new System.Collections.Generic.List<AnimatedToggle>();
 				_navTemplate = toggles.FirstOrDefault();
-				Plugin.Trace($"Game top bar: {(bar != null ? "found" : "not found")}, {toggles.Count} tabs, using {(_navTemplate != null ? _navTemplate.name : "none")}");
+				if (Plugin.Profiling) Plugin.Trace($"Game top bar: {(bar != null ? "found" : "not found")}, {toggles.Count} tabs, using {(_navTemplate != null ? _navTemplate.name : "none")}");
 			}
 			catch (Exception e)
 			{
@@ -496,7 +496,7 @@ namespace GetReady
 					if (!_logged)
 					{
 						_logged = true;
-						Plugin.Trace($"Tab hover: {Toggle.name}, transition {Toggle.transition}, interactable {Toggle.IsInteractable()}");
+						if (Plugin.Profiling) Plugin.Trace($"Tab hover: {Toggle.name}, transition {Toggle.transition}, interactable {Toggle.IsInteractable()}");
 					}
 
 					Toggle.TriggerAnimation(true);

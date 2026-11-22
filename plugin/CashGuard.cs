@@ -132,7 +132,7 @@ namespace GetReady
 			try
 			{
 				locked = await SetAll(controller, remembered, EItemPinLockState.Locked);
-				Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the payment");
+				if (Plugin.Profiling) Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the payment");
 				send(new Callback(async result =>
 				{
 					try
@@ -177,7 +177,7 @@ namespace GetReady
 		private static async Task<IResult> RunTask(InventoryController controller, List<Item> stacks, Func<Task<IResult>> send)
 		{
 			var locked = await SetAll(controller, Remembered(stacks), EItemPinLockState.Locked);
-			Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the payment");
+			if (Plugin.Profiling) Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the payment");
 			try
 			{
 				Task<IResult> task;
@@ -228,7 +228,7 @@ namespace GetReady
 				var locked = await CashGuard.SetAll(controller, CashGuard.Remembered(stacks), EItemPinLockState.Locked);
 				_controller = controller;
 				_locked = (_locked ?? new List<KeyValuePair<Item, EItemPinLockState>>()).Concat(locked).ToList();
-				Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the health treatment");
+				if (Plugin.Profiling) Plugin.Trace($"CashGuard: {locked.Count} money stack(s) locked for the health treatment");
 				CashGuard.Passing = true;
 				try
 				{

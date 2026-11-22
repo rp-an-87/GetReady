@@ -19,7 +19,7 @@ namespace GetReady
 
 		internal static void Show()
 		{
-			Plugin.Trace($"READY flash requested (enabled: {Plugin.ShowFlash?.Value})");
+			if (Plugin.Profiling) Plugin.Trace($"READY flash requested (enabled: {Plugin.ShowFlash?.Value})");
 			if (Plugin.ShowFlash != null && Plugin.ShowFlash.Value)
 			{
 				_start = Time.unscaledTime;
@@ -65,7 +65,7 @@ namespace GetReady
 			if (!_logged)
 			{
 				_logged = true;
-				Plugin.Trace($"READY flash drawing at {Screen.width}x{Screen.height}");
+				if (Plugin.Profiling) Plugin.Trace($"READY flash drawing at {Screen.width}x{Screen.height}");
 			}
 
 			float age = Time.unscaledTime - _start;

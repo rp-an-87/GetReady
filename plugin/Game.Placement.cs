@@ -230,7 +230,7 @@ namespace GetReady
 				}
 
 				last = error;
-				Plugin.Trace($"{NameOf(item)}: {place} did not take it ({error})");
+				if (Plugin.Profiling) Plugin.Trace($"{NameOf(item)}: {place} did not take it ({error})");
 			}
 
 			return last;

@@ -483,7 +483,7 @@ namespace GetReady
 			var magazine = plan.Magazine;
 			int start = magazine.Count;
 			int want = plan.Rounds;
-			Plugin.Log.LogInfo($"Load: magazine {magazine.Id} at {start}/{magazine.MaxCount}, {want} planned from {plan.Allocation.Count} stack(s)");
+			if (Plugin.Profiling) Plugin.Trace($"Load: magazine {magazine.Id} at {start}/{magazine.MaxCount}, {want} planned from {plan.Allocation.Count} stack(s)");
 
 			bool refused = false;
 			foreach (var pair in plan.Allocation)
@@ -509,7 +509,7 @@ namespace GetReady
 			}
 
 			int loaded = magazine.Count - start;
-			Plugin.Log.LogInfo($"Load: magazine {magazine.Id} now {magazine.Count}/{magazine.MaxCount}, {loaded} of {want} loaded");
+			if (Plugin.Profiling) Plugin.Trace($"Load: magazine {magazine.Id} now {magazine.Count}/{magazine.MaxCount}, {loaded} of {want} loaded");
 			return loaded;
 		}
 
@@ -522,7 +522,7 @@ namespace GetReady
 			int stackBefore = pair.Key.StackObjectsCount;
 			var result = await LoadRounds(controller, pair.Key, magazine, pair.Value);
 			int got = magazine.Count - before;
-			Plugin.Log.LogInfo($"Load (call {call}): stack {pair.Key.Id} asked {pair.Value}, stack had {stackBefore} and has {pair.Key.StackObjectsCount}, magazine {before} -> {magazine.Count} (+{got}); {start}+{want} wanted");
+			if (Plugin.Profiling) Plugin.Trace($"Load (call {call}): stack {pair.Key.Id} asked {pair.Value}, stack had {stackBefore} and has {pair.Key.StackObjectsCount}, magazine {before} -> {magazine.Count} (+{got}); {start}+{want} wanted");
 			if (result.Failed)
 			{
 				Plugin.Log.LogWarning($"Loading {magazine.Id} failed: {result.Error}");

@@ -211,7 +211,7 @@ namespace GetReady
 			}
 
 			var done = new TaskCompletionSource<string>();
-			Plugin.Trace($"Insure: {items.Count} item(s) at {RepairWithKit.NameOfTrader(trader)}");
+			if (Plugin.Profiling) Plugin.Trace($"Insure: {items.Count} item(s) at {RepairWithKit.NameOfTrader(trader)}");
 			InsureCall(trader, items.Select(item => item.Id).ToArray(), new Comfort.Common.Callback(result =>
 			{
 				if (result.Succeed)

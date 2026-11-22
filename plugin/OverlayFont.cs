@@ -22,7 +22,7 @@ namespace GetReady
 			_asked = true;
 			_triedAt = Time.unscaledTime;
 			Font = Find();
-			Plugin.Trace(Font != null ? $"Using the game font {Font.name}" : "The game font was not found, using the default one");
+			if (Plugin.Profiling) Plugin.Trace(Font != null ? $"Using the game font {Font.name}" : "The game font was not found, using the default one");
 		}
 
 		// The game's TextMeshPro font assets keep the plain font they were made from

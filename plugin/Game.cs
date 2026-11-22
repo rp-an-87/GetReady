@@ -168,7 +168,7 @@ namespace GetReady
 
 				EWishlistGroup group;
 				bool listed = wishlist.UserItems.TryGetValue(new MongoID(template), out group);
-				Plugin.Trace($"Quest wishlist: {TemplateName(template)} ({template}) {(listed ? "is in the " + group + " group" : "is not wishlisted")}");
+				if (Plugin.Profiling) Plugin.Trace($"Quest wishlist: {TemplateName(template)} ({template}) {(listed ? "is in the " + group + " group" : "is not wishlisted")}");
 				return listed && group == EWishlistGroup.Quests;
 			}
 			catch (Exception e)

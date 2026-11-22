@@ -164,7 +164,7 @@ namespace GetReady
 				if (_probeFrames > 0 && _probeAt > 0f)
 				{
 					float frame = _probeTime / _probeFrames * 1000f;
-					Plugin.Trace($"Window probe (page {(_tab == 0 ? "Status" : "Setup")}): our update {_probeCost / _probeFrames:0.000} ms/frame (worst {_probeMax:0.0} ms), frame {frame:0.0} ms = {1000f / Mathf.Max(frame, 0.01f):0} fps, page rebuilt {_probeRebuilds}x");
+					if (Plugin.Profiling) Plugin.Trace($"Window probe (page {(_tab == 0 ? "Status" : "Setup")}): our update {_probeCost / _probeFrames:0.000} ms/frame (worst {_probeMax:0.0} ms), frame {frame:0.0} ms = {1000f / Mathf.Max(frame, 0.01f):0} fps, page rebuilt {_probeRebuilds}x");
 				}
 
 				_probeAt = Time.unscaledTime;
@@ -486,7 +486,7 @@ namespace GetReady
 			if (_fitLogged < 3)
 			{
 				_fitLogged++;
-				Plugin.Trace($"Get ready window resized: frame {frame.rect.size} (sizeDelta {frame.sizeDelta}, anchors {frame.anchorMin}-{frame.anchorMax}), body {_root.rect.size} (anchors {_root.anchorMin}-{_root.anchorMax})");
+				if (Plugin.Profiling) Plugin.Trace($"Get ready window resized: frame {frame.rect.size} (sizeDelta {frame.sizeDelta}, anchors {frame.anchorMin}-{frame.anchorMax}), body {_root.rect.size} (anchors {_root.anchorMin}-{_root.anchorMax})");
 			}
 		}
 		private static RectTransform _root;
