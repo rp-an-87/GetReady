@@ -120,11 +120,6 @@ namespace GetReady
 			}
 
 			Plugin.Trace($"Plan made in {watch.ElapsedMilliseconds} ms");
-			// A slow plan is logged even with Log details off: it stalls a frame
-			if (watch.ElapsedMilliseconds > 8)
-			{
-				Plugin.Log.LogInfo($"Slow plan: {watch.ElapsedMilliseconds} ms (stash window {(ReadyUiWindow.IsOpen ? "open" : "closed")})");
-			}
 		}
 
 		private static void RefreshPlan()
