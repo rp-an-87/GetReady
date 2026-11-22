@@ -42,6 +42,41 @@ namespace GetReady
 		// The items our entry was added to, by id (the game hands the entry's id back when it makes the button), and whether each is a case
 		private static readonly Dictionary<string, KeyValuePair<Item, bool>> Known = new Dictionary<string, KeyValuePair<Item, bool>>();
 
+		private static readonly Dictionary<string, KeyValuePair<int, KeyValuePair<bool, bool>>> Offered = new Dictionary<string, KeyValuePair<int, KeyValuePair<bool, bool>>>();
+
+		private static InventoryController _knownFor;
+
+		// UI Fixes' flag that it is only counting which items a button works on (null when UI Fixes is not there or changed)
+		private static PropertyInfo _counting;
+
+		private static bool _countingLooked;
+
+		private static bool UiFixesCounting()
+		{
+			if (!_countingLooked)
+			{
+				_countingLooked = true;
+				try
+				{
+					foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+					{
+						var type = assembly.GetName().Name == "Tyfon.UIFixes" ? assembly.GetType("UIFixes.MultiSelect") : null;
+						_counting = type?.GetProperty("CountingInteractions", BindingFlags.Public | BindingFlags.Static);
+						if (_counting != null)
+						{
+							break;
+						}
+					}
+				}
+				catch (Exception e)
+				{
+					Plugin.Log.LogWarning($"UI Fixes multi-select flag not found: {e.Message}");
+				}
+			}
+
+			return _counting != null && (bool)_counting.GetValue(null, null);
+		}
+
 		// Whether there is anything to offer on this item: the submenu has an entry that is on
 		internal static bool Offers(Item item, bool isCase)
 		{
@@ -58,15 +93,45 @@ namespace GetReady
 				return;
 			}
 
+			// UI Fixes' multi-select asks the game for the interactions of every selected item, for each of about ten buttons, only to read
+			// whether one of the game's buttons is available: our entry is not looked at then
+			if (UiFixesCounting())
+			{
+				return;
+			}
+
 			var item = itemContext?.Item;
 			if (item == null)
 			{
 				return;
 			}
 
+			// The items we offered something on were the old controller's after a raid
+			var controller = Game.Controller();
+			if (controller != _knownFor)
+			{
+				_knownFor = controller;
+				Known.Clear();
+				Offered.Clear();
+			}
+
 			string id = item.Id.ToString();
-			bool isCase = item is CompoundItem && CaseById(id) != null;
-			if (!Offers(item, isCase))
+			// What is offered on an item is worked out once per frame (the game can ask for the same item's interactions many times in one)
+			KeyValuePair<int, KeyValuePair<bool, bool>> seen;
+			bool isCase, offers;
+			if (Offered.TryGetValue(id, out seen) && seen.Key == Time.frameCount)
+			{
+				offers = seen.Value.Key;
+				isCase = seen.Value.Value;
+			}
+			else
+			{
+				isCase = item is CompoundItem && CaseById(id) != null;
+				offers = Offers(item, isCase);
+				Offered[id] = new KeyValuePair<int, KeyValuePair<bool, bool>>(Time.frameCount, new KeyValuePair<bool, bool>(offers, isCase));
+			}
+
+			if (!offers)
 			{
 				return;
 			}

@@ -64,13 +64,16 @@ namespace GetReady
 		internal static IEnumerable<Item> CarriedAndSecured(Inventory inventory) => Carried(inventory).Concat(Secured(inventory));
 
 		// While a plan is made nothing is moved, so the stash is walked once and every step gets a copy of that list (the steps change their copy)
+		[ThreadStatic]
 		private static List<Item> _passStash;
+		[ThreadStatic]
 		private static Inventory _passInventory;
 
 		internal static void BeginPass() { _passStash = null; _passInventory = null; _passing = true; }
 
 		internal static void EndPass() { _passing = false; _passStash = null; _passInventory = null; }
 
+		[ThreadStatic]
 		private static bool _passing;
 
 		internal static List<Item> Stash(Inventory inventory)
