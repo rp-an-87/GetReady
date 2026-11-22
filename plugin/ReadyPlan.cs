@@ -109,8 +109,22 @@ namespace GetReady
 		internal static void Refresh()
 		{
 			var watch = System.Diagnostics.Stopwatch.StartNew();
-			RefreshPlan();
+			Game.BeginPass();
+			try
+			{
+				RefreshPlan();
+			}
+			finally
+			{
+				Game.EndPass();
+			}
+
 			Plugin.Trace($"Plan made in {watch.ElapsedMilliseconds} ms");
+			// A slow plan is logged even with Log details off: it stalls a frame
+			if (watch.ElapsedMilliseconds > 8)
+			{
+				Plugin.Log.LogInfo($"Slow plan: {watch.ElapsedMilliseconds} ms (stash window {(ReadyUiWindow.IsOpen ? "open" : "closed")})");
+			}
 		}
 
 		private static void RefreshPlan()
@@ -470,7 +484,9 @@ namespace GetReady
 				}
 			}
 
-			if (shown && _dirty && !ReadyRun._running && Time.unscaledTime - _dirtyAt > 0.3f)
+			// Not while an item is being dragged (once, after the drop), and with the window closed only the badge waits for it, so a little later
+			float settle = ReadyUiWindow.IsOpen ? 0.3f : 1f;
+			if (shown && _dirty && !ReadyRun._running && !DragFade.Dragging && Time.unscaledTime - _dirtyAt > settle)
 			{
 				Refresh();
 			}

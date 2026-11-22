@@ -63,7 +63,31 @@ namespace GetReady
 
 		internal static IEnumerable<Item> CarriedAndSecured(Inventory inventory) => Carried(inventory).Concat(Secured(inventory));
 
-		internal static List<Item> Stash(Inventory inventory) => inventory.GetPlayerItems(EPlayerItems.Stash).ToList();
+		// While a plan is made nothing is moved, so the stash is walked once and every step gets a copy of that list (the steps change their copy)
+		private static List<Item> _passStash;
+		private static Inventory _passInventory;
+
+		internal static void BeginPass() { _passStash = null; _passInventory = null; _passing = true; }
+
+		internal static void EndPass() { _passing = false; _passStash = null; _passInventory = null; }
+
+		private static bool _passing;
+
+		internal static List<Item> Stash(Inventory inventory)
+		{
+			if (!_passing)
+			{
+				return inventory.GetPlayerItems(EPlayerItems.Stash).ToList();
+			}
+
+			if (_passStash == null || _passInventory != inventory)
+			{
+				_passStash = inventory.GetPlayerItems(EPlayerItems.Stash).ToList();
+				_passInventory = inventory;
+			}
+
+			return new List<Item>(_passStash);
+		}
 
 	// The game's error for a move, without the internals (ids, "item item"), for the screen; the log keeps the original
 	internal static string Friendly(string error)

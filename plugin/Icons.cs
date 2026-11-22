@@ -183,6 +183,13 @@ namespace GetReady
 		// Remembers an item of every template in the inventory
 		internal static void Index(InventoryController controller)
 		{
+			// The controller is a new one after a raid: the throwaway items made for the old one are let go
+			if (_controller != controller)
+			{
+				Made.Clear();
+				Loaded.Clear();
+			}
+
 			_controller = controller;
 			LoadedItems.Clear();
 			Examined.Clear();

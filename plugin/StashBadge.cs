@@ -44,6 +44,9 @@ namespace GetReady
 
 		private static Sprite _dot;
 
+		// One font for every badge: each call of CreateDynamicFontFromOSFont makes a new font and glyph texture that is never freed
+		private static Font _font;
+
 		// A small round dot (drawn in code)
 		private static Sprite Dot()
 		{
@@ -94,7 +97,7 @@ namespace GetReady
 			text.fontSize = 10;
 			text.fontStyle = FontStyle.Bold;
 			text.color = Color.white;
-			text.font = Font.CreateDynamicFontFromOSFont("Arial", 10);
+			text.font = _font ?? (_font = Font.CreateDynamicFontFromOSFont("Arial", 10));
 
 			var badge = new Badge { Object = made, Image = image, Text = text };
 			Badges.RemoveAll(other => other.Object == null);

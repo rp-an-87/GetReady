@@ -18,6 +18,8 @@ namespace GetReady
 	{
 		private static int _dragging;
 
+		internal static bool Dragging => _dragging > 0;
+
 		internal static bool Active => _dragging > 0 && Plugin.DragFadeMode.Value != DragFadeMode.Off;
 
 		internal static float Alpha => Plugin.DragFadeMode.Value == DragFadeMode.Hide ? 0f : Plugin.DragFadeOpacity.Value;
